@@ -1,10 +1,6 @@
-import { useState } from "react";
 import { usePMS } from "../contexts/PMSContext";
-import { formatCurrency, formatDate } from "../utils/format";
-import { Eye, Printer, X, Download, Star, Building, User, Mail, Phone, MapPin, Calendar, CreditCard } from "lucide-react";
-
-const GOLD = "#C6A75E";
-const DARKGOLD = "#A8832D";
+import { Printer, X, Download } from "lucide-react";
+import { numberToWords } from "../utils/numberToWords";
 
 interface InvoiceModalProps {
   invoice: any;
@@ -12,156 +8,194 @@ interface InvoiceModalProps {
 }
 
 export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
-  const { hotels, bookings, restaurantOrders, companies } = usePMS();
+  const { hotels, bookings } = usePMS();
   const hotel = hotels.find((h) => h.id === invoice.hotelId);
   const bk = bookings.find((b) => b.id === invoice.bill?.bookingId);
-  const company = bk?.companyId ? companies.find((c) => c.id === bk.companyId && c.isActive) : null;
-  const orders = restaurantOrders.filter((o) => o.bookingId === bk?.id && o.status === "billed");
-  const hasRestaurant = orders.length > 0;
+
+  const totalGst = Number(invoice.cgst || 0) + Number(invoice.sgst || 0);
+  const subtotal = Number(invoice.subtotal || 0) - Number(invoice.bill?.restaurantCharges || 0);
+  const beforeRound = subtotal + totalGst;
+  const roundOff = Math.round(beforeRound) - beforeRound; // Recalculate round off based on the new beforeRound (excluding food)
+  const totalAmountWithoutFood = Math.round(beforeRound);
+
+  const formatDateOnly = (d: Date | null) => d ? `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}` : '-';
+  const formatDateTime = (d: Date | null) => d ? `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}/${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}` : '-';
+
+  const billDateStr = invoice.createdAt ? formatDateOnly(new Date(invoice.createdAt)) : '-';
+  const arrivalDateStr = bk?.checkInDate ? formatDateTime(new Date(bk.checkInDate)) : '-';
+  const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
+
+  const items: any[] = [];
+
+  if (Number(invoice.bill?.roomCharges) > 0) {
+    const base = Number(invoice.bill.roomCharges);
+    const gstPart = subtotal > 0 ? (base / subtotal) * totalGst : 0;
+    items.push({
+      date: billDateStr,
+      type: "Room Charges",
+      desc: `Room Charges for Room Number ${bk?.room?.roomNumber || 'NA'}, GST`,
+      charges: base,
+      discount: 0,
+      gst: gstPart,
+      total: base + gstPart
+    });
+  }
+
+
+
+  if (Number(invoice.bill?.miscCharges) > 0) {
+    const base = Number(invoice.bill.miscCharges);
+    const gstPart = subtotal > 0 ? (base / subtotal) * totalGst : 0;
+    items.push({
+      date: billDateStr,
+      type: "Misc Charges",
+      desc: `Miscellaneous Guest Services`,
+      charges: base,
+      discount: 0,
+      gst: gstPart,
+      total: base + gstPart
+    });
+  }
+
+  // If no items generated (unlikely), fallback
+  if (items.length === 0) {
+    items.push({
+      date: billDateStr,
+      type: "Charges",
+      desc: `General Charges`,
+      charges: subtotal,
+      discount: 0,
+      gst: totalGst,
+      total: subtotal + totalGst
+    });
+  }
 
   const getInvoiceHtml = () => {
-    let restaurantItemsHtml = "";
-    if (hasRestaurant) {
-      const itemsList = orders.flatMap(o => o.orderItems || []).map(item => `
-        <tr>
-          <td>${item.menuItem?.itemName || "Item"} ${item.specialNote ? `<br><small>(${item.specialNote})</small>` : ""}</td>
-          <td style="text-align:center">${item.quantity}</td>
-          <td style="text-align:right">₹${Number(item.price).toFixed(2)}</td>
-          <td style="text-align:right">₹${Number(item.itemTotal).toFixed(2)}</td>
-        </tr>
-      `).join("");
-
-      const restTotal = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
-      const restGst = orders.reduce((sum, o) => sum + Number(o.gst), 0);
-      const restSubtotal = orders.reduce((sum, o) => sum + Number(o.subtotal), 0);
-
-      restaurantItemsHtml = `
-        <div style="page-break-before: always; margin-top: 40px;">
-          <div class="header">
-            <h2 style="color:#A8832D">RESTAURANT TAX INVOICE</h2>
-            <div>Invoice No: <b>${invoice.invoiceNumber}-REST</b></div>
-          </div>
-          <table>
-            <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
-            <tbody>
-              ${itemsList}
-              <tr class="total-row">
-                <td colspan="3"><b>Subtotal</b></td><td style="text-align:right"><b>₹${restSubtotal.toFixed(2)}</b></td>
-              </tr>
-              <tr class="total-row">
-                <td colspan="3"><b>Service Charge (10%)</b></td><td style="text-align:right"><b>₹${(restSubtotal * 0.1).toFixed(2)}</b></td>
-              </tr>
-              <tr class="total-row" style="font-size: 1.1rem; color: #A8832D;">
-                <td colspan="3"><b>Food Charges Total</b></td><td style="text-align:right"><b>₹${restTotal.toFixed(2)}</b></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
+    let itemsHtml = items.map(item => `
+      <tr>
+        <td class="border-b" style="padding: 4px;">${item.date}</td>
+        <td class="border-b border-l" style="padding: 4px;">${item.type}</td>
+        <td class="border-b border-l text-left" style="padding: 4px;">${item.desc}</td>
+        <td class="border-b border-l text-right" style="padding: 4px;">${item.charges.toFixed(2)}</td>
+        <td class="border-b border-l text-right" style="padding: 4px;">${item.discount.toFixed(2)}</td>
+        <td class="border-b border-l text-right" style="padding: 4px;">${item.gst.toFixed(2)}</td>
+        <td class="border-b border-l text-right" style="padding: 4px;">${item.total.toFixed(2)}</td>
+      </tr>
+    `).join('');
 
     return `
       <html><head><title>Invoice ${invoice.invoiceNumber}</title>
       <style>
-        body { font-family: 'Times New Roman', serif; padding: 40px; color: #1F2937; }
-        .header { text-align: center; border-bottom: 2px solid #C6A75E; padding-bottom: 20px; margin-bottom: 20px; }
-        .title { font-size: 2.5rem; color: #C6A75E; font-weight: bold; margin-bottom: 5px; }
-        .subtitle { font-size: 1.1rem; color: #4B5563; }
-        table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-        th { background: #faf5e4; padding: 12px; text-align: left; border: 1px solid #e8d48a; color: #A8832D; font-weight: bold; text-transform: uppercase; font-size: 0.9rem; }
-        td { padding: 12px; border: 1px solid #e8d48a; vertical-align: top; }
-        .total-row { font-weight: bold; background: #faf5e4; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
-        .info-box { background: #FFFFFF; padding: 0; border: none; }
-        .info-header { font-weight: bold; color: #A8832D; margin-bottom: 8px; border-bottom: 1px solid #e8d48a; padding-bottom: 4px; text-transform: uppercase; font-size: 0.85rem; }
-        .footer { margin-top: 60px; text-align: center; color: #A8832D; border-top: 2px solid #C6A75E; padding-top: 20px; font-style: italic; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; margin: 0; padding: 0; }
+        .invoice-wrapper { max-width: 800px; margin: 0 auto; padding: 10px; background: #fff; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        table { width: 100%; border-collapse: collapse; }
+        .border-all { border: 1px solid #C6A75E; }
+        .border-t { border-top: 1px solid #C6A75E; }
+        .border-b { border-bottom: 1px solid #C6A75E; }
+        .border-l { border-left: 1px solid #C6A75E; }
+        .border-r { border-right: 1px solid #C6A75E; }
+        td, th { vertical-align: top; }
+        .header-title { font-size: 16px; margin: 0; color: #C6A75E; font-weight: bold; }
+        .header-text { margin: 2px 0; color: #C6A75E; }
+        .proforma { font-size: 18px; font-weight: bold; margin: 15px 0; font-family: sans-serif; color: #000; }
+        .info-row { display: flex; }
+        .info-col-label { width: 120px; color: #000; }
+        .info-col-sep { width: 10px; color: #000; }
+        .info-col-val { flex: 1; text-transform: uppercase; color: #000; }
+        .flex { display: flex; }
+        .w-50 { width: 50%; }
         @media print { 
-          body { margin: 0; padding: 20px; } 
-          @page { size: A4; margin: 10mm; }
-          .no-print { display: none; }
+          body { margin: 0; padding: 10px; } 
+          @page { size: auto; margin: 5mm; }
         }
       </style></head>
       <body>
-        <!-- Page 1: Main Invoice -->
-        <div class="header">
-          <div class="title">${hotel?.name || ""}</div>
-          <div style="font-size: 0.9rem;">${hotel?.address || ""}</div>
-          <div style="font-size: 0.9rem;">GST: ${hotel?.gstNumber || ""}</div>
-          <h2 style="color:#A8832D; margin-top: 20px; text-transform: uppercase; letter-spacing: 2px;">
-            ${company ? 'CORPORATE TAX INVOICE' : 'TAX INVOICE'}
-          </h2>
-          <div style="margin-top: 10px;">
-            Invoice No: <b style="color: #C6A75E">${invoice.invoiceNumber}</b> | Date: ${formatDate((invoice.createdAt as string)?.split("T")[0])}
+        <div class="invoice-wrapper border-all" style="padding: 20px;">
+          <div class="text-center">
+            <h2 class="header-title">${hotel?.name || ""}</h2>
+            <div class="header-text">${hotel?.address?.split(',')[0] || ""}</div>
+            <div class="header-text">${hotel?.address?.split(',').slice(1).join(',') || ""}</div>
+            <div class="header-text">"Composition - Taxable Person Not Eligible to Collect Tax on Supplies / Services"</div>
+            <div class="header-text">Contact No:-${hotel?.phone || ""}</div>
+            <div class="header-text">GST Number: ${hotel?.gstNumber || ""}</div>
+            <div class="proforma">PROFORMA TAX INVOICE</div>
           </div>
-        </div>
 
-        <div class="info-grid">
-          <div class="info-box">
-            <div class="info-header">${company ? 'Billed To (Corporate)' : 'Billed To'}</div>
-            ${company ? `<b>${company.name}</b><br/>Attn: ${bk?.guestName || "Guest"}` : `<b>${bk?.guestName || "Guest"}</b>`}<br/>
-            ${company?.gstNumber ? `GST: ${company.gstNumber}<br/>` : ""}
-            ${company ? (company.address || "") : (bk?.addressLine || "N/A")}<br/>
-            ${company ? (company.phone || "") : (bk?.guestPhone || "N/A")}
+          <div class="border-all flex" style="margin-bottom: 20px;">
+            <div class="w-50" style="padding: 10px;">
+              ${bk?.company?.name ? `
+              <div class="info-row"><div class="info-col-label font-bold" style="font-weight: bold; color: #C6A75E;">Billed To</div><div class="info-col-sep">-</div><div class="info-col-val font-bold" style="font-weight: bold;">${bk.company.name}</div></div>
+              <div class="info-row" style="margin-bottom: 8px;"><div class="info-col-label">GST No.</div><div class="info-col-sep">-</div><div class="info-col-val">${bk.company.gstNumber || "-"}</div></div>
+              ` : ''}
+              <div class="info-row"><div class="info-col-label">Guest Name</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.guestName || "Guest"}</div></div>
+              <div class="info-row"><div class="info-col-label">Address</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.addressLine || "-"}</div></div>
+              <div class="info-row"><div class="info-col-label">Contact No</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.guestPhone || "-"}</div></div>
+              <div class="info-row"><div class="info-col-label">Room Nos</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.room?.roomNumber || "-"}</div></div>
+              <div class="info-row"><div class="info-col-label">State</div><div class="info-col-sep">-</div><div class="info-col-val">NA</div></div>
+            </div>
+            <div class="w-50 border-l" style="padding: 10px;">
+              <div class="info-row"><div class="info-col-label">Bill Date</div><div class="info-col-sep">-</div><div class="info-col-val">${billDateStr}</div></div>
+              <div class="info-row"><div class="info-col-label">Bill No.</div><div class="info-col-sep">-</div><div class="info-col-val">${invoice.invoiceNumber || "-"}</div></div>
+              <div class="info-row"><div class="info-col-label">Reg. No.</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.id || "-"}</div></div>
+              <div class="info-row"><div class="info-col-label">Plan</div><div class="info-col-sep">-</div><div class="info-col-val">NA</div></div>
+              <div class="info-row"><div class="info-col-label">PAX</div><div class="info-col-sep">-</div><div class="info-col-val">Adults ${bk?.adults || 2},Child ${bk?.children || 0}</div></div>
+              <div class="info-row"><div class="info-col-label">Arrival Date</div><div class="info-col-sep">-</div><div class="info-col-val">${arrivalDateStr}</div></div>
+              <div class="info-row"><div class="info-col-label">Departure Date</div><div class="info-col-sep">-</div><div class="info-col-val">${departureDateStr}</div></div>
+            </div>
           </div>
-          <div class="info-box">
-            <div class="info-header">Stay Details</div>
-            Room: <b>${bk?.room?.roomNumber || "N/A"}</b><br/>
-            Check-in: ${formatDate((bk?.checkInDate as string)?.split("T")[0])}<br/>
-            Check-out: ${formatDate((bk?.checkOutDate as string)?.split("T")[0])}<br/>
-            Guest: ${bk?.guestName || "Guest"}
-          </div>
-        </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th style="text-align:right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Room & Services</td>
-              <td style="text-align:right">₹${Number(invoice.bill?.roomCharges || 0).toLocaleString()}</td>
-            </tr>
-            ${Number(invoice.bill?.restaurantCharges) > 0 ? `
-            <tr>
-              <td>Food Charges</td>
-              <td style="text-align:right">₹${Number(invoice.bill?.restaurantCharges).toLocaleString()}</td>
-            </tr>` : ""}
-            ${Number(invoice.bill?.miscCharges) > 0 ? `
-            <tr>
-              <td>Miscellaneous Charges</td>
-              <td style="text-align:right">₹${Number(invoice.bill?.miscCharges).toLocaleString()}</td>
-            </tr>` : ""}
-            <tr style="background: #faf5e4; font-weight: bold;">
-              <td style="color: #A8832D">Subtotal</td>
-              <td style="text-align:right">₹${Number(invoice.subtotal).toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td>CGST</td>
-              <td style="text-align:right">₹${Number(invoice.cgst).toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td>SGST</td>
-              <td style="text-align:right">₹${Number(invoice.sgst).toLocaleString()}</td>
-            </tr>
-            <tr class="total-row" style="font-size: 1.2rem;">
-              <td style="color: #C6A75E">GRAND TOTAL</td>
-              <td style="text-align:right; color: #A8832D"><b>₹${Number(invoice.totalAmount).toLocaleString()}</b></td>
-            </tr>
-          </tbody>
-        </table>
+          <table class="border-all" style="margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th class="border-b text-left" style="padding: 4px;">Date</th>
+                <th class="border-b border-l text-left" style="padding: 4px;">Charges<br>Type</th>
+                <th class="border-b border-l text-left" style="padding: 4px; width: 40%">Description</th>
+                <th class="border-b border-l text-right" style="padding: 4px;">Charges</th>
+                <th class="border-b border-l text-right" style="padding: 4px;">Discount</th>
+                <th class="border-b border-l text-right" style="padding: 4px;">GST</th>
+                <th class="border-b border-l text-right" style="padding: 4px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+              <tr>
+                <td colspan="3" class="text-left font-bold" style="padding: 4px;">Total</td>
+                <td class="border-l text-right font-bold" style="padding: 4px;">${subtotal.toFixed(2)}</td>
+                <td class="border-l text-right font-bold" style="padding: 4px;">0.00</td>
+                <td class="border-l text-right font-bold" style="padding: 4px;">${totalGst.toFixed(2)}</td>
+                <td class="border-l text-right font-bold" style="padding: 4px;">${beforeRound.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
 
-        <div class="footer">
-          <p>Thank you for staying with us! We hope to see you again soon.</p>
-          <div style="font-size: 0.8rem; margin-top: 10px; font-style: normal; color: #9CA3AF;">
-            This is a computer generated invoice and doesn't require signature.
+          <div class="border-all border-t-0 flex">
+            <div class="w-50 border-r" style="padding: 4px;">
+              <div class="info-row"><div class="info-col-label">Total GST</div><div class="info-col-sep">-</div><div class="info-col-val text-right" style="padding-right: 40px;">${totalGst.toFixed(2)}</div></div>
+              <div class="info-row"><div class="info-col-label">CGST</div><div class="info-col-sep">-</div><div class="info-col-val text-right" style="padding-right: 40px;">${Number(invoice.cgst || 0).toFixed(2)}</div></div>
+              <div class="info-row"><div class="info-col-label">SGST</div><div class="info-col-sep">-</div><div class="info-col-val text-right" style="padding-right: 40px;">${Number(invoice.sgst || 0).toFixed(2)}</div></div>
+            </div>
+            <div class="w-50" style="padding: 4px;">
+              <div class="info-row"><div class="info-col-label">Total Amount</div><div class="info-col-val text-right">${beforeRound.toFixed(2)}</div></div>
+              <div class="info-row"><div class="info-col-label">(-)Advance</div><div class="info-col-val text-right">${Number(invoice.advanceAmount || 0).toFixed(2)}</div></div>
+              <div class="info-row"><div class="info-col-label">(-)Discount</div><div class="info-col-val text-right">0.00</div></div>
+              <div class="info-row"><div class="info-col-label">Round Off</div><div class="info-col-val text-right">${roundOff.toFixed(2)}</div></div>
+              <div class="info-row" style="font-weight: bold;"><div class="info-col-label">Net Payable</div><div class="info-col-val text-right">${(totalAmountWithoutFood - Number(invoice.advanceAmount || 0)).toFixed(2)}</div></div>
+            </div>
           </div>
+
+          <div class="border-all border-t-0" style="padding: 4px; font-weight: bold; color: #000;">
+            ${numberToWords(totalAmountWithoutFood - Number(invoice.advanceAmount || 0))}
+          </div>
+
+          <div class="text-center" style="margin-top: 40px; font-size: 12px; color: #C6A75E; font-weight: bold;">
+            This is a computer generated invoice and doesn't require a signature.
+          </div>
+
         </div>
-        
-        <!-- Page 2: Restaurant Invoice if applicable -->
-        ${restaurantItemsHtml}
       </body></html>
     `;
   };
@@ -172,7 +206,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     w.document.write(getInvoiceHtml());
     w.document.close();
     w.focus();
-    w.print();
+    setTimeout(() => {
+      w.print();
+    }, 250);
   };
 
   const handleDownload = () => {
@@ -190,199 +226,39 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
     >
-      <div
-        className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300"
-        style={{ background: "white" }}
-      >
-        {/* Modern Header */}
-        <div
-          className="px-6 py-5 flex items-center justify-between"
-          style={{
-            borderBottom: "1px solid #E5E1DA",
-            background: "linear-gradient(135deg, #FAF7F2, #FFFFFF)",
-          }}
+      <div className="w-full max-w-4xl flex justify-end gap-3 mb-2">
+        <button
+          onClick={handlePrint}
+          className="bg-white text-gray-800 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-gray-50 transition-colors"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-[#C6A75E] to-[#A8832D] text-white">
-              <Star className="w-5 h-5 fill-current" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold font-serif" style={{ color: DARKGOLD }}>
-                Invoice {invoice.invoiceNumber}
-              </h2>
-              <p className="text-xs text-gray-400">Preview and Manage Invoice</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all transform hover:scale-105 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg, #C6A75E, #A8832D)",
-                boxShadow: "0 4px 12px rgba(198, 167, 94, 0.3)",
-              }}
-            >
-              <Printer className="w-4 h-4" /> Print
-            </button>
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 active:scale-95"
-              style={{
-                border: `2px solid ${GOLD}`,
-                color: DARKGOLD,
-                background: "transparent",
-              }}
-            >
-              <Download className="w-4 h-4" /> Download
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl hover:bg-red-50 text-red-500 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
+          <Printer className="w-4 h-4" /> Print
+        </button>
+        <button
+          onClick={handleDownload}
+          className="bg-white text-gray-800 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          <Download className="w-4 h-4" /> HTML
+        </button>
+        <button
+          onClick={onClose}
+          className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-sm"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-        <div className="p-8 max-h-[75vh] overflow-y-auto bg-[#FAFAF9]">
-          {/* Inner "Paper" Sheet */}
-          <div className="bg-white p-10 shadow-sm border border-[#E5E1DA] rounded-sm mx-auto max-w-[800px] font-aptos">
-            {/* Header section */}
-            <div className="text-center border-b-2 border-[#C6A75E] pb-6 mb-8">
-              {/*<h1 className="text-4xl font-bold mb-2" style={{ color: GOLD }}>Hotels4U PMS</h1>*/}
-              <h2 className="text-4xl font-bold mb-2" style={{ color: GOLD }}>{hotel?.name}</h2>
-
-              <h1 className="text-2xl font-bold mb-2" style={{ color: GOLD }}>A <br /> Unit of Uttarakhand Hotels4U</h1>
-              <div className="mt-2 text-sm text-gray-500 flex flex-col gap-0.5">
-                <span className="flex font-semibold items-center justify-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {hotel?.address}</span>
-                <span className="flex font-semibold items-center justify-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {hotel?.phone || "N/A"}</span>
-                <span className="font-bold text-gray-700">GST: {hotel?.gstNumber}</span>
-              </div>
-              <h2 className="mt-6 text-xl font-bold tracking-[0.2em] text-gray-400 uppercase">
-                {company ? "Corporate Tax Invoice" : "Tax Invoice"}
-              </h2>
-            </div>
-
-            {/* Billing Info */}
-            <div className="grid grid-cols-2 gap-12 mb-10">
-              <div className="space-y-4">
-                <div className="border-b border-[#e8d48a] pb-1">
-                  <span className="text-[0.7rem] uppercase font-bold tracking-widest text-[#A8832D]">Billed To</span>
-                </div>
-                <div>
-                  {company ? (
-                    <div className="space-y-1">
-                      <p className="font-bold text-lg">{company.name}</p>
-                      <p className="text-sm text-gray-500">Attn: {bk?.guestName}</p>
-                      {company.gstNumber && <p className="text-xs font-bold text-gray-700">GSTIN: {company.gstNumber}</p>}
-                      <p className="text-sm text-gray-600 leading-relaxed">{company.address || "N/A"}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="font-bold text-lg">{bk?.guestName || "Guest"}</p>
-                      <p className="text-sm text-gray-600 leading-relaxed">{bk?.addressLine || "N/A"}</p>
-                      <p className="text-sm text-gray-600">{bk?.guestPhone}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="border-b border-[#e8d48a] pb-1">
-                  <span className="text-[0.7rem] uppercase font-bold tracking-widest text-[#A8832D]">Invoice Details</span>
-                </div>
-                <div className="grid grid-cols-2 gap-y-2 text-sm">
-                  <span className="text-gray-400 italic">Invoice No:</span>
-                  <span className="font-bold text-right">{invoice.invoiceNumber}</span>
-
-                  <span className="text-gray-400 italic">Date:</span>
-                  <span className="text-right">{formatDate((invoice.createdAt as string)?.split("T")[0])}</span>
-
-                  <span className="text-gray-400 italic">Room Number:</span>
-                  <span className="font-bold text-right">{bk?.room?.roomNumber || "N/A"}</span>
-
-                  <span className="text-gray-400 italic">Period:</span>
-                  <span className="text-right text-[0.75rem]">
-                    {formatDate((bk?.checkInDate as string)?.split("T")[0])} - {formatDate((bk?.checkOutDate as string)?.split("T")[0])}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="mb-10">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF7F2]">
-                    <th className="px-4 py-3 text-left border border-[#e8d48a]" style={{ color: DARKGOLD }}>Description</th>
-                    <th className="px-4 py-3 text-right border border-[#e8d48a]" style={{ color: DARKGOLD }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="group">
-                    <td className="px-4 py-4 border border-[#e8d48a] text-gray-700">Room & Primary Services</td>
-                    <td className="px-4 py-4 border border-[#e8d48a] text-right text-gray-700">₹{Number(invoice.bill?.roomCharges || 0).toLocaleString()}</td>
-                  </tr>
-                  {Number(invoice.bill?.restaurantCharges) > 0 && (
-                    <tr>
-                      <td className="px-4 py-4 border border-[#e8d48a] text-gray-700">Restaurant / Food & Beverage</td>
-                      <td className="px-4 py-4 border border-[#e8d48a] text-right text-gray-700">₹{Number(invoice.bill?.restaurantCharges).toLocaleString()}</td>
-                    </tr>
-                  )}
-                  {Number(invoice.bill?.miscCharges) > 0 && (
-                    <tr>
-                      <td className="px-4 py-4 border border-[#e8d48a] text-gray-700">Miscellaneous Guest Services</td>
-                      <td className="px-4 py-4 border border-[#e8d48a] text-right text-gray-700">₹{Number(invoice.bill?.miscCharges || 0).toLocaleString()}</td>
-                    </tr>
-                  )}
-                  <tr className="bg-[#FAF7F2] font-bold">
-                    <td className="px-4 py-3 border border-[#e8d48a]" style={{ color: DARKGOLD }}>SUBTOTAL</td>
-                    <td className="px-4 py-3 border border-[#e8d48a] text-right">₹{Number(invoice.subtotal).toLocaleString()}</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2 border border-[#e8d48a] text-sm text-gray-500 italic">Central Goods & Service Tax (CGST)</td>
-                    <td className="px-4 py-2 border border-[#e8d48a] text-right text-gray-600">₹{Number(invoice.cgst).toLocaleString()}</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2 border border-[#e8d48a] text-sm text-gray-500 italic">State Goods & Service Tax (SGST)</td>
-                    <td className="px-4 py-2 border border-[#e8d48a] text-right text-gray-600">₹{Number(invoice.sgst).toLocaleString()}</td>
-                  </tr>
-                  <tr className="bg-[#FAF7F2]" style={{ fontSize: "1.25rem" }}>
-                    <td className="px-4 py-4 border border-[#e8d48a] font-bold" style={{ color: GOLD }}>GRAND TOTAL</td>
-                    <td className="px-4 py-4 border border-[#e8d48a] text-right font-bold" style={{ color: DARKGOLD }}>₹{Number(invoice.totalAmount).toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer */}
-            <div className="text-center pt-8 border-t-2 border-[#C6A75E]">
-              <p className="text-lg italic mb-2" style={{ color: DARKGOLD }}>"Service with Excellence, Stay with Comfort"</p>
-              <p className="text-sm text-gray-500">Thank you for choosing Hotels4U. We hope you have a pleasant journey ahead.</p>
-              <div className="mt-8 pt-8 flex justify-between items-end opacity-40 grayscale">
-                <div className="text-center">
-
-                  <p className="text-sm text-gray-500"><center>This is a computer generated invoice and doesn't require signature.</center></p>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary stats below paper */}
-            <div className="mt-8 flex justify-center gap-6">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className={`w-3 h-3 rounded-full ${invoice.status === 'issued' ? 'bg-amber-400' : 'bg-green-500'}`}></span>
-                Status: <span className="font-bold uppercase">{invoice.status}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <CreditCard className="w-4 h-4" />
-                Channel: <span className="font-bold uppercase">{bk?.source || "Direct"}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div
+        className="w-full max-w-4xl rounded-sm overflow-hidden bg-white shadow-2xl animate-in fade-in zoom-in duration-300"
+        style={{ height: "85vh" }}
+      >
+        <iframe
+          srcDoc={getInvoiceHtml()}
+          className="w-full h-full border-0"
+          title="Invoice Preview"
+        />
       </div>
     </div>
   );
