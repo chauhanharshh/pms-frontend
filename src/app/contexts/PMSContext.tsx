@@ -37,6 +37,7 @@ export interface Hotel {
   headerColor?: string;
   accentColor?: string;
   isCustomTheme?: boolean;
+  showAllRooms?: boolean;
 }
 
 export interface SystemSettings {
@@ -122,6 +123,8 @@ export interface Booking {
   bill?: Bill;
   companyId?: string;
   company?: Company;
+  companyName?: string;
+  companyGst?: string;
   comingFrom?: string;
   goingTo?: string;
   purposeOfVisit?: string;

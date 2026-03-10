@@ -145,6 +145,15 @@ export function BookingPreviewModal({
                                         <span className="w-2/3 font-semibold">{booking.idProof}</span>
                                     </div>
                                 )}
+                                {(booking.companyName || booking.company?.name) && (
+                                    <div className="flex">
+                                        <span className="w-1/3 text-gray-500">Company:</span>
+                                        <span className="w-2/3 font-semibold">
+                                            {booking.companyName || booking.company?.name}
+                                            {booking.companyGst || booking.company?.gstNumber ? ` (GST: ${booking.companyGst || booking.company?.gstNumber})` : ""}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex">
                                     <span className="w-1/3 text-gray-500">Occupants:</span>
                                     <span className="w-2/3 font-semibold">{booking.adults} Adults, {booking.children} Children</span>

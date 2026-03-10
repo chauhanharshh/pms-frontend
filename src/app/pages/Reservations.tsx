@@ -27,6 +27,8 @@ const emptyBooking = (hotelId: string): Omit<Booking, "id"> => ({
   source: "reservation",
   idProof: "",
   companyId: "",
+  companyName: "",
+  companyGst: "",
 });
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -649,6 +651,42 @@ export function Reservations() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="col-span-1">
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    style={{ color: DARKGOLD }}
+                  >
+                    Billing Company Name (Optional)
+                  </label>
+                  <input
+                    className="w-full px-3 py-2.5 rounded-lg bg-white outline-none"
+                    style={{ border: "2px solid #E5E1DA" }}
+                    value={(form as any).companyName || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, companyName: e.target.value }))
+                    }
+                    placeholder="If billing to a company"
+                    disabled={!!(form as any).companyId}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    style={{ color: DARKGOLD }}
+                  >
+                    Company GST (Optional)
+                  </label>
+                  <input
+                    className="w-full px-3 py-2.5 rounded-lg bg-white outline-none"
+                    style={{ border: "2px solid #E5E1DA" }}
+                    value={(form as any).companyGst || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, companyGst: e.target.value }))
+                    }
+                    placeholder="GSTIN"
+                    disabled={!!(form as any).companyId}
+                  />
                 </div>
               </div>
               {form.roomId && (

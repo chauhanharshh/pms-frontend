@@ -52,6 +52,7 @@ const emptyHotel = (): Omit<Hotel, "id" | "createdAt"> => ({
   taxRate: 12,
   currency: "INR",
   isActive: true,
+  showAllRooms: false,
 });
 
 const emptyClone = (): CloneOptions => ({
@@ -632,6 +633,22 @@ function HotelFormModal({
               style={{ color: DARKGOLD }}
             >
               POS Boss Mode
+            </label>
+          </div>
+          <div className="flex items-center gap-2 h-10 col-span-1 pt-4">
+            <input
+              type="checkbox"
+              id="showAllRooms"
+              checked={form.showAllRooms || false}
+              onChange={(e) => f("showAllRooms", e.target.checked)}
+              className="w-4 h-4"
+            />
+            <label
+              htmlFor="showAllRooms"
+              className="text-sm font-medium font-bold"
+              style={{ color: DARKGOLD }}
+            >
+              Show All Rooms
             </label>
           </div>
           {/* Hotel Login Credentials — only for new hotels */}

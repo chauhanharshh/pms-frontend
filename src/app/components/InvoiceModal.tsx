@@ -127,9 +127,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
           <div class="border-all flex" style="margin-bottom: 20px;">
             <div class="w-50" style="padding: 10px;">
-              ${bk?.company?.name ? `
-              <div class="info-row"><div class="info-col-label font-bold" style="font-weight: bold; color: #C6A75E;">Billed To</div><div class="info-col-sep">-</div><div class="info-col-val font-bold" style="font-weight: bold;">${bk.company.name}</div></div>
-              <div class="info-row" style="margin-bottom: 8px;"><div class="info-col-label">GST No.</div><div class="info-col-sep">-</div><div class="info-col-val">${bk.company.gstNumber || "-"}</div></div>
+              ${(bk?.companyName || bk?.company?.name) ? `
+              <div class="info-row"><div class="info-col-label font-bold" style="font-weight: bold; color: #C6A75E;">Billed To</div><div class="info-col-sep">-</div><div class="info-col-val font-bold" style="font-weight: bold;">${bk.companyName || bk.company?.name}</div></div>
+              <div class="info-row" style="margin-bottom: 8px;"><div class="info-col-label">GST No.</div><div class="info-col-sep">-</div><div class="info-col-val">${bk.companyGst || bk.company?.gstNumber || "-"}</div></div>
               ` : ''}
               <div class="info-row"><div class="info-col-label">Guest Name</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.guestName || "Guest"}</div></div>
               <div class="info-row"><div class="info-col-label">Address</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.addressLine || "-"}</div></div>

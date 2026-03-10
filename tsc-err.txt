@@ -1,0 +1,9 @@
+﻿src/app/components/InvoiceModal.tsx(31,9): error TS7034: Variable 'items' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/app/components/InvoiceModal.tsx(89,21): error TS7005: Variable 'items' implicitly has an 'any[]' type.
+src/app/pages/TodaysView.tsx(199,29): error TS2339: Property 'createdAt' does not exist on type 'Booking'.
+src/config.ts(5,32): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/main.tsx(4,8): error TS2307: Cannot find module './styles/index.css' or its corresponding type declarations.
+tmp/verify_sync.ts(5,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+tmp/verify_sync.ts(37,13): error TS2820: Type '"Walking"' is not assignable to type 'BookingSource'. Did you mean '"walk_in"'?
+tmp/verify_sync.ts(57,31): error TS2339: Property 'bill' does not exist on type '{ id: string; checkInTime: string; checkOutTime: string; createdAt: Date; updatedAt: Date; createdBy: string; updatedBy: string; hotelId: string; status: BookingStatus; ... 23 more ...; paymentMode: PaymentMethod; }'.
+tmp/verify_sync.ts(61,35): error TS2551: Property 'restaurantMenuItem' does not exist on type 'PrismaClient<{ log: ({ level: "query"; emit: "event"; } | { level: "error"; emit: "stdout"; } | { level: "warn"; emit: "stdout"; })[]; }, "query", DefaultArgs>'. Did you mean 'restaurantMenu'?

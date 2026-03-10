@@ -2,14 +2,15 @@ import { useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
-import { usePMS } from "../contexts/PMSContext";
+import { usePMS, Hotel } from "../contexts/PMSContext";
 import { BedDouble, AlertCircle, Building2, ChevronDown } from "lucide-react";
 
 export function RestaurantRoomSelector() {
     const { user } = useAuth();
-    const { getCheckedInRooms, hotels, systemSettings } = usePMS();
+    const { getCheckedInRooms, hotels, systemSettings, rooms } = usePMS();
     const navigate = useNavigate();
     const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
+    const [allRooms, setAllRooms] = useState<any[]>([]);
     const currentHotelId = user?.hotelId || "";
     const currentUserHotel = hotels.find(h => h.id === currentHotelId);
     const isPosBossMode = currentUserHotel?.posBossMode === true;
@@ -27,11 +28,14 @@ export function RestaurantRoomSelector() {
     }, [activeSelectorHotelId, hotels, systemSettings, user?.hotelId]);
 
     // Derived active hotel details
-    const activeHotel = hotels.find((h) => h.id === activeSelectorHotelId) || { name: user?.role === "admin" ? "All Hotels (Consolidated)" : "Unknown Hotel" };
+    const activeHotel = hotels.find((h) => h.id === activeSelectorHotelId) || { name: user?.role === "admin" ? "All Hotels (Consolidated)" : "Unknown Hotel", showAllRooms: false } as Hotel;
 
     useEffect(() => {
         getCheckedInRooms(activeSelectorHotelId).then(setCheckedInRooms).catch(console.error);
-    }, [activeSelectorHotelId, getCheckedInRooms]);
+        if (activeHotel?.showAllRooms) {
+            setAllRooms(rooms.filter(r => r.hotelId === activeSelectorHotelId));
+        }
+    }, [activeSelectorHotelId, getCheckedInRooms, activeHotel?.showAllRooms, rooms]);
 
     // Create a base path depending on the user role to redirect correctly
     const getPosPath = () => {
@@ -87,18 +91,38 @@ export function RestaurantRoomSelector() {
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     <div className="max-w-7xl mx-auto">
+                        {/* Display Section */}
+                        {(() => {
+                            const roomsToDisplay = activeHotel?.showAllRooms 
+                                ? allRooms.map(r => ({
+                                    id: r.id,
+                                    roomNumber: r.roomNumber,
+                                    bookings: r.bookings || [],
+                                    status: r.status
+                                  })) 
+                                : checkedInRooms;
+                            
+                            if (roomsToDisplay.length === 0) {
+                                return (
+                                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
+                                        <AlertCircle className="w-12 h-12 text-slate-300 mb-4" />
+                                        <h3 className="text-lg font-semibold text-slate-700">
+                                            {activeHotel?.showAllRooms ? "No Rooms Found" : "No Checked-in Rooms"}
+                                        </h3>
+                                        <p className="text-slate-500 text-sm mt-1">
+                                            {activeHotel?.showAllRooms 
+                                                ? "There are currently no rooms available for this hotel." 
+                                                : "There are currently no guests checked in to associate with a POS order."}
+                                        </p>
+                                    </div>
+                                );
+                            }
 
-                        {checkedInRooms.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
-                                <AlertCircle className="w-12 h-12 text-slate-300 mb-4" />
-                                <h3 className="text-lg font-semibold text-slate-700">No Checked-in Rooms</h3>
-                                <p className="text-slate-500 text-sm mt-1">There are currently no guests checked in to associate with a POS order.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {checkedInRooms.map((room: any) => {
-                                    const currentBooking = room.bookings?.find((b: any) => b.status === 'checked_in');
-                                    const guestName = currentBooking?.guest?.name || "Unknown Guest";
+                            return (
+                                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                    {roomsToDisplay.map((room: any) => {
+                                        const currentBooking = room.bookings?.find((b: any) => b.status === 'checked_in') || checkedInRooms.find(r => r.id === room.id)?.bookings?.find((b: any) => b.status === 'checked_in');
+                                        const guestName = currentBooking?.guest?.name || checkedInRooms.find(r => r.id === room.id)?.guestName || "Vacant";
 
                                     return (
                                         <button
@@ -123,11 +147,12 @@ export function RestaurantRoomSelector() {
                                                     <span className="text-slate-500 font-medium">Guest:</span> {guestName}
                                                 </p>
                                             </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                </button>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
 
                     </div>
                 </div>

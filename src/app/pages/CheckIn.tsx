@@ -52,6 +52,8 @@ const EMPTY_GUEST = {
   advanceAmount: 0,
   paymentMode: "Cash",
   companyId: "",
+  companyName: "",
+  companyGst: "",
   comingFrom: "",
   goingTo: "",
   purposeOfVisit: "Tourism",
@@ -280,6 +282,8 @@ export function CheckIn() {
         paymentMode: form.paymentMode,
         specialRequests: form.specialRequests || undefined,
         companyId: form.companyId || undefined,
+        companyName: form.companyName || undefined,
+        companyGst: form.companyGst || undefined,
         roomRate,
         taxAmount: gst,
         comingFrom: form.comingFrom || undefined,
@@ -792,6 +796,32 @@ export function CheckIn() {
                       </h3>
 
                       <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold mb-1 uppercase tracking-wider" style={{ color: "#9CA3AF" }}>
+                            Billing Company Name (Optional)
+                          </label>
+                          <input
+                            className="w-full px-3 py-2 rounded-lg outline-none text-sm bg-white"
+                            style={{ border: `1px solid ${BORDER}` }}
+                            value={form.companyName || ""}
+                            onChange={(e) => f("companyName", e.target.value)}
+                            placeholder="If billing to a company"
+                            disabled={!!form.companyId}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold mb-1 uppercase tracking-wider" style={{ color: "#9CA3AF" }}>
+                            Company GST (Optional)
+                          </label>
+                          <input
+                            className="w-full px-3 py-2 rounded-lg outline-none text-sm bg-white"
+                            style={{ border: `1px solid ${BORDER}` }}
+                            value={form.companyGst || ""}
+                            onChange={(e) => f("companyGst", e.target.value)}
+                            placeholder="GSTIN"
+                            disabled={!!form.companyId}
+                          />
+                        </div>
                         <div>
                           <label className="block text-[10px] font-bold mb-1 uppercase tracking-wider" style={{ color: "#9CA3AF" }}>
                             Coming From
