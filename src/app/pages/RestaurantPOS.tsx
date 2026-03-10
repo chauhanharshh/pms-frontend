@@ -47,6 +47,7 @@ export function RestaurantPOS() {
     hotels,
     systemSettings,
     refreshAll,
+    rooms,
   } = usePMS();
   const currentHotelId = user?.hotelId || "";
   const currentUserHotel = hotels.find(h => h.id === currentHotelId);
@@ -128,6 +129,7 @@ export function RestaurantPOS() {
 
   // Data State
   const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
+  const [allRooms, setAllRooms] = useState<any[]>([]);
   const [showOpenOrders, setShowOpenOrders] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showKOTPreview, setShowKOTPreview] = useState(false);
@@ -138,6 +140,9 @@ export function RestaurantPOS() {
   // Fetch active rooms on mount or hotel change
   useEffect(() => {
     getCheckedInRooms(selectedHotelId).then(setCheckedInRooms).catch(console.error);
+    if (activeHotel?.showAllRooms) {
+      setAllRooms(rooms.filter(r => r.hotelId === selectedHotelId));
+    }
 
     // Fetch stewards
     if (selectedHotelId) {
@@ -147,7 +152,7 @@ export function RestaurantPOS() {
     } else {
       setStewards([]);
     }
-  }, [selectedHotelId, getCheckedInRooms]);
+  }, [selectedHotelId, getCheckedInRooms, activeHotel?.showAllRooms, rooms]);
 
   // Boss Mode: fetch categories and menu items directly when hotel is switched
   const [localCategories, setLocalCategories] = useState<any[]>([]);
@@ -839,9 +844,11 @@ export function RestaurantPOS() {
                         setGuestName("");
                         return;
                       }
-                      const room = checkedInRooms.find(r => r.id === rid);
+                      
+                      const roomsToSearch = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
+                      const room = roomsToSearch.find(r => r.id === rid);
                       if (room) {
-                        const currentBooking = room.bookings?.find((b: any) => b.status === "checked_in");
+                        const currentBooking = room.bookings?.find((b: any) => b.status === "checked_in") || checkedInRooms.find(cr => cr.id === room.id)?.bookings?.find((b: any) => b.status === "checked_in");
                         setRoomId(room.id);
                         setBookingId(currentBooking?.id || "");
                         setRoomNumber(room.roomNumber || "");
@@ -851,14 +858,18 @@ export function RestaurantPOS() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#C6A75E] appearance-none"
                   >
                     <option value="">Select Room No</option>
-                    {checkedInRooms.map((r) => {
-                      const currentBooking = r.bookings?.find((b: any) => b.status === "checked_in");
-                      return (
-                        <option key={r.id} value={r.id}>
-                          Room {r.roomNumber} - {currentBooking?.guest?.name || "Unknown Guest"}
-                        </option>
-                      );
-                    })}
+                    {(() => {
+                      const roomsToDisplay = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
+                      return roomsToDisplay.map((r) => {
+                        const currentBooking = r.bookings?.find((b: any) => b.status === "checked_in") || checkedInRooms.find(cr => cr.id === r.id)?.bookings?.find((b: any) => b.status === "checked_in");
+                        const guestDisplay = currentBooking?.guest?.name || "Vacant";
+                        return (
+                          <option key={r.id} value={r.id}>
+                            Room {r.roomNumber} - {guestDisplay}
+                          </option>
+                        );
+                      });
+                    })()}
                   </select>
                   <Bed className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 </div>
