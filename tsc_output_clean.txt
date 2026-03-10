@@ -1,0 +1,362 @@
+dist/win-unpacked/resources/backend/check-all-hotels.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/check-all-hotels.ts(19,20): error TS7006: Parameter 'h' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/check-all-hotels.ts(34,24): error TS7006: Parameter 'c' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/check-cloud.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/check-cloud.ts(19,24): error TS7006: Parameter 'h' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/check-refs.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/create_admin.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/create_admin.ts(2,20): error TS2307: Cannot find module 'bcrypt' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/diagnose-visibility.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/diagnose-visibility.ts(8,47): error TS7006: Parameter 'h' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/list-hotels-full.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/prisma/seed.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/prisma/seed.ts(2,20): error TS2307: Cannot find module 'bcrypt' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/replace-restaurant-menu.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/reseed-all-hotels.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/audit_counts.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/check_migrations.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/check_migrations_file.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/find_admin.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/list_hotels.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/list_tables.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/recover_data.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/seed-menu.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/update_menu.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/scripts/update_menu_all.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/seed-restaurant-menu.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/check_cats.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/check_menu_ids.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/check_orphans.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/check_users_menu.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/config/database.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/find_duplicates.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/guards/authorization.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/guards/authorization.ts(4,26): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/list_reseed_hotels.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/list_reseed_hotels.ts(7,20): error TS7006: Parameter 'h' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/middleware/authenticate.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/middleware/authenticate.ts(12,28): error TS2339: Property 'headers' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/middleware/errorHandler.ts(1,49): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/middleware/errorHandler.ts(5,24): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/middleware/errorHandler.ts(36,13): error TS2339: Property 'code' does not exist on type 'Error'.
+dist/win-unpacked/resources/backend/src/middleware/errorHandler.ts(40,21): error TS2339: Property 'meta' does not exist on type 'Error'.
+dist/win-unpacked/resources/backend/src/middleware/errorHandler.ts(43,13): error TS2339: Property 'code' does not exist on type 'Error'.
+dist/win-unpacked/resources/backend/src/middleware/tenantIsolation.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/middleware/tenantIsolation.ts(22,33): error TS2339: Property 'headers' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/middleware/tenantIsolation.ts(23,32): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/middleware/validate.ts(1,49): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(10,98): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(17,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(18,69): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(25,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(26,69): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(26,93): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(33,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.controller.ts(34,53): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/advances/advances.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/auth/auth.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/auth/auth.controller.ts(12,43): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/auth/auth.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/auth/auth.service.ts(1,20): error TS2307: Cannot find module 'bcrypt' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bills/bills.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bills/bills.controller.ts(10,89): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bills/bills.controller.ts(18,61): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bills/bills.controller.ts(26,60): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bills/bills.controller.ts(26,84): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bills/bills.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(11,50): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(26,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(37,13): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(51,13): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(63,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(73,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(83,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.controller.ts(84,49): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(5,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(6,31): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(163,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(254,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(332,8): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(332,13): error TS7006: Parameter 'charge' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(335,8): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(335,13): error TS7006: Parameter 'order' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(388,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(391,10): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(391,15): error TS7006: Parameter 'charge' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(394,10): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/bookings/bookings.service.ts(394,15): error TS7006: Parameter 'order' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(12,38): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(20,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(21,71): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(28,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(31,88): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(35,79): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(42,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(43,70): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(43,94): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(50,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(51,54): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(58,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.controller.ts(59,69): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.service.ts(3,24): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/companies/companies.service.ts(81,38): error TS7006: Parameter 'hotel' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.controller.ts(1,26): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.controller.ts(17,30): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.controller.ts(26,37): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.service.ts(3,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.service.ts(86,45): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/day-closing/day-closing.service.ts(86,50): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(10,35): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(10,66): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(11,33): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(11,62): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(20,69): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(28,69): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(28,93): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.controller.ts(36,53): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/expenses/expenses.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(24,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(34,61): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(48,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(49,74): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(50,49): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(55,48): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(62,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(72,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(76,20): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(86,26): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(90,20): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.controller.ts(100,27): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(6,20): error TS2307: Cannot find module 'bcrypt' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(60,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(252,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(271,61): error TS7006: Parameter 't' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(289,49): error TS7006: Parameter 't' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(298,63): error TS7006: Parameter 'r' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(305,60): error TS7006: Parameter 'c' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(335,59): error TS7006: Parameter 'c' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(352,48): error TS7006: Parameter 'c' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(361,60): error TS7006: Parameter 'm' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/hotels/hotels.service.ts(367,69): error TS7006: Parameter 'c' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(10,98): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(17,70): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(24,75): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(24,113): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(31,71): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(38,66): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.controller.ts(38,122): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.service.ts(3,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.service.ts(4,31): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.service.ts(62,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/invoices/invoices.service.ts(230,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(18,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(19,76): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(26,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(27,76): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(27,100): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(34,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(35,71): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(35,95): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(42,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.controller.ts(43,58): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/liabilities/liabilities.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(11,89): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(18,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(19,74): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(26,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(27,74): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(27,98): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(34,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.controller.ts(35,59): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/misc-charges/misc-charges.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.controller.ts(18,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.controller.ts(19,62): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.controller.ts(26,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.controller.ts(27,50): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/petty-cash/petty-cash.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/reports/gst-reports.controller.ts(1,35): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/reports/gst-reports.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/reports/gst-reports.service.ts(2,24): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/reports/reports.service.ts(2,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/reports/reports.service.ts(38,49): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/reports/reports.service.ts(38,54): error TS7006: Parameter 'booking' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/reports/reports.service.ts(143,25): error TS7006: Parameter 'hotel' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(11,55): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(11,87): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(53,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(54,73): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(61,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(62,73): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(62,97): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(69,49): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(70,56): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(79,77): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(86,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(87,69): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(94,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(95,69): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(95,93): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(102,49): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(103,56): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(112,75): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(112,103): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(119,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(120,67): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(127,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(129,21): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(129,45): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(129,80): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(137,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(138,67): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(138,91): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(153,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(154,73): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(161,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(162,78): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(169,49): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(170,71): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(178,79): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(185,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(186,71): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(186,95): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(193,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(195,21): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(195,45): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(205,71): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(212,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(213,63): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(213,87): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(220,55): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(221,51): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(228,48): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.controller.ts(229,81): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(3,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(126,29): error TS7006: Parameter 'b' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(140,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(203,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(290,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(405,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(461,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(586,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(664,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/restaurant/restaurant.service.ts(735,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(18,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(19,67): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(26,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(27,67): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(27,91): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(34,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.controller.ts(35,53): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/room-blocks/room-blocks.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(5,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(16,50): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(25,56): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(33,50): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(34,51): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(44,57): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(52,50): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(54,17): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(54,32): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(54,76): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(63,50): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(64,56): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(64,80): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(72,51): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.routes.ts(73,43): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/rooms/rooms.service.ts(3,28): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(5,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(18,50): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(28,34): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(31,50): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(36,64): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(48,50): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(51,64): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(51,88): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(59,51): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/stewards/steward.routes.ts(62,48): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/system-settings/system-settings.controller.ts(1,35): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/system-settings/system-settings.controller.ts(2,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/system-settings/system-settings.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/users/users.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/users/users.controller.ts(10,82): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/users/users.controller.ts(18,60): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/users/users.controller.ts(25,60): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/users/users.controller.ts(25,75): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/users/users.controller.ts(32,47): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/users/users.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/users/users.service.ts(1,20): error TS2307: Cannot find module 'bcrypt' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(18,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(19,66): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(26,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(27,66): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(27,90): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(34,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.controller.ts(35,51): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vendors/vendors.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(1,40): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(10,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(18,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(19,69): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(26,54): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(27,69): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(27,93): error TS2339: Property 'body' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(34,54): error TS2339: Property 'query' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.controller.ts(35,53): error TS2339: Property 'params' does not exist on type 'AuthRequest'.
+dist/win-unpacked/resources/backend/src/modules/vouchers/vouchers.routes.ts(1,24): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/server.ts(1,8): error TS2307: Cannot find module 'express-async-errors' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/server.ts(2,38): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/server.ts(3,18): error TS2307: Cannot find module 'cors' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/server.ts(4,20): error TS2307: Cannot find module 'helmet' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/server.ts(5,22): error TS2307: Cannot find module 'pino-http' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/server.ts(42,12): error TS7006: Parameter 'origin' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(42,20): error TS7006: Parameter 'callback' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(63,21): error TS7006: Parameter 'req' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(63,26): error TS7006: Parameter 'res' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(68,25): error TS7006: Parameter 'req' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(68,30): error TS7006: Parameter 'res' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(96,15): error TS7006: Parameter 'req' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/server.ts(96,20): error TS7006: Parameter 'res' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/src/types/index.ts(1,25): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/types/index.ts(2,26): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/utils/jwt.ts(1,17): error TS2307: Cannot find module 'jsonwebtoken' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/utils/logger.ts(1,18): error TS2307: Cannot find module 'pino' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/utils/response.ts(1,26): error TS2307: Cannot find module 'express' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/src/utils/tax.ts(1,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/verify-detailed.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/verify-detailed.ts(20,25): error TS7006: Parameter 'c' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/verify-detailed.ts(20,28): error TS7006: Parameter 'i' implicitly has an 'any' type.
+dist/win-unpacked/resources/backend/verify-menu.ts(1,30): error TS2307: Cannot find module '@prisma/client' or its corresponding type declarations.
+dist/win-unpacked/resources/backend/verify-menu.ts(16,24): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/app/pages/TodaysView.tsx(199,29): error TS2339: Property 'createdAt' does not exist on type 'Booking'.
+src/config.ts(5,32): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/main.tsx(4,8): error TS2307: Cannot find module './styles/index.css' or its corresponding type declarations.
+tmp/verify_sync.ts(5,25): error TS2307: Cannot find module '@prisma/client/runtime/library' or its corresponding type declarations.
+tmp/verify_sync.ts(37,13): error TS2820: Type '"Walking"' is not assignable to type 'BookingSource'. Did you mean '"walk_in"'?
+tmp/verify_sync.ts(57,31): error TS2339: Property 'bill' does not exist on type '{ id: string; checkInTime: string; checkOutTime: string; createdAt: Date; updatedAt: Date; createdBy: string; updatedBy: string; hotelId: string; status: BookingStatus; ... 23 more ...; paymentMode: PaymentMethod; }'.
+tmp/verify_sync.ts(61,35): error TS2551: Property 'restaurantMenuItem' does not exist on type 'PrismaClient<{ log: ({ level: "query"; emit: "event"; } | { level: "error"; emit: "stdout"; } | { level: "warn"; emit: "stdout"; })[]; }, "query", DefaultArgs>'. Did you mean 'restaurantMenu'?

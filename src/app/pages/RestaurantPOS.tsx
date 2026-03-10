@@ -1345,20 +1345,22 @@ export function RestaurantPOS() {
                 {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Printer className="w-5 h-5" />}
                 A4 Invoice
               </button>
+              <button
+                disabled={isProcessing}
+                onClick={() => handleConfirmGenerateBill('send')}
+                className="flex-1 min-w-[120px] py-3 bg-[#C6A75E] hover:bg-[#A8832D] text-white rounded-lg font-bold text-base transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isProcessing ? (
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+                Send
+              </button>
             </div>
-            <button
-              disabled={isProcessing}
-              onClick={() => handleConfirmGenerateBill('send')}
-              className="flex-[0.7] py-3 bg-[#C6A75E] hover:bg-[#A8832D] text-white rounded-lg font-bold text-base transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-            >
-              {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              Send
-            </button>
           </div>
         </div>
-        </div>
-  )
-}
-    </div >
+      )}
+    </div>
   );
 }
