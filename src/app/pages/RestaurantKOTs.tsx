@@ -1,0 +1,455 @@
+import { useState, useEffect } from "react";
+import { AppLayout } from "../layouts/AppLayout";
+import { usePMS } from "../contexts/PMSContext";
+import {
+    Search,
+    Filter,
+    Calendar,
+    ClipboardList,
+    Printer,
+    Edit,
+    Trash2,
+    CheckCircle,
+    XCircle,
+    Clock,
+    Receipt,
+    X,
+    RefreshCw
+} from "lucide-react";
+import { format } from "date-fns";
+import { useNavigate } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
+
+export default function RestaurantKOTs() {
+    const [kots, setKots] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [dateFilter, setDateFilter] = useState("");
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [kotToPreview, setKotToPreview] = useState<any>(null);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const { getKOTs, deleteKOT, convertKOTToInvoice, hotels } = usePMS();
+    const GOLD = "#C6A75E";
+    const DARKGOLD = "#A8832D";
+
+    const fetchKOTs = async () => {
+        try {
+            setLoading(true);
+            const data = await getKOTs(statusFilter === "all" ? undefined : statusFilter);
+            setKots(data);
+        } catch (err) {
+            console.error("Failed to fetch KOTs:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchKOTs();
+    }, [statusFilter]);
+
+    const filteredKOTs = kots.filter((kot) => {
+        const matchesSearch =
+            kot.kotNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (kot.order?.stewardName || kot.order?.guestName || "").toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDate = !dateFilter || format(new Date(kot.printedAt), 'yyyy-MM-dd') === dateFilter;
+        return matchesSearch && matchesDate;
+    });
+
+    const getStatusStyle = (status: string) => {
+        switch (status.toUpperCase()) {
+            case "CONVERTED":
+                return { bg: "#ECFDF5", text: "#059669", icon: <CheckCircle className="w-3 h-3" /> };
+            case "CANCELLED":
+                return { bg: "#FEF2F2", text: "#DC2626", icon: <XCircle className="w-3 h-3" /> };
+            case "OPEN":
+                return { bg: "#FFF7ED", text: "#C6A75E", icon: <Clock className="w-3 h-3" /> };
+            default:
+                return { bg: "#F3F4F6", text: "#6B7280", icon: <Clock className="w-3 h-3" /> };
+        }
+    };
+
+    const handleConvert = async (kot: any) => {
+        if (!confirm("Are you sure you want to convert this KOT to a Bill?")) return;
+        try {
+            await convertKOTToInvoice(kot.id, kot.hotelId);
+            fetchKOTs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to convert KOT to Bill");
+        }
+    };
+
+    const handleDelete = async (kotId: string) => {
+        if (!confirm("Are you sure you want to delete/cancel this KOT?")) return;
+        try {
+            await deleteKOT(kotId);
+            fetchKOTs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete KOT");
+        }
+    };
+
+    const handlePrintClick = (kot: any) => {
+        setKotToPreview(kot);
+        setShowPreviewModal(true);
+    };
+
+    const printThermalKOT = (kot: any) => {
+        const w = window.open("", "_blank", "width=600,height=600");
+        if (!w) return;
+
+        const html = `
+        <html>
+          <head>
+            <title>KOT - ${kot.kotNumber}</title>
+            <style>
+              @page { margin: 0; }
+              body { 
+                font-family: 'Courier New', Courier, monospace; 
+                width: 80mm; 
+                padding: 10px;
+                font-size: 12px;
+              }
+              .center { text-align: center; }
+              .bold { font-weight: bold; }
+              .hr { border-bottom: 1px dashed #000; margin: 5px 0; }
+              table { width: 100%; border-collapse: collapse; }
+              th { text-align: left; }
+              .footer { margin-top: 10px; font-size: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="center bold" style="font-size: 16px;">KITCHEN ORDER TICKET</div>
+            <div class="hr"></div>
+            <div><strong>KOT No:</strong> ${kot.kotNumber}</div>
+            <div><strong>Date:</strong> ${new Date(kot.printedAt).toLocaleString()}</div>
+            <div><strong>Table:</strong> ${kot.order?.tableNumber || "N/A"}</div>
+            <div><strong>Steward:</strong> ${kot.order?.stewardName || kot.order?.guestName || "Walk-in"}</div>
+            ${kot.order?.room ? `<div><strong>Room:</strong> ${kot.order.room.roomNumber}</div>` : ""}
+            <div class="hr"></div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th style="text-align: right;">Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${kot.items.map((item: any) => `
+                  <tr>
+                    <td>${item.itemName}</td>
+                    <td style="text-align: right;">${item.quantity}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+            <div class="hr"></div>
+            <div style="font-size: 14px;"><strong>Order ID:</strong> ${kot.id.slice(-6).toUpperCase()}</div>
+            <script>setTimeout(() => { window.print(); window.close(); }, 500);</script>
+          </body>
+        </html>
+      `;
+
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+    };
+
+    return (
+        <AppLayout title="Restaurant KOTs">
+            <div className="space-y-6">
+                {/* Stats Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-sm">Total KOTs</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{kots.length}</h3>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-sm">Open KOTs</p>
+                        <h3 className="text-2xl font-bold text-[#C6A75E]">
+                            {kots.filter(k => k.status === 'OPEN').length}
+                        </h3>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-sm">Converted</p>
+                        <h3 className="text-2xl font-bold text-emerald-600">
+                            {kots.filter(k => k.status === 'CONVERTED').length}
+                        </h3>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-sm">Cancelled</p>
+                        <h3 className="text-2xl font-bold text-red-600">
+                            {kots.filter(k => k.status === 'CANCELLED').length}
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Filters */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Search by KOT No, Steward or Guest Name..."
+                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm transition-all"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-4 w-full md:w-auto">
+                        <div className="relative flex-1 md:flex-initial">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <select
+                                className="w-full pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm appearance-none cursor-pointer"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="all">All Status</option>
+                                <option value="OPEN">Open</option>
+                                <option value="CONVERTED">Converted</option>
+                                <option value="CANCELLED">Cancelled</option>
+                            </select>
+                        </div>
+                        <div className="relative flex-1 md:flex-initial">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="date"
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm cursor-pointer"
+                                value={dateFilter}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                            />
+                        </div>
+                        <button
+                            onClick={fetchKOTs}
+                            disabled={loading}
+                            className="p-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50"
+                            title="Refresh KOTs"
+                        >
+                            <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* KOTs Table */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 border-b border-gray-100">
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">KOT No</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Table / Room</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Steward</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Created By</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-3">
+                                                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                                <p className="text-gray-500 text-sm">Loading KOTs...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filteredKOTs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-3">
+                                                <div className="bg-gray-100 p-4 rounded-full">
+                                                    <ClipboardList className="w-8 h-8 text-gray-400" />
+                                                </div>
+                                                <p className="text-gray-500">No KOTs found</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredKOTs.map((kot) => {
+                                        const status = getStatusStyle(kot.status);
+                                        const isLinked = !!kot.order?.bookingId;
+
+                                        return (
+                                            <tr key={kot.id} className="hover:bg-gray-50/50 transition-colors group">
+                                                <td className="px-6 py-4 font-semibold text-gray-900">{kot.kotNumber}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col text-sm">
+                                                        <span>{format(new Date(kot.printedAt), 'dd MMM yyyy')}</span>
+                                                        <span className="text-gray-400 text-xs italic">{format(new Date(kot.printedAt), 'hh:mm a')}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col text-sm">
+                                                        <span className="font-medium">Table: {kot.order?.tableNumber || "N/A"}</span>
+                                                        {kot.order?.room?.roomNumber && (
+                                                            <span className="text-gray-500 text-xs text-nowrap">Room: {kot.order.room.roomNumber}</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium text-gray-900">{kot.order?.stewardName || kot.order?.guestName || "Walk-in"}</span>
+                                                        {isLinked && (
+                                                            <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight">Stay</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-[120px]" title={kot.printedBy}>{kot.printedBy || "System"}</td>
+                                                <td className="px-6 py-4">
+                                                    <div
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                                                        style={{ backgroundColor: status.bg, color: status.text }}
+                                                    >
+                                                        {status.icon}
+                                                        {kot.status}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2 justify-end">
+                                                        <button
+                                                            onClick={() => handlePrintClick(kot)}
+                                                            className="p-2 text-gray-400 hover:text-primary transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
+                                                            title="Re-print KOT"
+                                                        >
+                                                            <Printer className="w-4 h-4" />
+                                                        </button>
+
+                                                        {kot.status === 'OPEN' && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleConvert(kot)}
+                                                                    className="px-3 py-1.5 text-white rounded text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:brightness-110 active:scale-95"
+                                                                    style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
+                                                                >
+                                                                    <Receipt className="w-3 h-3" />
+                                                                    BILL
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => navigate(`/hotel/restaurant/kots/${kot.id}/edit`)}
+                                                                    className="p-2 text-gray-400 hover:text-amber-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
+                                                                    title="Edit KOT"
+                                                                >
+                                                                    <Edit className="w-4 h-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDelete(kot.id)}
+                                                                    className="p-2 text-gray-400 hover:text-red-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
+                                                                    title="Cancel KOT"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* KOT Preview Modal */}
+            {showPreviewModal && kotToPreview && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in transition-all">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 border border-slate-200">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">KOT Preview</h2>
+                                <p className="text-[10px] text-[#C6A75E] font-bold uppercase tracking-widest mt-1">Kitchen Order Token</p>
+                            </div>
+                            <button
+                                onClick={() => setShowPreviewModal(false)}
+                                className="p-2 hover:bg-white rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-200"
+                            >
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        {/* KOT Content area */}
+                        <div className="p-8 bg-slate-50">
+                            <div className="bg-white shadow-sm border border-slate-200 rounded-lg p-6 font-mono text-sm text-slate-700 space-y-4 max-h-[50vh] overflow-y-auto">
+                                <div className="text-center border-b border-dashed border-slate-200 pb-4">
+                                    <h3 className="font-bold text-lg text-slate-900">{hotels.find(h => h.id === kotToPreview.order?.hotelId)?.name || "HOTEL RESTAURANT"}</h3>
+                                    <div className="text-[11px] text-slate-400 mt-1 uppercase tracking-tighter">Kitchen Order Token</div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-y-2 text-[12px]">
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">KOT No</div>
+                                    <div className="text-right font-bold text-slate-900">{kotToPreview.kotNumber}</div>
+
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Date & Time</div>
+                                    <div className="text-right font-medium">{new Date(kotToPreview.printedAt).toLocaleString()}</div>
+
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Table No</div>
+                                    <div className="text-right font-bold text-slate-900">{kotToPreview.order?.tableNumber || "N/A"}</div>
+
+                                    {kotToPreview.order?.room?.roomNumber && (
+                                        <>
+                                            <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Room No</div>
+                                            <div className="text-right font-bold text-slate-900">{kotToPreview.order.room.roomNumber}</div>
+                                        </>
+                                    )}
+
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Steward</div>
+                                    <div className="text-right font-medium">{kotToPreview.printedBy || "System"}</div>
+                                </div>
+
+                                <table className="w-full border-t border-b border-dashed border-slate-200 py-4 my-4">
+                                    <thead>
+                                        <tr className="text-[10px] text-slate-400 uppercase font-bold text-left">
+                                            <th className="py-2">Item Name</th>
+                                            <th className="py-2 text-right">Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {kotToPreview.items.map((item: any, idx: number) => (
+                                            <tr key={idx} className="text-[13px]">
+                                                <td className="py-3 font-bold text-slate-800">{item.itemName.toUpperCase()}</td>
+                                                <td className="py-3 text-right font-black text-lg">{item.quantity}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <div className="text-center text-[10px] text-slate-400 italic">
+                                    --- End of Order ---
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="p-6 bg-white border-t border-slate-100 flex gap-4">
+                            <button
+                                onClick={() => setShowPreviewModal(false)}
+                                className="flex-1 py-3 rounded-xl text-sm font-medium border border-slate-200 hover:bg-slate-50 transition-all text-slate-600"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={() => printThermalKOT(kotToPreview)}
+                                className="flex-1 py-3 rounded-xl text-sm font-medium text-white transition-all flex items-center justify-center gap-2"
+                                style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
+                            >
+                                <Printer className="w-4 h-4" />
+                                Print KOT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </AppLayout>
+    );
+}

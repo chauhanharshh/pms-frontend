@@ -1,0 +1,4 @@
+﻿backend/src/modules/hotels/hotels.controller.ts(91,56): error TS2345: Argument of type '{ options?: any; targetHotelId?: string; }' is not assignable to parameter of type '{ targetHotelId: string; options?: any; }'.
+  Property 'targetHotelId' is optional in type '{ options?: any; targetHotelId?: string; }' but required in type '{ targetHotelId: string; options?: any; }'.
+backend/src/modules/restaurant/restaurant.service.ts(393,73): error TS7018: Object literal's property 'invoice' implicitly has an 'any' type.
+src/app/pages/Bills.tsx(287,43): error TS2304: Cannot find name 'subtotal'.

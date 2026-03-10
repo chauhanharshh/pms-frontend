@@ -1,0 +1,173 @@
+###############################################################################
+#                         HOTELS4U PMS - PROJECT OVERVIEW                     #
+###############################################################################
+
+1. PROJECT INTRODUCTION
+-----------------------
+Hotels4U PMS ek Multi-Hotel Property Management System hai. 
+Yeh system hotel management ko easy banane ke liye design kiya gaya hai.
+
+Problem it solves: 
+Jab ek hi owner ke multiple hotels hote hain, toh unhe manage karna mushkil hota hai. 
+Hotels4U PMS se sabhi hotels ko ek central server se connect karke manage kiya ja sakta hai.
+
+Key Features:
+• Room Booking: Rooms ki booking manage karma.
+• Check-in / Check-out: Guests ka aana aur jaana track karna.
+• Billing: Room aur services ka bill generate karna.
+• Restaurant POS: Hotel ke restaurant ki sales handle karna.
+• Expenses: Daily kharche record karna.
+• Reports: Sales, occupancy aur profit ki detail dekhna.
+• Multi-hotel management: Ek hi login se different hotels manage karna.
+
+Is system mein multiple hotels ek central backend server se jude hote hain, 
+jisse saara data ek hi jagah safely store hota hai.
+
+---
+
+2. TECH STACK USED
+------------------
+Is project ko banane ke liye modern aur fast tools use kiye gaye hain:
+
+Frontend (Client Side):
+• React: UI banane ke liye.
+• Vite: Fast development ke liye build tool.
+• TypeScript: JavaScript ko aur zyada safe aur organized banane ke liye.
+• TailwindCSS: Styling ki help se sundar design banane ke liye.
+
+Desktop Application:
+• Electron: React app ko ek setup file (.exe) mein badalne ke liye use hua hai, 
+  taaki hotel ke PC par windows software ki tarah chale.
+
+Backend (Server Side):
+• Node.js: Server run karne ke liye environment.
+• Express.js: API endpoints banane ke liye framework.
+
+Database:
+• PostgreSQL: Saara data store karne ke liye powerful database.
+
+ORM (Database Connector):
+• Prisma: Node.js aur Database ke beech connection manage karne ke liye.
+
+---
+
+3. PROGRAMMING LANGUAGES USED
+-----------------------------
+System mein niche di gayi languages use hui hain:
+
+• JavaScript: Frontend aur Backend dono ki main logic likhne ke liye.
+• TypeScript: JavaScript ka advanced version jo coding errors rokne mein help karta hai.
+• SQL: PostgreSQL database se data mangwane aur store karne ke liye (via Prisma).
+• HTML: Web pages ka structure banane ke liye.
+• CSS: Styles aur designs create karne ke liye (via Tailwind).
+
+---
+
+4. PROJECT STRUCTURE
+--------------------
+Project folders kuch is tarah organized hain:
+
+pms/ (Root Folder)
+├── backend/    - Server side code (APIs, Database logic).
+├── src/        - Frontend React code (Pages, Components).
+├── public/     - Static assets jaise Images, Icons.
+├── electron/   - Desktop app configuration files.
+├── dist/       - Final build files jo deploy hoti hain.
+
+Har folder ka apna specific role hai taaki development easy rahe.
+
+---
+
+5. HOW THE SYSTEM WORKS
+-----------------------
+Workflow simple aur effective hai:
+
+1. Hotel PC par PMS.exe (Electron App) chalta hai.
+2. PMS.exe frontend se backend server ko API requests bhejta hai.
+3. Backend (Node.js) requests ko process karta hai aur check karta hai ki kaun sa hotel request kar raha hai.
+4. Backend PostgreSQL database se data nikaalta hai ya wahan store karta hai.
+5. Har hotel ki apni separate ID hoti hai, jisse data mix nahi hota.
+
+Is architecture ki wajah se ek hi backend se kai saare hotels connect ho sakte hain.
+
+---
+
+6. DATABASE STRUCTURE
+---------------------
+Database mein main tables yeh hain:
+
+• users: Admin aur Staff login ki details.
+• hotels: System se jude sabhi hotels ki info.
+• rooms: Hotel ke saare rooms ki current status.
+• room_types: AC, Non-AC, Deluxe types ki details.
+• bookings: Guest booking record.
+• bills: Checkout ke waqt generate hue final bills.
+• expenses: Hotel ke daily kharche.
+• restaurant_orders: Khane ke orders ki detail.
+
+Important Concept: 
+Har record mein 'Hotel ID' hoti hai. Yeh ensure karta hai ki 'Hotel A' ka staff 'Hotel B' 
+ka data na dekh sake. Data filtering isi ID par based hoti hai.
+
+---
+
+7. DEPLOYMENT ARCHITECTURE
+--------------------------
+Real-life setup mein system do hisson mein hota hai:
+
+Admin Server PC:
+Yeh ek central computer hota hai (Cloud ya Local Server).
+Yahan chalta hai:
+• PostgreSQL Database
+• Node.js Backend Server
+• Admin PMS Interface
+
+Hotel PCs:
+Hotel ke reception ya restaurant ke PCs.
+Wahan sirf PMS.exe chalta hai jo network/internet ke through Admin Server se baheen connect hota hai.
+
+---
+
+8. CONFIGURATION SYSTEM
+-----------------------
+System ko server se connect karne ke liye ek file use hoti hai:
+
+config.json
+
+Is file mein Backend Server ka address (IP/Domain) aur Port likha hota hai. 
+Iska fayda yeh hai ki code change kiye bina hum kabhi bhi server location badal sakte hain.
+
+---
+
+9. SECURITY CONSIDERATIONS
+--------------------------
+Data ko safe rakhne ke liye base security features hain:
+
+• Authentication: Sirf authorized log hi login kar sakte hain (JWT based).
+• Role-based Access: Admin saara data dekh sakta hai, lekin staff ko limited access milta hai.
+• Database Protection: Password encryption (Bcrypt) aur secure queries use hoti hain.
+• Secure Server Configuration: Server par sirf required ports hi open hote hain.
+
+---
+
+10. FUTURE SCALABILITY
+----------------------
+System ko aage badhane ke kai tareeke hain:
+
+• More Hotels: Unlimited hotels add kiye ja sakte hain.
+• Cloud Deployment: AWS ya Azure par deploy karke kahin se bhi access kiya ja sakta hai.
+• Load Balancing: Jab bahut saare users hon, toh traffic handle karne ke liye multiple servers.
+• Remote Backups: Data safe rakhne ke liye automatic cloud backups.
+
+---
+
+11. FINAL SUMMARY
+-----------------
+Hotels4U PMS ko Multi-hotel use-case ko dhyaan mein rakh kar banaya gaya hai. 
+React aur Node.js ka use system ko fast aur reliable banata hai, 
+aur PostgreSQL ensures ki data hamesha integrity ke saath store rahe. 
+Yeh architecture modern business needs ke liye perfect aur scalable hai.
+
+###############################################################################
+#                           Documentation End                                 #
+###############################################################################

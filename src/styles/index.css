@@ -1,0 +1,17 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+.premium-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}

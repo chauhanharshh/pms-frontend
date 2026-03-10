@@ -1,0 +1,12 @@
+node_modules/
+dist/
+node-v18.20.4-win-x64/
+*.exe
+*.asar
+backend/
+*.log
+tmp/
+guidelines/
+assets/
+public/
+electron/
