@@ -1,6 +1,6 @@
 import https from 'https';
 
-const url = 'https://hotel-pms-backend-jfqh.onrender.com/api/v1/health';
+const url = 'https://pms-backend-1j4y.onrender.com/api/v1/health';
 
 https.get(url, (res) => {
     console.log(`Status Code: ${res.statusCode}`);

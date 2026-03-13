@@ -614,7 +614,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [user, currentHotelId]);
+  }, [user, currentHotelId, hotels]);
 
   useEffect(() => {
     fetchAll();
