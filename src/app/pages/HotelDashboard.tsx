@@ -35,6 +35,7 @@ import {
   AlertCircle,
   FileText,
   Building2,
+  Briefcase,
 } from "lucide-react";
 import { InvoiceModal } from "../components/InvoiceModal";
 import { BookingPreviewModal } from "../components/BookingPreviewModal";
@@ -229,6 +230,16 @@ function RoomDetailPanel({
                     {booking.guestName}
                   </span>
                 </div>
+                {(booking.companyName || (booking as any).company?.name) && (
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-3.5 h-3.5" style={{ color: T.gold }} />
+                    <span className="text-sm font-semibold" style={{ color: T.darkGold }}>
+                      {booking.companyName || (booking as any).company?.name}
+                      {booking.companyGst && ` (GST: ${booking.companyGst})`}
+                      {!booking.companyGst && (booking as any).company?.gstNumber && ` (GST: ${(booking as any).company?.gstNumber})`}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Phone className="w-3.5 h-3.5" style={{ color: T.gold }} />
                   <span className="text-sm" style={{ color: T.sub }}>
@@ -860,6 +871,7 @@ function RoomCard({
           <>
             <div className="text-xs font-semibold" style={{ color: cfg.text }}>
               {booking.guestName}
+              {(booking.companyName || (booking as any).company?.name) && ` • ${booking.companyName || (booking as any).company?.name}`}
             </div>
             <div className="text-xs" style={{ color: T.sub }}>
               {booking.checkInDate} {booking.checkInTime ? `(${booking.checkInTime})` : ""} → {booking.checkOutDate}

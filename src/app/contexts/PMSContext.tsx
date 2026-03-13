@@ -132,6 +132,8 @@ export interface Booking {
   businessSource?: string;
   vehicleDetails?: string;
   remarks?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Bill {
@@ -490,7 +492,7 @@ function getHotelParam(hotelId?: string | null) {
 }
 
 export function PMSProvider({ children }: { children: ReactNode }) {
-  const { user, currentHotelId } = useAuth();
+  const { user, currentHotelId, token } = useAuth();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -816,8 +818,22 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   // ── INVOICES ─────────────────────────────────────────────────────
   const addInvoice = async (inv: any) => {
     const res = await api.post("/invoices", inv);
-    await fetchAll();
-    return res.data.data;
+    const newInvoice = res.data.data;
+    setInvoices((prev) => {
+      const existing = prev.find((invoice) => invoice.id === newInvoice.id);
+      if (existing) {
+        return prev.map((invoice) => (invoice.id === newInvoice.id ? newInvoice : invoice));
+      }
+      return [newInvoice, ...prev];
+    });
+
+    try {
+      await fetchAll(true);
+    } catch (error) {
+      console.error("Invoice generated but refresh failed:", error);
+    }
+
+    return newInvoice;
   };
 
   const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
@@ -966,10 +982,14 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     return res.data.data;
   };
 
-  const getCheckedInRooms = async (hid?: string) => {
-    const qp = hid ? `?hotelId=${hid}` : "";
-    const res = await api.get(`/restaurant/checked-in-rooms${qp}`);
-    return res.data.data;
+  const getCheckedInRooms = async (hotelId?: string) => {
+    const response = await api.get(`/restaurant/checked-in-rooms`, {
+      params: { hotelId },
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data.data;
   };
 
   const getKOTs = async (status?: string) => {

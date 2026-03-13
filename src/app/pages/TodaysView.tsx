@@ -471,6 +471,7 @@ export function TodaysView() {
                             </div>
                             <div className="text-xs" style={{ color: "#9CA3AF" }}>
                               {b.guestPhone}
+                              {(b.companyName || b.company?.name) && ` • ${b.companyName || b.company?.name}`}
                             </div>
                           </td>
                           <td

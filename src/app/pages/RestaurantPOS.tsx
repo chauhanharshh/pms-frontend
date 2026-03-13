@@ -188,30 +188,37 @@ export function RestaurantPOS() {
   // Room detection via search query parameters (redirected from RoomSelector page)
   useEffect(() => {
     const passedRoomId = searchParams.get('roomId');
-    if (passedRoomId && checkedInRooms.length > 0) {
-      const selectedRoom = checkedInRooms.find(r => r.id === passedRoomId);
+    const availableRooms = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
+    
+    if (passedRoomId && availableRooms.length > 0) {
+      const selectedRoom = availableRooms.find(r => r.id === passedRoomId);
       if (selectedRoom) {
         const currentBooking = selectedRoom.bookings?.find((b: any) => b.status === "checked_in");
+        
+        setRoomId(selectedRoom.id);
+        setRoomNumber(selectedRoom.roomNumber);
+        setTableNumber(""); // Clear table if room selected
+        
         if (currentBooking) {
-          setRoomId(selectedRoom.id);
           setBookingId(currentBooking.id);
-          setRoomNumber(selectedRoom.roomNumber);
           setGuestName(currentBooking.guest?.name || "");
-          setTableNumber(""); // Clear table if room selected
-
-          // Remove roomId but keep hotelId so hotel remains selected
-          setSearchParams(
-            (prev) => {
-              const newParams = new URLSearchParams(prev);
-              newParams.delete('roomId');
-              return newParams;
-            },
-            { replace: true }
-          );
+        } else {
+          setBookingId("");
+          setGuestName(""); // Will default to "Walk-in" when saving order
         }
+
+        // Remove roomId but keep hotelId so hotel remains selected
+        setSearchParams(
+          (prev) => {
+            const newParams = new URLSearchParams(prev);
+            newParams.delete('roomId');
+            return newParams;
+          },
+          { replace: true }
+        );
       }
     }
-  }, [searchParams, checkedInRooms, setSearchParams]);
+  }, [searchParams, checkedInRooms, allRooms, activeHotel?.showAllRooms, setSearchParams]);
 
   const filteredItems = useMemo(() => {
     // In Boss Mode, use directly-fetched items for the selected hotel
@@ -377,6 +384,7 @@ export function RestaurantPOS() {
         stewardName: stewardName || undefined,
         stewardId: stewardId || undefined,
         tableNumber: tableNumber || undefined,
+        roomId: roomId || undefined,
         bookingId: bookingId || undefined,
         paymentMethod,
         status: "pending"
@@ -844,7 +852,7 @@ export function RestaurantPOS() {
                         setGuestName("");
                         return;
                       }
-                      
+
                       const roomsToSearch = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
                       const room = roomsToSearch.find(r => r.id === rid);
                       if (room) {
