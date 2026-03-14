@@ -11,4 +11,9 @@ tmp/
 guidelines/
 assets/
 public/
+!public/
+public/*
+!public/images/
+public/images/*
+!public/images/logo_h4u.webp
 electron/
