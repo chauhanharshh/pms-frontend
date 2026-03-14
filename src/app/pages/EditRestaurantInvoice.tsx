@@ -115,9 +115,8 @@ export default function EditRestaurantInvoice() {
 
     const subtotal = useMemo(() => cart.reduce((s, i) => s + i.itemTotal, 0), [cart]);
     const netSubtotal = Math.max(0, subtotal - discount);
-    const gst = netSubtotal * 0.05;
     const serviceCharge = netSubtotal * 0.10;
-    const total = netSubtotal + gst + serviceCharge;
+    const total = netSubtotal + serviceCharge;
 
     const handleSave = async () => {
         if (cart.length === 0) {
@@ -261,10 +260,6 @@ export default function EditRestaurantInvoice() {
                                             className="w-full pl-6 pr-2 py-1 bg-gray-50 border border-gray-200 rounded text-right font-bold text-sm focus:outline-none focus:ring-1 focus:ring-[#C6A75E]"
                                         />
                                     </div>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500 font-medium">GST (5%)</span>
-                                    <span className="text-gray-900 font-bold">₹{gst.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-500 font-medium">Service Charge (10%)</span>

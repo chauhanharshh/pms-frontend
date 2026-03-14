@@ -110,8 +110,7 @@ export default function RestaurantInvoices() {
         if (!w) return;
 
         const subtotal = Number(invoice.subtotal);
-        const gst = Number(invoice.cgst) + Number(invoice.sgst);
-        const serviceCharge = Number(invoice.totalAmount) - subtotal - gst;
+        const serviceCharge = Number(invoice.totalAmount) - subtotal;
 
         const receiptData = {
             hotelName: activeHotel?.name || "HOTEL RESTAURANT",
@@ -124,7 +123,6 @@ export default function RestaurantInvoices() {
                 amt: Number(i.itemTotal)
             })) || [],
             subtotal,
-            gst,
             serviceCharge,
             total: Number(invoice.totalAmount),
             billNo: invoice.invoiceNumber,
@@ -159,8 +157,7 @@ export default function RestaurantInvoices() {
         </style></head><body>
           <div class="center bold">${receiptData.hotelName}</div>
           <div class="center">${receiptData.address}</div>
-          <div class="center">GSTIN: ${receiptData.gstin}</div>
-          <div class="center bold" style="margin: 5px 0">TAX INVOICE</div>
+          <div class="center bold" style="margin: 5px 0">INVOICE</div>
           ${separator}
           ${line("DATE: " + receiptData.date, receiptData.time)}
           ${line("BILL NO: " + receiptData.billNo)}
