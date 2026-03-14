@@ -6,7 +6,7 @@ export interface AuthUser {
   username: string;
   fullName: string;
   email?: string | null;
-  role: "admin" | "hotel_manager" | "hotel_user";
+  role: "super_admin" | "admin" | "hotel_manager" | "hotel_user";
   hotelId?: string | null;
   hotel?: { id: string; name: string } | null;
 }
@@ -21,6 +21,7 @@ interface AuthContextType {
   setCurrentHotelId: (hotelId: string | null) => void;
   // Derived convenience flag
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (newUser.hotelId) {
       setCurrentHotelIdState(newUser.hotelId);
       localStorage.setItem("pms_hotel_ctx", newUser.hotelId);
+    } else {
+      setCurrentHotelIdState(null);
+      localStorage.removeItem("pms_hotel_ctx");
     }
   };
 
@@ -81,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isAdmin = user?.role === "admin";
+  const isSuperAdmin = user?.role === "super_admin";
 
   return (
     <AuthContext.Provider
@@ -93,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentHotelId,
         setCurrentHotelId,
         isAdmin,
+        isSuperAdmin,
       }}
     >
       {children}

@@ -13,7 +13,9 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === "admin") {
+      if (user.role === "super_admin") {
+        navigate("/superadmin");
+      } else if (user.role === "admin") {
         navigate("/admin");
       } else {
         // hotel_manager, hotel_user → hotel dashboard
@@ -174,6 +176,11 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <span>Super Admin:</span>
+              <code className="font-mono text-[#A8832D]">superadmin / superadmin123</code>
+            </div>
+
             <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
               <span>System Admin:</span>
               <code className="font-mono text-[#A8832D]">admin / admin123</code>

@@ -9,13 +9,17 @@ import { TopNavbar } from "./TopNavbar";
 interface AppLayoutProps {
   title: string;
   children: ReactNode;
-  requiredRole?: "admin" | "hotel" | "any";
+  requiredRole?: "admin" | "hotel" | "superadmin" | "any";
 }
 
 // Backend returns: admin | hotel_manager | hotel_user
 // Frontend treats hotel_manager and hotel_user both as "hotel" role
 function isHotelRole(role: string) {
   return role === "hotel_manager" || role === "hotel_user" || role === "hotel";
+}
+
+function isSuperAdminRole(role: string) {
+  return role === "super_admin";
 }
 
 export function AppLayout({
@@ -39,6 +43,17 @@ export function AppLayout({
     // Strict URL-based routing enforcement
     const isAdminRoute = location.pathname.startsWith("/admin");
     const isHotelRoute = location.pathname.startsWith("/hotel");
+    const isSuperAdminRoute = location.pathname.startsWith("/superadmin");
+
+    if (isSuperAdminRole(user.role) && !isSuperAdminRoute) {
+      navigate("/superadmin", { replace: true });
+      return;
+    }
+
+    if (isSuperAdminRoute && !isSuperAdminRole(user.role)) {
+      navigate(user.role === "admin" ? "/admin" : "/hotel", { replace: true });
+      return;
+    }
 
     if (isAdminRoute && user.role !== "admin") {
       navigate("/hotel", { replace: true });
@@ -58,6 +73,10 @@ export function AppLayout({
       navigate("/admin", { replace: true });
       return;
     }
+    if (requiredRole === "superadmin" && !isSuperAdminRole(user.role)) {
+      navigate(user.role === "admin" ? "/admin" : "/hotel", { replace: true });
+      return;
+    }
   }, [user, loading, requiredRole, navigate, location.pathname]);
 
   if (loading || !user) return null;
@@ -65,11 +84,15 @@ export function AppLayout({
   // Additional strict guard during render
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isHotelRoute = location.pathname.startsWith("/hotel");
+  const isSuperAdminRoute = location.pathname.startsWith("/superadmin");
 
+  if (isSuperAdminRole(user.role) && !isSuperAdminRoute) return null;
+  if (isSuperAdminRoute && !isSuperAdminRole(user.role)) return null;
   if (isAdminRoute && user.role !== "admin") return null;
   if (isHotelRoute && !isHotelRole(user.role)) return null;
   if (requiredRole === "admin" && user.role !== "admin") return null;
   if (requiredRole === "hotel" && !isHotelRole(user.role)) return null;
+  if (requiredRole === "superadmin" && !isSuperAdminRole(user.role)) return null;
 
   return (
     <div

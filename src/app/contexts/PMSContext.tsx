@@ -538,6 +538,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   const fetchAll = useCallback(async (silent = false) => {
     if (!user) return;
+    if (user.role === "super_admin") {
+      if (!silent) {
+        setIsLoading(false);
+        setError(null);
+      }
+      return;
+    }
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {

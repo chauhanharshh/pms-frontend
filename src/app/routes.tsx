@@ -47,6 +47,7 @@ import { Reservations } from "./pages/Reservations";
 import { RestaurantPOS } from "./pages/RestaurantPOS";
 import { Reports } from "./pages/Reports";
 import { UserManagement } from "./pages/UserManagement";
+import { SuperAdminPanel } from "./pages/SuperAdminPanel";
 import { Bills } from "./pages/Bills";
 import { Invoices } from "./pages/Invoices";
 import { Expenses } from "./pages/Expenses";
@@ -104,6 +105,11 @@ export const router = createHashRouter([
   {
     path: "/",
     Component: LoginPage,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/superadmin",
+    Component: SuperAdminPanel,
     errorElement: <ErrorBoundary />,
   },
 
