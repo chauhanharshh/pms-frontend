@@ -14,6 +14,8 @@ import { useAuth } from "./AuthContext.js";
 export interface Hotel {
   id: string;
   name: string;
+  brandName?: string | null;
+  logoUrl?: string | null;
   address?: string;
   city?: string;
   state?: string;

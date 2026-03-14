@@ -15,6 +15,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
+import { resolveBrandName } from "../utils/branding";
 
 const GOLD = "#C6A75E";
 const DARKGOLD = "#A8832D";
@@ -94,7 +95,7 @@ export function PaymentVouchers() {
       </style></head>
       <body>
         <div class="header">
-          <div class="title">Hotels4U PMS</div>
+          <div class="title">${resolveBrandName(hotel)}</div>
           <div>${hotel?.name || ""}</div>
           <h2>PAYMENT VOUCHER</h2>
           <div>Voucher No: <b>${v.voucherNumber}</b></div>

@@ -59,6 +59,7 @@ import {
   BedDouble,
   Paintbrush,
 } from "lucide-react";
+import { resolveBrandName, resolveLogoUrl } from "../utils/branding";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -457,6 +458,11 @@ const ADMIN_SECTIONS: NavSection[] = [
         icon: <Paintbrush className="w-4 h-4" />,
       },
       {
+        label: "Branding",
+        path: "/admin/settings/branding",
+        icon: <Store className="w-4 h-4" />,
+      },
+      {
         label: "POS Features",
         path: "/admin/system/features",
         icon: <Store className="w-4 h-4" />,
@@ -543,6 +549,14 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
   };
   const isActive = (path: string) => location.pathname === path;
 
+  const activeHotel = currentHotelId
+    ? hotels.find((h) => h.id === currentHotelId)
+    : user?.hotelId
+      ? hotels.find((h) => h.id === user.hotelId)
+      : null;
+  const brandName = resolveBrandName(activeHotel);
+  const logoUrl = resolveLogoUrl(activeHotel?.logoUrl);
+
   return (
     <div
       className="flex flex-col h-full transition-[width] duration-300"
@@ -563,7 +577,7 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
       >
         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
           <img
-            src="/images/logo_h4u.webp"
+            src={logoUrl}
             alt="Hotel Logo"
             className="w-full h-full object-contain"
           />
@@ -574,7 +588,7 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
               className="font-bold text-sm leading-tight truncate"
               style={{ fontFamily: "Times New Roman, serif", color: "var(--accent-color, #C6A75E)" }}
             >
-              Hotels4U
+              {brandName}
             </h1>
             <p
               className="text-xs truncate"

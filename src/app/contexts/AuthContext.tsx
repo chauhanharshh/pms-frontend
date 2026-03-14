@@ -8,7 +8,7 @@ export interface AuthUser {
   email?: string | null;
   role: "super_admin" | "admin" | "hotel_manager" | "hotel_user";
   hotelId?: string | null;
-  hotel?: { id: string; name: string } | null;
+  hotel?: { id: string; name: string; brandName?: string | null; logoUrl?: string | null } | null;
 }
 
 interface AuthContextType {

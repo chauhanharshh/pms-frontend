@@ -1,15 +1,42 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import api from "../services/api";
 import { Hotel, KeyRound, Lock, User, Loader2 } from "lucide-react";
+import { DEFAULT_BRAND_NAME, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [displayBrandName, setDisplayBrandName] = useState(DEFAULT_BRAND_NAME);
+  const [displayLogoUrl, setDisplayLogoUrl] = useState(resolveLogoUrl(null));
   const { login, user, loading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const trimmed = username.trim();
+    if (!trimmed) {
+      setDisplayBrandName(DEFAULT_BRAND_NAME);
+      setDisplayLogoUrl(resolveLogoUrl(null));
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await api.get("/auth/branding", { params: { username: trimmed } });
+        const branding = res.data?.data;
+        setDisplayBrandName(resolveBrandName({ brandName: branding?.brandName }));
+        setDisplayLogoUrl(resolveLogoUrl(branding?.logoUrl));
+      } catch {
+        setDisplayBrandName(DEFAULT_BRAND_NAME);
+        setDisplayLogoUrl(resolveLogoUrl(null));
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [username]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -57,7 +84,7 @@ export function LoginPage() {
         <div className="text-center mb-6">
           <div className="flex justify-center">
             <img
-              src="/images/logo_h4u.webp"
+              src={displayLogoUrl}
               alt="Hotel Logo"
               className="w-32 object-contain"
             />
@@ -70,7 +97,7 @@ export function LoginPage() {
               color: "#C6A75E",
             }}
           >
-            Hotels4U
+            {displayBrandName}
           </h1>
 
           <p

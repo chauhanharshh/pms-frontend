@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "../contexts/AuthContext.js";
+import { usePMS } from "../contexts/PMSContext.js";
+import { resolveBrandName, resolveLogoUrl } from "../utils/branding";
 import {
   Building2,
   FileText,
@@ -209,7 +211,8 @@ const HOTEL_SECTIONS: NavSection[] = [
 ];
 
 export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, currentHotelId } = useAuth();
+  const { hotels } = usePMS();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -232,6 +235,14 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
   };
   const isActive = (path: string) => location.pathname === path;
 
+  const activeHotel = currentHotelId
+    ? hotels.find((h) => h.id === currentHotelId)
+    : user?.hotelId
+      ? hotels.find((h) => h.id === user.hotelId)
+      : null;
+  const brandName = resolveBrandName(activeHotel);
+  const logoUrl = resolveLogoUrl(activeHotel?.logoUrl);
+
   return (
     <div
       className="flex flex-col h-full transition-[width] duration-300"
@@ -252,7 +263,7 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
       >
         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
           <img
-            src="/images/logo_h4u.webp"
+            src={logoUrl}
             alt="Hotel Logo"
             className="w-full h-full object-contain"
           />
@@ -263,7 +274,7 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
               className="font-bold text-sm leading-tight truncate"
               style={{ fontFamily: "Times New Roman, serif", color: "var(--accent-color, #C6A75E)" }}
             >
-              Hotels4U
+              {brandName}
             </h1>
             <p
               className="text-xs truncate"

@@ -1,6 +1,7 @@
 import { Booking, Room, usePMS } from "../contexts/PMSContext";
 import { formatCurrency } from "../utils/format";
 import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car } from "lucide-react";
+import { resolveBrandName } from "../utils/branding";
 
 const T = {
     gold: "#C6A75E",
@@ -106,7 +107,7 @@ export function BookingPreviewModal({
                     {/* Print Header */}
                     <div className="text-center border-b pb-4" style={{ borderColor: T.border }}>
                         <h1 className="text-2xl font-bold mb-1 uppercase tracking-wide" style={{ fontFamily: "Times New Roman, serif", color: T.darkGold }}>
-                            {hotel?.name || "Hotels4U PMS"}
+                            {resolveBrandName(hotel)}
                         </h1>
                         <p className="text-sm text-gray-500">
                             {hotel?.address}, {hotel?.city}

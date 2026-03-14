@@ -79,6 +79,7 @@ import { RoomBlockingPage } from "./pages/RoomBlockingPage";
 import { PettyCashPage } from "./pages/PettyCashPage";
 import { SystemPage } from "./pages/SystemPage";
 import { AppearanceSettings } from "./pages/AppearanceSettings";
+import { BrandingSettingsPage } from "./pages/BrandingSettingsPage";
 
 const RestaurantMenu = lazy(() => import("./pages/RestaurantMenu").then(m => ({ default: m.RestaurantMenu })));
 const RestaurantInvoices = lazy(() => import("./pages/RestaurantInvoices"));
@@ -196,6 +197,7 @@ export const router = createHashRouter([
   { path: "/admin/system/password", Component: SystemPage },
   { path: "/admin/system/features", Component: SystemPage },
   { path: "/admin/system/appearance", Component: AppearanceSettings },
+  { path: "/admin/settings/branding", Component: BrandingSettingsPage },
   { path: "/admin/system/backup", Component: SystemPage },
   { path: "/admin/system/about", Component: SystemPage },
 
