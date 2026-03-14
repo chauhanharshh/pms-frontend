@@ -7,32 +7,9 @@ export function resolveBrandName(hotel?: { brandName?: string | null } | null): 
   return hotel?.brandName?.trim() || DEFAULT_BRAND_NAME;
 }
 
-function isHttpUrl(value: string): boolean {
-  return /^https?:\/\//i.test(value);
-}
-
-function isLocalPath(value: string): boolean {
-  return (
-    value.startsWith('/') ||
-    value.startsWith('./') ||
-    value.startsWith('.\\') ||
-    value.startsWith('..') ||
-    /^file:/i.test(value) ||
-    /^[a-z]:\\/i.test(value)
-  );
-}
-
 export function resolveLogoUrl(logoUrl?: string | null): string {
-  if (!logoUrl) {
-    return DEFAULT_LOGO_URL;
-  }
-
-  const normalized = logoUrl.trim();
-  if (!normalized || isLocalPath(normalized)) {
-    return DEFAULT_LOGO_URL;
-  }
-
-  return isHttpUrl(normalized) ? normalized : DEFAULT_LOGO_URL;
+  void logoUrl;
+  return DEFAULT_LOGO_URL;
 }
 
 export function handleLogoImageError(event: { currentTarget: HTMLImageElement }): void {
