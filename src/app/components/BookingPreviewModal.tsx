@@ -317,16 +317,11 @@ export function BookingPreviewModal({
                         </div>
                     </div>
 
-                    {/* Signatures */}
-                    <div className="mt-8 pt-6 flex justify-between text-sm border-t print:flex print:mt-12 print:pt-8" style={{ borderColor: T.border }}>
-                        <div className="text-center">
-                            <div className="w-48 border-b border-gray-400 mb-2"></div>
-                            <span className="text-gray-500 font-medium">Guest Signature</span>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-48 border-b border-gray-400 mb-2"></div>
-                            <span className="text-gray-500 font-medium">Authorized Signatory</span>
-                        </div>
+                    {/* Footer Note */}
+                    <div className="mt-8 pt-6 text-center text-sm border-t print:mt-12 print:pt-8" style={{ borderColor: T.border }}>
+                        <span className="text-gray-500 font-medium">
+                            This is a computer generated invoice and does not require signature.
+                        </span>
                     </div>
 
                 </div>
