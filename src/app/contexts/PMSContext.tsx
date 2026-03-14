@@ -359,6 +359,7 @@ interface PMSContextType {
   error: string | null;
   refreshAll: (silent?: boolean) => void;
   dashboardStats: DashboardStats | null;
+  activeHotel: Hotel | null;
 
   // System Settings
   systemSettings: SystemSettings | null;
@@ -610,7 +611,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           aggregateByHotel(`/restaurant/menu`),
           aggregateByHotel(`/restaurant/orders`),
           aggregateByHotel(`/companies`),
-          aggregateByHotel(`/vendors`),
+          Promise.resolve([]),
           aggregateByHotel(`/room-blocks`),
           aggregateByHotel(`/petty-cash`),
           aggregateByHotel(`/liabilities`),
@@ -686,7 +687,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           api.get(`/restaurant/menu${consolidatedQp}`),
           api.get(`/restaurant/orders${consolidatedQp}`),
           api.get(`/companies${consolidatedQp}`),
-          api.get(`/vendors${consolidatedQp}`),
+          Promise.resolve({ data: { data: [] } }),
           api.get(`/room-blocks${consolidatedQp}`),
           api.get(`/petty-cash${consolidatedQp}`),
           api.get(`/liabilities${consolidatedQp}`),
@@ -718,19 +719,12 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [user, token, currentHotelId, hotels]);
+  }, [user, token, currentHotelId]);
 
   useEffect(() => {
     if (!user || !token) return;
 
     fetchAll();
-
-    // Poll silently every 5 seconds to keep all clients perfectly synced
-    const interval = setInterval(() => {
-      fetchAll(true);
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [user, token, fetchAll]);
 
   useEffect(() => {
@@ -1314,6 +1308,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         updateLiability,
         addLiabilityPayment,
         deleteLiability,
+        activeHotel: hotels.find(h => h.id === currentHotelId) || null,
       }}
     >
       {children}

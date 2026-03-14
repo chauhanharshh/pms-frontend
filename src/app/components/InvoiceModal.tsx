@@ -8,39 +8,55 @@ interface InvoiceModalProps {
 }
 
 export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
-  const { hotels, bookings } = usePMS();
-  // Try every possible path to find the hotel
+  const { hotels, bookings, activeHotel } = usePMS() as any;
+
+  const bk = bookings.find(
+    (b: any) =>
+      b.id === invoice.bill?.bookingId ||
+      b.id === invoice.bill?.booking?.id
+  );
+
   const invoiceHotelId =
     invoice.hotelId ||
     invoice.bill?.hotelId ||
     invoice.bill?.booking?.hotelId ||
+    bk?.hotelId ||
     (invoice as any)?.hotel?.id;
 
-  const hotelFromContext = hotels.find((h: any) =>
-    h.id === invoiceHotelId ||
-    String(h.id) === String(invoiceHotelId) ||
-    h._id === invoiceHotelId ||
-    String(h._id) === String(invoiceHotelId)
-  );
-
-  const hotelFromInvoice =
+  const hotel: any =
+    hotels.find((h: any) =>
+      String(h.id) === String(invoiceHotelId) ||
+      String(h._id) === String(invoiceHotelId)
+    ) ||
+    hotels.find((h: any) =>
+      String(h.id) === String((activeHotel as any)?.id) ||
+      String(h._id) === String((activeHotel as any)?._id)
+    ) ||
+    hotels.find((h: any) =>
+      String(h.id) === String((invoice as any)?.bill?.booking?.hotelId) ||
+      String(h._id) === String((invoice as any)?.bill?.booking?.hotelId)
+    ) ||
+    hotels.find((h: any) =>
+      String(h.name || "").toLowerCase() === String((invoice as any)?.hotelName || "").toLowerCase() ||
+      String(h.brandName || "").toLowerCase() === String((invoice as any)?.hotelName || "").toLowerCase()
+    ) ||
     (invoice as any)?.hotel ||
     (invoice as any)?.bill?.hotel ||
     (invoice as any)?.bill?.booking?.hotel ||
-    null;
+    (activeHotel ?? null);
 
-  const hotelFromBooking =
-    (invoice as any)?.bill?.booking?.hotel || null;
+  console.log("hotel resolved:", hotel);
+  console.log("activeHotel:", activeHotel);
+  console.log("hotels in context:", hotels);
 
-  const hotel: any =
-    hotelFromContext || hotelFromInvoice || hotelFromBooking || null;
   const hotelName =
-    hotel?.brandName ||
-    hotel?.name ||
-    hotel?.hotelName ||
-    (invoice as any)?.hotelName ||
-    "";
-  const bk = bookings.find((b) => b.id === invoice.bill?.bookingId);
+    hotel?.brandName || hotel?.name || hotel?.hotelName || "NA";
+
+  const hotelPhone =
+    hotel?.phone || hotel?.contactNumber || hotel?.mobile || "NA";
+
+  const hotelGstNumber =
+    hotel?.gstNumber || hotel?.gstNo || hotel?.gst || "NA";
 
   const totalGst = Number(invoice.cgst || 0) + Number(invoice.sgst || 0);
   const subtotal = Number(invoice.subtotal || 0) - Number(invoice.bill?.restaurantCharges || 0);
@@ -81,20 +97,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const hotelAddressLine1 =
     addressParts[0] ||
     [hotel?.city, hotel?.state].filter(Boolean).join(", ") ||
-    "";
+    "-";
   const hotelAddressLine2 = addressParts.length > 1 ? addressParts.slice(1).join(", ") : "";
   const hotelAddressLine3 = !addressParts.length && (hotel as any)?.state ? (hotel as any).state : "";
-
-  const hotelPhone =
-    hotel?.phone ||
-    hotel?.contactNumber ||
-    hotel?.mobile ||
-    "";
-  const hotelGstNumber =
-    hotel?.gstNumber ||
-    hotel?.gstNo ||
-    hotel?.gst ||
-    "";
 
   const isCompositionHotel =
     (hotel as any)?.isComposition === true ||
@@ -153,13 +158,13 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const getInvoiceHtml = () => {
     let itemsHtml = items.map(item => `
       <tr>
-        <td class="border-b" style="padding: 4px; white-space: nowrap;">${item.date}</td>
-        <td class="border-b border-l" style="padding: 4px; white-space: pre-line; vertical-align: middle;">${item.type}</td>
-        <td class="border-b border-l text-left" style="padding: 4px;">${item.desc}</td>
-        <td class="border-b border-l text-right" style="padding: 4px;">${item.charges.toFixed(2)}</td>
-        <td class="border-b border-l text-right" style="padding: 4px;">${item.discount.toFixed(2)}</td>
-        <td class="border-b border-l text-right" style="padding: 4px;">${item.gst.toFixed(2)}</td>
-        <td class="border-b border-l text-right" style="padding: 4px;">${item.total.toFixed(2)}</td>
+        <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.date}</td>
+        <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E; white-space: pre-line; vertical-align: middle;">${item.type}</td>
+        <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.desc}</td>
+        <td class="border-b text-right" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.charges.toFixed(2)}</td>
+        <td class="border-b text-right" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.discount.toFixed(2)}</td>
+        <td class="border-b text-right" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.gst.toFixed(2)}</td>
+        <td class="border-b text-right" style="padding: 6px 4px;">${item.total.toFixed(2)}</td>
       </tr>
     `).join('');
 
@@ -167,127 +172,136 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       <html><head><title>Invoice ${invoice.invoiceNumber}</title>
       <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #000; margin: 0; padding: 0; }
-        .invoice-wrapper { max-width: 800px; margin: 0 auto; padding: 10px; background: #fff; }
+        body { font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; margin: 0; padding: 0; }
+        .invoice-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; background: #fff; position: relative; }
         .text-center { text-align: center; }
         .text-left { text-align: left; }
         .text-right { text-align: right; }
         table { width: 100%; border-collapse: collapse; }
-        .border-all { border: 1px solid #C6A75E; }
-        .border-t { border-top: 1px solid #C6A75E; }
+        .border-all { border: 1.5px solid #C6A75E; }
         .border-b { border-bottom: 1px solid #C6A75E; }
         .border-l { border-left: 1px solid #C6A75E; }
         .border-r { border-right: 1px solid #C6A75E; }
-        td, th { vertical-align: top; }
-        .header-title { font-size: 16px; margin: 0; color: #C6A75E; font-weight: bold; }
-        .header-text { margin: 2px 0; color: #000; font-size: 12px; }
-        .proforma { font-size: 36px; font-weight: bold; margin: 15px 0; font-family: serif; color: #000; line-height: 1; }
-        .info-row { display: flex; margin-bottom: 3px; }
-        .info-col-label { width: 130px; color: #000; font-size: 12px; }
-        .info-col-sep { width: 10px; color: #000; }
-        .info-col-val { flex: 1; color: #000; font-size: 12px; }
-        .flex { display: flex; }
-        .w-50 { width: 50%; }
+        
+        .hotel-name { font-size: 22px; font-weight: bold; margin: 0; text-transform: lowercase; color: #555; }
+        .hotel-info { font-size: 14px; margin: 2px 0; font-family: 'Courier New', Courier, monospace; }
+        .proforma-title { font-size: 48px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; }
+        
+        .info-box { border: 1.5px solid #C6A75E; display: flex; margin-bottom: 15px; }
+        .info-col { width: 50%; padding: 8px 12px; }
+        .info-row { display: flex; margin-bottom: 4px; line-height: 1.2; }
+        .info-label { width: 140px; }
+        .info-val { flex: 1; }
+        
+        .table-header th { padding: 8px 4px; text-align: left; font-size: 13px; border-bottom: 1.5px solid #C6A75E; border-right: 1px solid #C6A75E; }
+        .table-header th:last-child { border-right: none; }
+        
+        .totals-section { border: 1.5px solid #C6A75E; display: flex; border-top: none; }
+        .totals-col-left { width: 50%; border-right: 1.5px solid #C6A75E; padding: 8px 12px; }
+        .totals-col-right { width: 50%; padding: 8px 12px; }
+        .totals-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        
+        .rupees-box { border: 1.5px solid #C6A75E; border-top: none; padding: 10px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase; }
+        
+        .signature-section { margin-top: 80px; display: flex; justify-content: space-between; padding: 0 40px; }
+        .sig-box { text-align: center; width: 250px; }
+        .sig-line { border-top: 1.5px solid #000; margin-bottom: 8px; }
+        
         @media print { 
-          body { margin: 0; padding: 10px; } 
-          @page { size: auto; margin: 5mm; }
+          body { padding: 0; }
+          .invoice-wrapper { width: 100%; max-width: none; border: none; }
+          @page { size: portrait; margin: 10mm; }
         }
       </style></head>
       <body>
-        <div class="invoice-wrapper border-all" style="padding: 20px;">
-          <div class="text-center">
-            <h2 class="header-title">${hotelName}</h2>
-            <div class="header-text">${hotelAddressLine1}</div>
-            ${hotelAddressLine2 ? `<div class="header-text">${hotelAddressLine2}</div>` : ""}
-            ${isCompositionHotel ? `<div class="header-text">"Composition - Taxable Person Not Eligible to Collect Tax on Supplies / Services"</div>` : ""}
-            <div class="header-text">Contact No:- ${hotelPhone}</div>
-            <div class="header-text">GST Number: ${hotelGstNumber}</div>
-            <div class="proforma">PROFORMA TAX INVOICE</div>
+        <div class="invoice-wrapper" style="border: 1px solid #C6A75E; min-height: 100vh;">
+          <div class="text-center" style="margin-bottom: 10px;">
+            <div class="hotel-name">${hotelName}</div>
+            <div class="hotel-info">${hotelAddressLine1}</div>
+            ${hotelAddressLine2 ? `<div class="hotel-info">${hotelAddressLine2}</div>` : ""}
+            <div class="hotel-info">Contact No:- ${hotelPhone}</div>
+            <div class="hotel-info">GST Number: ${hotelGstNumber}</div>
+            <div class="proforma-title">PROFORMA TAX INVOICE</div>
           </div>
 
-          <div class="border-all flex" style="margin-bottom: 10px;">
-            <div class="w-50" style="padding: 10px;">
-              ${(bk?.companyName || bk?.company?.name) && (bk?.companyGst || bk?.company?.gstNumber) ? `
-              <div class="info-row"><div class="info-col-label" style="font-weight: bold;">Billed To</div><div class="info-col-sep">-</div><div class="info-col-val" style="font-weight: bold; text-transform: uppercase;">${bk.companyName || bk.company?.name}</div></div>
-              <div class="info-row" style="margin-bottom: 8px;"><div class="info-col-label">GST No.</div><div class="info-col-sep">-</div><div class="info-col-val">${bk.companyGst || bk.company?.gstNumber || "-"}</div></div>
-              <div class="info-row"><div class="info-col-label">Guest Name</div><div class="info-col-sep">-</div><div class="info-col-val" style="text-transform: uppercase; font-weight: bold;">${bk?.guestName || bk?.company?.name}</div></div>
-              ` : `
-              <div class="info-row"><div class="info-col-label">Guest Name</div><div class="info-col-sep">-</div><div class="info-col-val" style="text-transform: lowercase;">${bk?.guestName || "guest"}</div></div>
-              `}
-              <div class="info-row"><div class="info-col-label">Address</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.addressLine || "-"}</div></div>
-              <div class="info-row"><div class="info-col-label">Contact No</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.guestPhone || "-"}</div></div>
-              <div class="info-row"><div class="info-col-label">Room Nos</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.room?.roomNumber || "-"}</div></div>
-              <div class="info-row"><div class="info-col-label">State</div><div class="info-col-sep">-</div><div class="info-col-val">NA</div></div>
+          <div class="info-box">
+            <div class="info-col" style="border-right: 1.5px solid #C6A75E;">
+              <div class="info-row"><div class="info-label">Guest Name</div><div class="info-val">- ${bk?.guestName || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Address</div><div class="info-val">- ${bk?.addressLine || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Contact No</div><div class="info-val">- ${bk?.guestPhone || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Room Nos</div><div class="info-val">- ${bk?.room?.roomNumber || "-"}</div></div>
+              <div class="info-row"><div class="info-label">State</div><div class="info-val">- ${hotel?.state || "NA"}</div></div>
             </div>
-            <div class="w-50 border-l" style="padding: 10px;">
-              <div class="info-row"><div class="info-col-label">Bill Date</div><div class="info-col-sep">-</div><div class="info-col-val">${billDateStr}</div></div>
-              <div class="info-row"><div class="info-col-label">Bill No.</div><div class="info-col-sep">-</div><div class="info-col-val">${invoice.invoiceNumber || "-"}</div></div>
-              <div class="info-row"><div class="info-col-label">Reg. No.</div><div class="info-col-sep">-</div><div class="info-col-val">${bk?.id?.slice(-4) || "-"}</div></div>
-              <div class="info-row"><div class="info-col-label">Plan</div><div class="info-col-sep">-</div><div class="info-col-val">NA</div></div>
-              <div class="info-row"><div class="info-col-label">PAX</div><div class="info-col-sep">-</div><div class="info-col-val">Adults ${bk?.adults || 2},Child ${bk?.children || 0}</div></div>
-              <div class="info-row"><div class="info-col-label">Arrival Date</div><div class="info-col-sep">-</div><div class="info-col-val">${arrivalDateStr}</div></div>
-              <div class="info-row"><div class="info-col-label">Departure Date</div><div class="info-col-sep">-</div><div class="info-col-val">${departureDateStr}</div></div>
+            <div class="info-col">
+              <div class="info-row"><div class="info-label">Bill Date</div><div class="info-val">- ${billDateStr}</div></div>
+              <div class="info-row"><div class="info-label">Bill No.</div><div class="info-val">- ${invoice.invoiceNumber || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Reg. No.</div><div class="info-val">- ${bk?.id?.slice(-5) || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Plan</div><div class="info-val">- NA</div></div>
+              <div class="info-row"><div class="info-label">PAX</div><div class="info-val">- Adults ${bk?.adults || 0},Child ${bk?.children || 0}</div></div>
+              <div class="info-row"><div class="info-label">Arrival Date</div><div class="info-val">- ${arrivalDateStr}</div></div>
+              <div class="info-row"><div class="info-label">Departure Date</div><div class="info-val">- ${departureDateStr}</div></div>
             </div>
           </div>
 
-          <table class="border-all" style="margin-bottom: 0;">
-            <thead>
+          <table class="border-all">
+            <thead class="table-header">
               <tr>
-                <th class="border-b text-left" style="padding: 6px 4px; font-size: 11px;">Date</th>
-                <th class="border-b border-l text-left" style="padding: 6px 4px; font-size: 11px;">Charges<br>Type</th>
-                <th class="border-b border-l text-left" style="padding: 6px 4px; width: 40%; font-size: 11px;">Description</th>
-                <th class="border-b border-l text-right" style="padding: 6px 4px; font-size: 11px;">Charges</th>
-                <th class="border-b border-l text-right" style="padding: 6px 4px; font-size: 11px;">Discount</th>
-                <th class="border-b border-l text-right" style="padding: 6px 4px; font-size: 11px;">GST</th>
-                <th class="border-b border-l text-right" style="padding: 6px 4px; font-size: 11px;">Total</th>
+                <th style="width: 15%;">Date</th>
+                <th style="width: 12%;">Charges Type</th>
+                <th style="width: 33%;">Description</th>
+                <th style="text-align: right; width: 10%;">Charges</th>
+                <th style="text-align: right; width: 10%;">Discount</th>
+                <th style="text-align: right; width: 10%;">GST</th>
+                <th style="text-align: right; width: 10%;">Total</th>
               </tr>
             </thead>
             <tbody>
               ${itemsHtml}
-              <tr>
-                <td colspan="3" class="text-left" style="padding: 6px 4px; font-weight: bold;">Total</td>
-                <td class="border-l text-right" style="padding: 6px 4px; font-weight: bold;">${subtotal.toFixed(2)}</td>
-                <td class="border-l text-right" style="padding: 6px 4px; font-weight: bold;">0.00</td>
-                <td class="border-l text-right" style="padding: 6px 4px; font-weight: bold;">${totalGst.toFixed(2)}</td>
-                <td class="border-l text-right" style="padding: 6px 4px; font-weight: bold;">${beforeRound.toFixed(2)}</td>
+              <tr style="font-weight: bold; font-size: 16px;">
+                <td colspan="3" style="padding: 8px 4px; border-right: 1.5px solid #C6A75E;">Total</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${subtotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">0.00</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${totalGst.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right;">${beforeRound.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
 
-          <div class="border-all border-t-0 flex">
-            <div class="w-50 border-r" style="padding: 8px;">
-              <div class="info-row"><div class="info-col-label">Total GST</div><div class="info-col-sep">-</div><div class="info-col-val text-right" style="padding-right: 50px;">${totalGst.toFixed(2)}</div></div>
-              <div class="info-row"><div class="info-col-label">CGST</div><div class="info-col-sep">-</div><div class="info-col-val text-right" style="padding-right: 50px;">${Number(invoice.cgst || 0).toFixed(2)}</div></div>
-              <div class="info-row"><div class="info-col-label">SGST</div><div class="info-col-sep">-</div><div class="info-col-val text-right" style="padding-right: 50px;">${Number(invoice.sgst || 0).toFixed(2)}</div></div>
+          <div class="totals-section">
+            <div class="totals-col-left">
+              <div class="totals-row"><div>Total GST</div><div>${totalGst.toFixed(2)}</div></div>
+              <div class="totals-row"><div>CGST</div><div>${Number(invoice.cgst || 0).toFixed(2)}</div></div>
+              <div class="totals-row"><div>SGST</div><div>${Number(invoice.sgst || 0).toFixed(2)}</div></div>
             </div>
-            <div class="w-50" style="padding: 8px;">
-              <div class="info-row"><div class="info-col-label">Total Amount</div><div class="info-col-val text-right">${beforeRound.toFixed(2)}</div></div>
-              <div class="info-row"><div class="info-col-label">(-)Advance</div><div class="info-col-val text-right">${advanceAmount.toFixed(2)}</div></div>
-              <div class="info-row"><div class="info-col-label">(-)Discount</div><div class="info-col-val text-right">0.00</div></div>
-              <div class="info-row"><div class="info-col-label">Round Off</div><div class="info-col-val text-right">${roundOff.toFixed(2)}</div></div>
-              <div class="info-row" style="font-weight: bold; font-size: 14px;"><div class="info-col-label">Net Payable</div><div class="info-col-val text-right">${(totalAmountWithoutFood - advanceAmount).toFixed(2)}</div></div>
+            <div class="totals-col-right">
+              <div class="totals-row"><div>Total Amount</div><div>${beforeRound.toFixed(2)}</div></div>
+              <div class="totals-row"><div>(-) Advance</div><div>${advanceAmount.toFixed(2)}</div></div>
+              <div class="totals-row"><div>(-) Discount</div><div>0.00</div></div>
+              <div class="totals-row"><div>Round Off</div><div>${roundOff.toFixed(2)}</div></div>
+              <div class="totals-row" style="font-weight: bold; margin-top: 4px;"><div>Net Payable</div><div>${totalAmountWithoutFood - advanceAmount}.00</div></div>
             </div>
           </div>
 
-          <div class="border-all border-t-0" style="padding: 8px; font-weight: bold; color: #000; text-transform: uppercase; font-size: 11px;">
+          <div class="rupees-box">
             RUPEES ${numberToWords(totalAmountWithoutFood - advanceAmount)} ONLY
           </div>
 
-          <div style="margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
-            <div style="text-align: center;">
-              <div style="border-bottom: 1px solid #000; width: 180px; margin-bottom: 5px;"></div>
-              <div style="font-size: 11px; color: #000;">Guest Signature</div>
+          <div class="signature-section">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div>Guest Signature</div>
             </div>
-            <div style="text-align: center;">
-              <div style="border-bottom: 1px solid #000; width: 180px; margin-bottom: 5px;"></div>
-              <div style="font-size: 11px; color: #000;">Cash/Signature<br>Cashier</div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div>Cash/Signature</div>
+              <div>Cashier</div>
             </div>
           </div>
-
         </div>
       </body></html>
     `;
   };
+
 
   const handlePrint = () => {
     const w = window.open("", "_blank");

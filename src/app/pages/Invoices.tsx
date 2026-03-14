@@ -157,7 +157,14 @@ export function Invoices() {
 
       // Instantly open the invoice preview
       if (newInvoice) {
-        setViewInvoice(newInvoice);
+        const matchedHotel = hotels.find((h: any) =>
+          String(h.id) === String(newInvoice.hotelId) ||
+          String(h._id) === String(newInvoice.hotelId)
+        );
+        setViewInvoice({
+          ...newInvoice,
+          hotel: matchedHotel || null
+        } as any);
       }
     } catch (err: any) {
       alert("Error generating invoice: " + (err.response?.data?.message || err.message));
@@ -276,7 +283,10 @@ export function Invoices() {
                         className="px-4 py-3 text-xs"
                         style={{ color: "#6B7280" }}
                       >
-                        {hotels.find((h) => h.id === inv.hotelId)?.name}
+                        {hotels.find((h) =>
+                          String(h.id) === String(inv.hotelId) ||
+                          String((h as any)._id) === String(inv.hotelId)
+                        )?.name || "—"}
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {formatDate((bk?.checkInDate as string)?.split("T")[0])}
@@ -321,7 +331,17 @@ export function Invoices() {
                             </button>
                           )}
                           <button
-                            onClick={() => setViewInvoice(inv)}
+                            onClick={() => {
+                              const matchedHotel = hotels.find((h: any) =>
+                                String(h.id) === String(inv.hotelId) ||
+                                String(h._id) === String(inv.hotelId)
+                              );
+
+                              setViewInvoice({
+                                ...inv,
+                                hotel: matchedHotel || inv.hotel || null
+                              } as any);
+                            }}
                             className="p-1.5 rounded-lg transition-colors hover:bg-blue-50"
                             style={{ color: "#3b82f6" }}
                           >
