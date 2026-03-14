@@ -33,6 +33,14 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const arrivalDateStr = bk?.checkInDate ? formatDateTime(new Date(bk.checkInDate)) : '-';
   const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
 
+  const addressParts = (hotel?.address || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const hotelAddressLine1 = addressParts[0] || [hotel?.city, hotel?.state].filter(Boolean).join(", ") || "";
+  const hotelAddressLine2 = addressParts.length > 1 ? addressParts.slice(1).join(", ") : "";
+  const hotelAddressLine3 = !addressParts.length && hotel?.state ? hotel.state : "";
+
   // Calculate GST percentage
   const taxRate = Number(hotel?.taxRate || 12);
   const gstPercentage = (taxRate / 2).toFixed(2); // CGST + SGST each half of total rate
@@ -128,12 +136,13 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         <div class="invoice-wrapper border-all" style="padding: 20px;">
           <div class="text-center">
             <h2 class="header-title">${hotel?.name || ""}</h2>
-            <div class="header-text">${hotel?.address?.split(',')[0] || ""}</div>
-            <div class="header-text">${hotel?.address?.split(',').slice(1).join(',') || ""}</div>
+            <div class="header-text">${hotelAddressLine1}</div>
+            <div class="header-text">${hotelAddressLine2}</div>
+            ${hotelAddressLine3 ? `<div class="header-text">${hotelAddressLine3}</div>` : ""}
             <div class="header-text" style="margin-top: 8px;">"Composition - Taxable Person Not Eligible to Collect Tax on Supplies / Services"</div>
             <div class="header-text">Contact No:- ${hotel?.phone || ""}</div>
             <div class="header-text">GST Number: ${hotel?.gstNumber || ""}</div>
-            <div class="proforma">PROFORMA TAX INVOICE</div>
+            <div class="proforma">TAX INVOICE</div>
           </div>
 
           <div class="border-all flex" style="margin-bottom: 10px;">
