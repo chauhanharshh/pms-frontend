@@ -11,6 +11,7 @@ interface BrandingData {
   name: string;
   brandName?: string | null;
   logoUrl?: string | null;
+  propagatedToHotelCount?: number;
 }
 
 export function BrandingSettingsPage() {
@@ -90,8 +91,14 @@ export function BrandingSettingsPage() {
         params,
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setBranding(res.data?.data || null);
-      setMessage("Logo uploaded successfully.");
+      const payload = (res.data?.data || null) as BrandingData | null;
+      setBranding(payload);
+      const synced = payload?.propagatedToHotelCount;
+      setMessage(
+        synced && synced > 1
+          ? `Logo uploaded and synced across ${synced} hotels.`
+          : "Logo uploaded successfully."
+      );
       await refreshAll(true);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || "Failed to upload logo");
