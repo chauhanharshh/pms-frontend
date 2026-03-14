@@ -30,8 +30,13 @@ export function BookingPreviewModal({
     onClose: () => void;
 }) {
     const nights = daysBetween(booking.checkInDate, booking.checkOutDate);
-    const { hotels } = usePMS();
+    const { hotels, companies } = usePMS();
     const hotel = hotels.find((h) => h.id === booking.hotelId);
+    const linkedCompany = booking.companyId
+        ? companies.find((c) => c.id === booking.companyId)
+        : undefined;
+    const displayCompanyName = booking.companyName || booking.company?.name || linkedCompany?.name;
+    const displayCompanyGst = booking.companyGst || booking.company?.gstNumber || linkedCompany?.gstNumber;
 
     const handlePrint = () => {
         // Basic print setup for this modal content
@@ -145,13 +150,16 @@ export function BookingPreviewModal({
                                         <span className="w-2/3 font-semibold">{booking.idProof}</span>
                                     </div>
                                 )}
-                                {(booking.companyName || booking.company?.name) && (
+                                {displayCompanyName && (
                                     <div className="flex">
                                         <span className="w-1/3 text-gray-500">Company:</span>
-                                        <span className="w-2/3 font-semibold">
-                                            {booking.companyName || booking.company?.name}
-                                            {booking.companyGst || booking.company?.gstNumber ? ` (GST: ${booking.companyGst || booking.company?.gstNumber})` : ""}
-                                        </span>
+                                        <span className="w-2/3 font-semibold">{displayCompanyName}</span>
+                                    </div>
+                                )}
+                                {displayCompanyGst && (
+                                    <div className="flex">
+                                        <span className="w-1/3 text-gray-500">GST:</span>
+                                        <span className="w-2/3 font-semibold">{displayCompanyGst}</span>
                                     </div>
                                 )}
                                 <div className="flex">
