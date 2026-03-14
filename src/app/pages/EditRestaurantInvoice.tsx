@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import {
     ShoppingCart,
+    Search,
     Plus,
     Minus,
     Save,
@@ -28,6 +29,7 @@ export default function EditRestaurantInvoice() {
     const [invoice, setInvoice] = useState<any>(null);
     const [cart, setCart] = useState<any[]>([]);
     const [discount, setDiscount] = useState(0);
+    const [menuSearch, setMenuSearch] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -114,6 +116,14 @@ export default function EditRestaurantInvoice() {
     };
 
     const subtotal = useMemo(() => cart.reduce((s, i) => s + i.itemTotal, 0), [cart]);
+    const filteredMenuItems = useMemo(() => {
+        const q = menuSearch.trim().toLowerCase();
+        if (!q) return restaurantItems;
+        return restaurantItems.filter((item: any) =>
+            String(item.itemName || "").toLowerCase().includes(q) ||
+            String(item.category || "").toLowerCase().includes(q),
+        );
+    }, [restaurantItems, menuSearch]);
     const netSubtotal = Math.max(0, subtotal - discount);
     const serviceCharge = netSubtotal * 0.10;
     const total = netSubtotal + serviceCharge;
@@ -180,8 +190,18 @@ export default function EditRestaurantInvoice() {
                                 <Plus className="w-5 h-5 text-[#C6A75E]" />
                                 Add More Items
                             </h3>
+                            <div className="relative mb-4">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <input
+                                    type="text"
+                                    value={menuSearch}
+                                    onChange={(e) => setMenuSearch(e.target.value)}
+                                    placeholder="Search menu items..."
+                                    className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#C6A75E]"
+                                />
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                {restaurantItems.map((item: any) => (
+                                {filteredMenuItems.map((item: any) => (
                                     <button
                                         key={item.id}
                                         onClick={() => addToCart(item)}
@@ -194,6 +214,11 @@ export default function EditRestaurantInvoice() {
                                         <Plus className="w-4 h-4 text-gray-400 group-hover:text-[${GOLD}] transition-colors" />
                                     </button>
                                 ))}
+                                {filteredMenuItems.length === 0 && (
+                                    <div className="col-span-full text-center py-8 text-sm text-gray-400 italic">
+                                        No menu items found
+                                    </div>
+                                )}
                             </div>
                         </div>
 
