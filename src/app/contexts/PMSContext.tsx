@@ -798,7 +798,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.booking } : b)));
       await fetchAll();
     } else {
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+      const res = await api.put(`/bookings/${id}`, updates);
+      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.data } : b)));
     }
   };
 
