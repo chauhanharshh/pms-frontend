@@ -562,15 +562,17 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
       className="flex flex-col h-full transition-[width] duration-300"
       style={{
         width: collapsed ? "64px" : "260px",
-        background: "var(--sidebar-bg, linear-gradient(180deg, #1F2937 0%, #111827 100%))",
+        background: "var(--sidebar-bg, linear-gradient(180deg, #1a1f2e 0%, #111827 100%))",
         borderRight: "1px solid #E5E1DA",
         flexShrink: 0,
       }}
     >
       {/* Logo */}
       <div
-        className="flex items-center gap-3 px-4 py-4 flex-shrink-0"
+        className="flex items-center gap-3 px-4 flex-shrink-0"
         style={{
+          paddingTop: "38px",
+          paddingBottom: "16px",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
           WebkitAppRegion: "drag",
         } as any}
@@ -586,14 +588,14 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
         {!collapsed && (
           <div className="min-w-0">
             <h1
-              className="font-bold text-sm leading-tight truncate"
+              className="font-bold text-base leading-tight truncate"
               style={{ fontFamily: "Times New Roman, serif", color: "var(--accent-color, #C6A75E)" }}
             >
               {brandName}
             </h1>
             <p
               className="text-xs truncate"
-              style={{ color: "rgba(255,255,255,0.7)" }}
+              style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.75rem" }}
             >
               PMS Admin Panel
             </p>
@@ -668,7 +670,7 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
               <>
                 <button
                   onClick={() => toggleSection(section.title)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] font-bold tracking-widest uppercase transition-colors"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase transition-colors"
                   style={{ color: "#C6A75E" }}
                   onMouseEnter={(e) =>
                   (e.currentTarget.style.backgroundColor =
@@ -697,7 +699,7 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
                       <button
                         key={item.path + item.label}
                         onClick={() => navigate(item.path)}
-                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs transition-all duration-200"
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all duration-200"
                         style={{
                           background: isActive(item.path)
                             ? "rgba(255,255,255,0.06)"

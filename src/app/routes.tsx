@@ -1,4 +1,4 @@
-import { createHashRouter, useRouteError, isRouteErrorResponse } from "react-router";
+import { createBrowserRouter, createHashRouter, useRouteError, isRouteErrorResponse } from "react-router";
 import { lazy, Suspense } from "react";
 
 // ── ERROR BOUNDARY ─────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ const SuspendedRestaurantKOTs = withSuspense(RestaurantKOTs);
 const SuspendedEditRestaurantKOT = withSuspense(EditRestaurantKOT);
 const SuspendedRoomManagement = withSuspense(RoomManagement);
 
-export const router = createHashRouter([
+const routes = [
   {
     path: "/",
     Component: LoginPage,
@@ -236,4 +236,9 @@ export const router = createHashRouter([
   { path: "/hotel/gst/misc", Component: MiscGstReport },
   { path: "/hotel/gst/invoice-wise", Component: InvoiceWiseGstReport },
   { path: "/hotel/gst/sac-hsn", Component: SacHsnReport },
-]);
+];
+
+const isElectronRuntime = typeof window !== "undefined" && typeof window.electronAPI !== "undefined";
+
+export const router = isElectronRuntime ? createHashRouter(routes) : createBrowserRouter(routes);
+

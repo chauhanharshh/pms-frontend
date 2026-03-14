@@ -22,8 +22,9 @@ export function TopNavbar({ title }: TopNavbarProps) {
 
   return (
     <div
-      className="flex items-center justify-between px-6 py-3 flex-shrink-0"
+      className="flex items-center justify-between px-6 pb-3 flex-shrink-0"
       style={{
+        paddingTop: "38px",
         background: "var(--background)",
         borderBottom: "1px solid #E5E1DA",
         boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
@@ -32,7 +33,7 @@ export function TopNavbar({ title }: TopNavbarProps) {
       {/* Left: Title + Hotel */}
       <div>
         <h1
-          className="text-xl font-semibold leading-tight"
+          className="text-2xl font-semibold leading-tight"
           style={{ fontFamily: "Times New Roman, serif", color: "#7a5c00" }}
         >
           {title}

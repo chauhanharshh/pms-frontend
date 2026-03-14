@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { KeyRound, Loader2, Pencil, Plus, Power, RefreshCw, ShieldCheck, UserCog, X } from "lucide-react";
+import { KeyRound, Loader2, Pencil, Plus, Power, RefreshCw, ShieldCheck, Trash2, UserCog, X } from "lucide-react";
 import api from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -164,6 +164,30 @@ export function SuperAdminPanel() {
     }
   };
 
+  const deleteAdmin = async (admin: AdminAccount) => {
+    const confirmed = window.confirm(
+      `Delete admin account \"${admin.username}\"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      try {
+        // Preferred endpoint on newer backends.
+        await api.delete(`/users/admins/${admin.id}`);
+      } catch (deleteErr: any) {
+        // Backward compatibility for deployments that only support legacy delete.
+        if (deleteErr?.response?.status === 404) {
+          await api.delete(`/users/${admin.id}`);
+        } else {
+          throw deleteErr;
+        }
+      }
+      setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || "Failed to delete admin account");
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -306,6 +330,12 @@ export function SuperAdminPanel() {
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[#E5E1DA] hover:bg-[#f9f7f3]"
                           >
                             <Power className="w-3.5 h-3.5" /> {admin.isActive ? "Disable" : "Activate"}
+                          </button>
+                          <button
+                            onClick={() => deleteAdmin(admin)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
                           </button>
                         </div>
                       </td>

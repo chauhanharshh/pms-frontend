@@ -899,7 +899,7 @@ function RoomCard({
 
 // ── MAIN DASHBOARD ─────────────────────────────────────────────
 export function HotelDashboard() {
-  const { user } = useAuth();
+  const { user, currentHotelId } = useAuth();
   const navigate = useNavigate();
   const {
     rooms,
@@ -911,8 +911,34 @@ export function HotelDashboard() {
     hotels,
   } = usePMS();
 
-  const hotelId = user?.hotelId || "";
-  const hotel = hotels.find((h) => h.id === hotelId);
+  const hotelId = currentHotelId || user?.hotelId || user?.hotel?.id || "";
+  const hotel = hotels.find((h) => String(h.id) === String(hotelId));
+
+  // Banner display mapping: read available values from common key variants.
+  const hotelData = (hotel || {}) as any;
+  const hotelName = hotelData.name || hotelData.hotelName || hotelData.hotel_name || user?.hotel?.name || "";
+  const hotelAddress = hotelData.address || hotelData.addressLine || "";
+  const hotelCity = hotelData.city || hotelData.town || "";
+  const hotelGst =
+    hotelData.gstNumber ||
+    hotelData.gst_number ||
+    hotelData.gst ||
+    hotelData.gstNo ||
+    hotelData.gstin ||
+    (user as any)?.hotel?.gstNumber ||
+    (user as any)?.hotel?.gst_number ||
+    (user as any)?.hotel?.gst ||
+    "";
+  const hotelRating = Math.max(
+    0,
+    Math.min(
+      5,
+      Math.round(Number(hotelData.rating ?? hotelData.stars ?? hotelData.starRating ?? 0) || 0),
+    ),
+  );
+  const hotelCheckIn = hotelData.checkInTime || hotelData.check_in_time || hotelData.checkinTime || "";
+  const hotelCheckOut = hotelData.checkOutTime || hotelData.check_out_time || hotelData.checkoutTime || "";
+  const locationText = [hotelAddress, hotelCity].filter(Boolean).join(", ");
 
   // Hotel-filtered data
   const hotelRooms = useMemo(
@@ -1042,20 +1068,22 @@ export function HotelDashboard() {
                 marginBottom: "2px",
               }}
             >
-              {hotel?.name || "My Hotel"}
+              {hotelName || "Hotel"}
             </h2>
-            <p className="text-sm" style={{ color: "#D1D5DB" }}>
-              {hotel?.address}, {hotel?.city} · GST: {hotel?.gstNumber}
-            </p>
+            {(locationText || hotelGst) && (
+              <p className="text-sm" style={{ color: "#D1D5DB" }}>
+                {[locationText, hotelGst ? `GST: ${hotelGst}` : ""].filter(Boolean).join(" · ")}
+              </p>
+            )}
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star
                     key={i}
                     className="w-3.5 h-3.5"
-                    fill={i <= (hotel?.rating || 0) ? T.gold : "none"}
+                    fill={i <= hotelRating ? T.gold : "none"}
                     stroke={
-                      i <= (hotel?.rating || 0)
+                      i <= hotelRating
                         ? T.gold
                         : "#E5E1DA"
                     }
@@ -1066,7 +1094,7 @@ export function HotelDashboard() {
                 className="text-xs"
                 style={{ color: "#D1D5DB" }}
               >
-                CI: {hotel?.checkInTime} · CO: {hotel?.checkOutTime}
+                CI: {hotelCheckIn || "N/A"} · CO: {hotelCheckOut || "N/A"}
               </span>
             </div>
           </div>

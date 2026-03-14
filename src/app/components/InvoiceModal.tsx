@@ -10,8 +10,16 @@ interface InvoiceModalProps {
 export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const { hotels, bookings } = usePMS();
   const hotelFromContext = hotels.find((h) => h.id === invoice.hotelId);
+  const hotelFromBooking = (invoice as any)?.bill?.booking?.hotel || null;
   const hotelFromInvoice = (invoice as any)?.hotel || (invoice as any)?.bill?.hotel || null;
-  const hotel = hotelFromContext || hotelFromInvoice;
+  const hotel = hotelFromContext || hotelFromInvoice || hotelFromBooking;
+  const hotelName =
+    (hotel as any)?.brandName ||
+    (hotel as any)?.name ||
+    (hotel as any)?.hotelName ||
+    (hotelFromInvoice as any)?.hotelName ||
+    (invoice as any)?.hotelName ||
+    "HOTEL";
   const bk = bookings.find((b) => b.id === invoice.bill?.bookingId);
 
   const totalGst = Number(invoice.cgst || 0) + Number(invoice.sgst || 0);
@@ -36,17 +44,43 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
 
   const rawAddress =
-    hotel?.address ||
-    [hotel?.city, hotel?.state].filter(Boolean).join(", ") ||
+    (hotel as any)?.address ||
+    (hotel as any)?.hotelAddress ||
+    [
+      (hotel as any)?.city,
+      (hotel as any)?.state,
+    ]
+      .filter(Boolean)
+      .join(", ") ||
     "";
 
   const addressParts = rawAddress
     .split(",")
     .map((part: string) => part.trim())
     .filter(Boolean);
-  const hotelAddressLine1 = addressParts[0] || [hotel?.city, hotel?.state].filter(Boolean).join(", ") || "";
+  const hotelAddressLine1 =
+    addressParts[0] ||
+    [(hotel as any)?.city, (hotel as any)?.state].filter(Boolean).join(", ") ||
+    "";
   const hotelAddressLine2 = addressParts.length > 1 ? addressParts.slice(1).join(", ") : "";
-  const hotelAddressLine3 = !addressParts.length && hotel?.state ? hotel.state : "";
+  const hotelAddressLine3 = !addressParts.length && (hotel as any)?.state ? (hotel as any).state : "";
+
+  const hotelPhone =
+    (hotel as any)?.phone ||
+    (hotel as any)?.contactNumber ||
+    (hotel as any)?.mobile ||
+    "";
+  const hotelGstNumber =
+    (hotel as any)?.gstNumber ||
+    (hotel as any)?.gstNo ||
+    (hotel as any)?.gst ||
+    "";
+
+  const isCompositionHotel =
+    (hotel as any)?.isComposition === true ||
+    (hotel as any)?.isCompositionScheme === true ||
+    (hotel as any)?.compositionScheme === true ||
+    String((hotel as any)?.taxType || "").toLowerCase() === "composition";
 
   // Calculate GST percentage
   const taxRate = Number(hotel?.taxRate || 12);
@@ -127,7 +161,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         td, th { vertical-align: top; }
         .header-title { font-size: 16px; margin: 0; color: #C6A75E; font-weight: bold; }
         .header-text { margin: 2px 0; color: #000; font-size: 12px; }
-        .proforma { font-size: 18px; font-weight: bold; margin: 15px 0; font-family: sans-serif; color: #000; }
+        .proforma { font-size: 36px; font-weight: bold; margin: 15px 0; font-family: serif; color: #000; line-height: 1; }
         .info-row { display: flex; margin-bottom: 3px; }
         .info-col-label { width: 130px; color: #000; font-size: 12px; }
         .info-col-sep { width: 10px; color: #000; }
@@ -142,14 +176,14 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       <body>
         <div class="invoice-wrapper border-all" style="padding: 20px;">
           <div class="text-center">
-            <h2 class="header-title">${hotel?.name || "HOTEL"}</h2>
-            <div class="header-text">${hotelAddressLine1}</div>
-            <div class="header-text">${hotelAddressLine2}</div>
+            <h2 class="header-title">${hotelName}</h2>
+            ${hotelAddressLine1 ? `<div class="header-text">${hotelAddressLine1}</div>` : ""}
+            ${hotelAddressLine2 ? `<div class="header-text">${hotelAddressLine2}</div>` : ""}
             ${hotelAddressLine3 ? `<div class="header-text">${hotelAddressLine3}</div>` : ""}
-            <div class="header-text" style="margin-top: 8px;">"Composition - Taxable Person Not Eligible to Collect Tax on Supplies / Services"</div>
-            <div class="header-text">Contact No:- ${hotel?.phone || ""}</div>
-            <div class="header-text">GST Number: ${hotel?.gstNumber || ""}</div>
-            <div class="proforma">TAX INVOICE</div>
+            ${isCompositionHotel ? `<div class="header-text" style="margin-top: 8px;">"Composition - Taxable Person Not Eligible to Collect Tax on Supplies / Services"</div>` : ""}
+            ${hotelPhone ? `<div class="header-text">Contact No:- ${hotelPhone}</div>` : ""}
+            ${hotelGstNumber ? `<div class="header-text">GST Number: ${hotelGstNumber}</div>` : ""}
+            <div class="proforma">PROFORMA TAX INVOICE</div>
           </div>
 
           <div class="border-all flex" style="margin-bottom: 10px;">

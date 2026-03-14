@@ -2,6 +2,7 @@
 node_modules/
 
 dist/
+release/
 node-v18.20.4-win-x64/
 *.exe
 *.asar
@@ -16,4 +17,3 @@ public/*
 !public/images/
 public/images/*
 !public/images/logo_h4u.webp
-electron/

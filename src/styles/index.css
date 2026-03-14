@@ -2,6 +2,38 @@
 @import './tailwind.css';
 @import './theme.css';
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#root {
+  overflow: hidden;
+}
+
+.drag-region {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .premium-scrollbar::-webkit-scrollbar {
   width: 4px;
 }

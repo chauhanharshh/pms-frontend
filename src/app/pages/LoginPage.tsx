@@ -78,24 +78,27 @@ export function LoginPage() {
   }
 
   return (
-    <div className="h-full bg-gradient-to-br from-[#f8f5ef] via-white to-[#f3efe6] flex flex-col items-center justify-center p-4 pt-12">
-      <div className="w-full max-w-md">
+    <div className="h-full flex flex-col items-center justify-center p-4" style={{ background: "#f5f0e8", paddingTop: "38px" }}>
+      <div className="w-full" style={{ maxWidth: "420px" }}>
         {/* Logo and Header */}
-        <div className="text-center mb-6">
-          <div className="flex justify-center">
+        <div className="text-center mb-4">
+          <div className="flex justify-center" style={{ marginTop: 0 }}>
             <img
               src={displayLogoUrl}
               alt="Hotel Logo"
-              className="w-32 object-contain"
+              className="object-contain"
+              style={{ width: "90px", display: "block", margin: "0 auto", marginTop: 0 }}
               onError={handleLogoImageError}
             />
           </div>
 
           <h1
-            className="mt-2 text-4xl"
+            className="mt-2"
             style={{
               fontFamily: "Times New Roman, serif",
-              color: "#C6A75E",
+              color: "#b8963e",
+              fontSize: "2.2rem",
+              lineHeight: 1.15,
             }}
           >
             {displayBrandName}
@@ -107,6 +110,7 @@ export function LoginPage() {
               fontFamily: "Georgia, serif",
               color: "#334155",
               letterSpacing: "0.5px",
+              fontSize: "0.9rem",
             }}
           >
             Property Management System
@@ -114,12 +118,19 @@ export function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-[#e5e7eb]">
+        <div
+          className="bg-white border border-[#e8e2d8]"
+          style={{
+            borderRadius: "12px",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+            padding: "32px 40px",
+          }}
+        >
           <h2
             className="text-2xl mb-6 text-center"
             style={{
               fontFamily: "Times New Roman, serif",
-              color: "#A8832D",
+              color: "#b8963e",
             }}
           >
             Sign In
@@ -137,9 +148,23 @@ export function LoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg 
-                focus:border-[#C6A75E] focus:ring-2 focus:ring-[#C6A75E]/30 
-                outline-none transition"
+                  className="w-full outline-none transition"
+                  style={{
+                    height: "48px",
+                    border: "1px solid #e0d9cc",
+                    borderRadius: "8px",
+                    padding: "0 16px 0 44px",
+                    background: "#ffffff",
+                    fontSize: "0.95rem",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#b8963e";
+                    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,150,62,0.18)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e0d9cc";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
                   placeholder="Enter username"
                   required
                   disabled={isSubmitting}
@@ -158,9 +183,23 @@ export function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg 
-                focus:border-[#C6A75E] focus:ring-2 focus:ring-[#C6A75E]/30 
-                outline-none transition"
+                  className="w-full outline-none transition"
+                  style={{
+                    height: "48px",
+                    border: "1px solid #e0d9cc",
+                    borderRadius: "8px",
+                    padding: "0 16px 0 44px",
+                    background: "#ffffff",
+                    fontSize: "0.95rem",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#b8963e";
+                    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,150,62,0.18)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#e0d9cc";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
                   placeholder="Enter password"
                   required
                   disabled={isSubmitting}
@@ -181,7 +220,10 @@ export function LoginPage() {
               disabled={isSubmitting}
               className="w-full py-3 rounded-lg font-medium text-white transition duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-70"
               style={{
-                background: "linear-gradient(135deg, #C6A75E, #A8832D)",
+                background: "linear-gradient(135deg, #c5a148, #b8963e)",
+                height: "48px",
+                borderRadius: "8px",
+                fontWeight: 600,
               }}
             >
               {isSubmitting ? (
@@ -197,7 +239,14 @@ export function LoginPage() {
         </div>
 
         {/* Credentials */}
-        <div className="mt-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
+        <div
+          className="mt-4 bg-white border border-[#e8e2d8]"
+          style={{
+            borderRadius: "12px",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+            padding: "20px 40px",
+          }}
+        >
           <div className="flex items-center gap-2 mb-3">
             <KeyRound className="w-5 h-5 text-gray-500" />
             <h3 className="font-semibold text-gray-800">Login Credentials</h3>
