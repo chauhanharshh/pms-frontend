@@ -113,8 +113,8 @@ export function SuperAdminPanel() {
   };
 
   const saveAdmin = async () => {
-    if (!form.fullName.trim() || !form.username.trim() || !form.hotelId) {
-      setError("Admin Name, Username and Hotel are required.");
+    if (!form.fullName.trim() || !form.username.trim()) {
+      setError("Admin Name and Username are required.");
       return;
     }
     if (!editingId && !form.password.trim()) {
@@ -140,7 +140,6 @@ export function SuperAdminPanel() {
           fullName: form.fullName,
           username: form.username,
           password: form.password,
-          hotelId: form.hotelId,
           phone: form.phone || null,
           email: form.email || null,
           isActive: form.isActive,
@@ -385,21 +384,23 @@ export function SuperAdminPanel() {
                   className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
                 />
               </div>
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">Hotel Name *</label>
-                <select
-                  value={form.hotelId}
-                  onChange={(e) => setForm((f) => ({ ...f, hotelId: e.target.value }))}
-                  className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
-                >
-                  <option value="">Select hotel</option>
-                  {hotels.map((hotel) => (
-                    <option key={hotel.id} value={hotel.id}>
-                      {hotel.name}{hotel.isActive ? "" : " (Inactive)"}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {editingId && (
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Hotel Name</label>
+                  <select
+                    value={form.hotelId}
+                    onChange={(e) => setForm((f) => ({ ...f, hotelId: e.target.value }))}
+                    className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
+                  >
+                    <option value="">Unassigned</option>
+                    {hotels.map((hotel) => (
+                      <option key={hotel.id} value={hotel.id}>
+                        {hotel.name}{hotel.isActive ? "" : " (Inactive)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm text-gray-700 mb-1">Contact Number</label>
                 <input
