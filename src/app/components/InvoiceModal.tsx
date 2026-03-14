@@ -9,7 +9,9 @@ interface InvoiceModalProps {
 
 export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const { hotels, bookings } = usePMS();
-  const hotel = hotels.find((h) => h.id === invoice.hotelId);
+  const hotelFromContext = hotels.find((h) => h.id === invoice.hotelId);
+  const hotelFromInvoice = (invoice as any)?.hotel || (invoice as any)?.bill?.hotel || null;
+  const hotel = hotelFromContext || hotelFromInvoice;
   const bk = bookings.find((b) => b.id === invoice.bill?.bookingId);
 
   const totalGst = Number(invoice.cgst || 0) + Number(invoice.sgst || 0);
@@ -33,9 +35,14 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const arrivalDateStr = bk?.checkInDate ? formatDateTime(new Date(bk.checkInDate)) : '-';
   const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
 
-  const addressParts = (hotel?.address || "")
+  const rawAddress =
+    hotel?.address ||
+    [hotel?.city, hotel?.state].filter(Boolean).join(", ") ||
+    "";
+
+  const addressParts = rawAddress
     .split(",")
-    .map((part) => part.trim())
+    .map((part: string) => part.trim())
     .filter(Boolean);
   const hotelAddressLine1 = addressParts[0] || [hotel?.city, hotel?.state].filter(Boolean).join(", ") || "";
   const hotelAddressLine2 = addressParts.length > 1 ? addressParts.slice(1).join(", ") : "";
@@ -135,7 +142,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       <body>
         <div class="invoice-wrapper border-all" style="padding: 20px;">
           <div class="text-center">
-            <h2 class="header-title">${hotel?.name || ""}</h2>
+            <h2 class="header-title">${hotel?.name || "HOTEL"}</h2>
             <div class="header-text">${hotelAddressLine1}</div>
             <div class="header-text">${hotelAddressLine2}</div>
             ${hotelAddressLine3 ? `<div class="header-text">${hotelAddressLine3}</div>` : ""}
