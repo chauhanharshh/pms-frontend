@@ -3,7 +3,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import api from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { DEFAULT_BRAND_NAME, resolveBrandName, resolveLogoUrl } from "../utils/branding";
+import { DEFAULT_BRAND_NAME, handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 import { Image, Loader2, Save, Upload } from "lucide-react";
 
 interface BrandingData {
@@ -151,7 +151,12 @@ export function BrandingSettingsPage() {
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">Logo Upload (PNG/JPG/WEBP, max 2MB)</label>
               <div className="w-32 h-32 rounded-xl border border-[#E5E1DA] bg-[#FAF7F2] flex items-center justify-center overflow-hidden">
-                <img src={resolveLogoUrl(branding?.logoUrl)} alt="Brand Logo" className="w-full h-full object-contain" />
+                <img
+                  src={resolveLogoUrl(branding?.logoUrl)}
+                  alt="Brand Logo"
+                  className="w-full h-full object-contain"
+                  onError={handleLogoImageError}
+                />
               </div>
               <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E5E1DA] cursor-pointer hover:bg-[#f9f7f3] text-sm">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Upload Logo
@@ -171,7 +176,12 @@ export function BrandingSettingsPage() {
               <Image className="w-4 h-4" /> Live Preview
             </div>
             <div className="flex items-center gap-3">
-              <img src={resolveLogoUrl(branding?.logoUrl)} alt="Logo Preview" className="w-12 h-12 object-contain" />
+              <img
+                src={resolveLogoUrl(branding?.logoUrl)}
+                alt="Logo Preview"
+                className="w-12 h-12 object-contain"
+                onError={handleLogoImageError}
+              />
               <div className="font-semibold" style={{ color: "#7a5c00" }}>{resolveBrandName({ brandName: brandName || branding?.brandName })}</div>
             </div>
           </div>

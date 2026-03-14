@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
 import { Hotel, KeyRound, Lock, User, Loader2 } from "lucide-react";
-import { DEFAULT_BRAND_NAME, resolveBrandName, resolveLogoUrl } from "../utils/branding";
+import { DEFAULT_BRAND_NAME, handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
@@ -87,6 +87,7 @@ export function LoginPage() {
               src={displayLogoUrl}
               alt="Hotel Logo"
               className="w-32 object-contain"
+              onError={handleLogoImageError}
             />
           </div>
 

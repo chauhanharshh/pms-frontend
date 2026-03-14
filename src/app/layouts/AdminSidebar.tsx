@@ -59,7 +59,7 @@ import {
   BedDouble,
   Paintbrush,
 } from "lucide-react";
-import { resolveBrandName, resolveLogoUrl } from "../utils/branding";
+import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -580,6 +580,7 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
             src={logoUrl}
             alt="Hotel Logo"
             className="w-full h-full object-contain"
+            onError={handleLogoImageError}
           />
         </div>
         {!collapsed && (

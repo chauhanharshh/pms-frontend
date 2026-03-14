@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "../contexts/AuthContext.js";
 import { usePMS } from "../contexts/PMSContext.js";
-import { resolveBrandName, resolveLogoUrl } from "../utils/branding";
+import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 import {
   Building2,
   FileText,
@@ -266,6 +266,7 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
             src={logoUrl}
             alt="Hotel Logo"
             className="w-full h-full object-contain"
+            onError={handleLogoImageError}
           />
         </div>
         {!collapsed && (
