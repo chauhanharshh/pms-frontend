@@ -560,11 +560,11 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         Array.from(new Map(items.map((item) => [item.id, item])).values());
 
       const aggregateByHotel = async (endpoint: string) => {
-        const hotelIds = fetchedHotels.map((h: Hotel) => h.id);
+        const hotelIds: string[] = fetchedHotels.map((h: Hotel) => h.id);
         if (hotelIds.length === 0) return [];
 
         const settled = await Promise.allSettled(
-          hotelIds.map((id) => api.get(`${endpoint}?hotelId=${id}`))
+          hotelIds.map((id: string) => api.get(`${endpoint}?hotelId=${id}`))
         );
 
         const merged = settled
