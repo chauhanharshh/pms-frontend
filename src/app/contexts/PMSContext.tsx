@@ -494,7 +494,7 @@ function getHotelParam(hotelId?: string | null) {
 }
 
 export function PMSProvider({ children }: { children: ReactNode }) {
-  const { user, currentHotelId, token } = useAuth();
+  const { user, currentHotelId, token, setCurrentHotelId } = useAuth();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -635,6 +635,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
     return () => clearInterval(interval);
   }, [fetchAll]);
+
+  useEffect(() => {
+    if (!user || user.role !== "admin") return;
+    if (currentHotelId) return;
+    if (hotels.length === 0) return;
+    setCurrentHotelId(hotels[0].id);
+  }, [user, currentHotelId, hotels, setCurrentHotelId]);
 
   // Boss Mode fix: On initial page load, `hotels` is empty when fetchAll first runs,
   // so isBossAdmin is incorrectly computed as false, and categories/menu are fetched
