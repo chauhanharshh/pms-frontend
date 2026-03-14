@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Building2, KeyRound, Loader2, Pencil, Plus, Power, RefreshCw, ShieldCheck, UserCog, X } from "lucide-react";
+import { KeyRound, Loader2, Pencil, Plus, Power, RefreshCw, ShieldCheck, UserCog, X } from "lucide-react";
 import api from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -11,14 +11,6 @@ interface AdminAccount {
   email?: string | null;
   phone?: string | null;
   role: string;
-  hotelId?: string | null;
-  isActive: boolean;
-  hotel?: { id: string; name: string } | null;
-}
-
-interface HotelOption {
-  id: string;
-  name: string;
   isActive: boolean;
 }
 
@@ -26,7 +18,6 @@ interface AdminFormState {
   fullName: string;
   username: string;
   password: string;
-  hotelId: string;
   phone: string;
   email: string;
   isActive: boolean;
@@ -36,7 +27,6 @@ const DEFAULT_FORM: AdminFormState = {
   fullName: "",
   username: "",
   password: "",
-  hotelId: "",
   phone: "",
   email: "",
   isActive: true,
@@ -47,7 +37,6 @@ export function SuperAdminPanel() {
   const { user, loading, logout } = useAuth();
 
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
-  const [hotels, setHotels] = useState<HotelOption[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState("");
 
@@ -79,12 +68,8 @@ export function SuperAdminPanel() {
     setIsFetching(true);
     setError("");
     try {
-      const [adminsRes, hotelsRes] = await Promise.all([
-        api.get("/users/admins"),
-        api.get("/hotels"),
-      ]);
+      const adminsRes = await api.get("/users/admins");
       setAdmins(adminsRes.data?.data || []);
-      setHotels(hotelsRes.data?.data || []);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || "Failed to load Super Admin data");
     } finally {
@@ -104,7 +89,6 @@ export function SuperAdminPanel() {
       fullName: admin.fullName || "",
       username: admin.username || "",
       password: "",
-      hotelId: admin.hotelId || "",
       phone: admin.phone || "",
       email: admin.email || "",
       isActive: admin.isActive,
@@ -129,7 +113,6 @@ export function SuperAdminPanel() {
         const res = await api.put(`/users/admins/${editingId}`, {
           fullName: form.fullName,
           username: form.username,
-          hotelId: form.hotelId,
           phone: form.phone || null,
           email: form.email || null,
           isActive: form.isActive,
@@ -210,7 +193,7 @@ export function SuperAdminPanel() {
               </h1>
             </div>
             <p className="text-sm mt-1 text-[#D1D5DB]">
-              Manage multi-client admin accounts, hotel assignment, access status, and password resets.
+              Manage multi-client admin accounts, access status, and password resets.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -229,7 +212,7 @@ export function SuperAdminPanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-xl p-4 bg-white border border-[#E5E1DA]">
             <p className="text-xs uppercase tracking-wider text-gray-500">Total Admin Accounts</p>
             <p className="text-3xl mt-1" style={{ color: "#A8832D", fontFamily: "Times New Roman, serif" }}>{admins.length}</p>
@@ -237,10 +220,6 @@ export function SuperAdminPanel() {
           <div className="rounded-xl p-4 bg-white border border-[#E5E1DA]">
             <p className="text-xs uppercase tracking-wider text-gray-500">Active Admins</p>
             <p className="text-3xl mt-1" style={{ color: "#15803d", fontFamily: "Times New Roman, serif" }}>{activeAdmins}</p>
-          </div>
-          <div className="rounded-xl p-4 bg-white border border-[#E5E1DA]">
-            <p className="text-xs uppercase tracking-wider text-gray-500">Hotels Available</p>
-            <p className="text-3xl mt-1" style={{ color: "#1d4ed8", fontFamily: "Times New Roman, serif" }}>{hotels.length}</p>
           </div>
         </div>
 
@@ -271,7 +250,6 @@ export function SuperAdminPanel() {
                 <tr className="bg-[#f9f7f3] text-left text-xs uppercase tracking-wider text-[#7a5c00]">
                   <th className="px-4 py-3">Admin Name</th>
                   <th className="px-4 py-3">Username</th>
-                  <th className="px-4 py-3">Hotel Name</th>
                   <th className="px-4 py-3">Contact Number</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Actions</th>
@@ -280,7 +258,7 @@ export function SuperAdminPanel() {
               <tbody>
                 {isFetching ? (
                   <tr>
-                    <td className="px-4 py-6" colSpan={6}>
+                    <td className="px-4 py-6" colSpan={5}>
                       <div className="flex items-center justify-center text-sm text-gray-500 gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> Loading admin accounts...
                       </div>
@@ -288,7 +266,7 @@ export function SuperAdminPanel() {
                   </tr>
                 ) : admins.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={6}>
+                    <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={5}>
                       No admin accounts found.
                     </td>
                   </tr>
@@ -297,12 +275,6 @@ export function SuperAdminPanel() {
                     <tr key={admin.id} className="border-t border-[#EFE8DC]">
                       <td className="px-4 py-3 text-sm text-gray-800">{admin.fullName || "-"}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{admin.username}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        <span className="inline-flex items-center gap-1">
-                          <Building2 className="w-3.5 h-3.5 text-[#A8832D]" />
-                          {admin.hotel?.name || "Unassigned"}
-                        </span>
-                      </td>
                       <td className="px-4 py-3 text-sm text-gray-700">{admin.phone || "-"}</td>
                       <td className="px-4 py-3 text-sm">
                         <span
@@ -384,23 +356,6 @@ export function SuperAdminPanel() {
                   className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
                 />
               </div>
-              {editingId && (
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1">Hotel Name</label>
-                  <select
-                    value={form.hotelId}
-                    onChange={(e) => setForm((f) => ({ ...f, hotelId: e.target.value }))}
-                    className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
-                  >
-                    <option value="">Unassigned</option>
-                    {hotels.map((hotel) => (
-                      <option key={hotel.id} value={hotel.id}>
-                        {hotel.name}{hotel.isActive ? "" : " (Inactive)"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div>
                 <label className="block text-sm text-gray-700 mb-1">Contact Number</label>
                 <input
