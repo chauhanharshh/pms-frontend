@@ -521,8 +521,10 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
 
-  // Fetch system settings (theme) once on mount
+  // Fetch system settings (theme) only after authentication
   useEffect(() => {
+    if (!user || !token) return;
+
     const fetchTheme = async () => {
       try {
         const res = await api.get('/system-settings/theme');
@@ -534,10 +536,10 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       }
     };
     fetchTheme();
-  }, []);
+  }, [user, token]);
 
   const fetchAll = useCallback(async (silent = false) => {
-    if (!user) return;
+    if (!user || !token) return;
     if (user.role === "super_admin") {
       if (!silent) {
         setIsLoading(false);
@@ -716,9 +718,11 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [user, currentHotelId, hotels]);
+  }, [user, token, currentHotelId, hotels]);
 
   useEffect(() => {
+    if (!user || !token) return;
+
     fetchAll();
 
     // Poll silently every 5 seconds to keep all clients perfectly synced
@@ -727,7 +731,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [fetchAll]);
+  }, [user, token, fetchAll]);
 
   useEffect(() => {
     if (!user || user.role !== "admin") return;
@@ -744,7 +748,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   // trigger a silent re-fetch so all hotels' data is loaded for the dropdown.
   const bossModeFetchedRef = useRef(false);
   useEffect(() => {
-    if (!user || hotels.length === 0) return;
+    if (!user || !token || hotels.length === 0) return;
     const currentUserHotel = hotels.find(h => h.id === currentHotelId);
     const isBossAdmin = user.role === "admin" || (currentUserHotel as any)?.posBossMode === true;
     if (isBossAdmin && !bossModeFetchedRef.current) {
