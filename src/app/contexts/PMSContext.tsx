@@ -521,8 +521,6 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
 
-  const hotelParam = user?.role === "admin" && currentHotelId ? { hotelId: currentHotelId } : {};
-
   // Fetch system settings (theme) once on mount
   useEffect(() => {
     const fetchTheme = async () => {
@@ -550,73 +548,168 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {
-      const currentUserHotel = hotels.find(h => h.id === currentHotelId);
-      const isBossAdmin = user.role === "admin" || currentUserHotel?.posBossMode === true;
-      // FIXED: Ensure we always have a hotelId for non-admins, and handle empty string currentHotelId
+      const hotelsRes = await api.get(`/hotels`);
+      const fetchedHotels = hotelsRes.data?.data || [];
+      setHotels(fetchedHotels);
+
       const effectiveHotelId = currentHotelId || (user.role === "admin" ? null : user.hotelId);
       const consolidatedQp = effectiveHotelId ? `?hotelId=${effectiveHotelId}` : "";
+      const isAdminConsolidated = user.role === "admin" && !currentHotelId;
 
-      const [
-        hotelsRes,
-        usersRes,
-        roomsRes,
-        bookingsRes,
-        billsRes,
-        invoicesRes,
-        expensesRes,
-        advancesRes,
-        miscRes,
-        vouchersRes,
-        catsRes,
-        menuRes,
-        ordersRes,
-        companiesRes,
-        vendorsRes,
-        roomBlocksRes,
-        pettyCashRes,
-        liabilitiesRes,
-        statsRes,
-      ] = await Promise.allSettled([
-        api.get(`/hotels`),
-        api.get(`/users${consolidatedQp}`),
-        api.get(`/rooms${consolidatedQp}`),
-        api.get(`/bookings${consolidatedQp}`),
-        api.get(`/bills${consolidatedQp}`),
-        api.get(`/invoices${consolidatedQp}`),
-        api.get(`/expenses${consolidatedQp}`),
-        api.get(`/advances${consolidatedQp}`),
-        api.get(`/misc-charges${consolidatedQp}`),
-        api.get(`/vouchers${consolidatedQp}`),
-        api.get(`/restaurant/categories${consolidatedQp}`),
-        api.get(`/restaurant/menu${consolidatedQp}`),
-        api.get(`/restaurant/orders${consolidatedQp}`),
-        api.get(`/companies${consolidatedQp}`),
-        api.get(`/vendors${consolidatedQp}`),
-        api.get(`/room-blocks${consolidatedQp}`),
-        api.get(`/petty-cash${consolidatedQp}`),
-        api.get(`/liabilities${consolidatedQp}`),
-        api.get(`/hotels${currentHotelId ? `/${currentHotelId}` : ""}/stats`),
-      ]);
+      const uniqueById = <T extends { id: string }>(items: T[]) =>
+        Array.from(new Map(items.map((item) => [item.id, item])).values());
 
-      if (hotelsRes.status === "fulfilled") setHotels(hotelsRes.value.data.data || []);
-      if (usersRes.status === "fulfilled") setAppUsers(usersRes.value.data.data || []);
-      if (roomsRes.status === "fulfilled") setRooms(roomsRes.value.data.data || []);
-      if (bookingsRes.status === "fulfilled") setBookings(bookingsRes.value.data.data || []);
-      if (billsRes.status === "fulfilled") setBills(billsRes.value.data.data || []);
-      if (invoicesRes.status === "fulfilled") setInvoices(invoicesRes.value.data.data || []);
-      if (expensesRes.status === "fulfilled") setExpenses(expensesRes.value.data.data || []);
-      if (advancesRes.status === "fulfilled") setAdvances(advancesRes.value.data.data || []);
-      if (miscRes.status === "fulfilled") setMiscCharges(miscRes.value.data.data || []);
-      if (vouchersRes.status === "fulfilled") setVouchers(vouchersRes.value.data.data || []);
-      if (catsRes.status === "fulfilled") setRestaurantCategories(catsRes.value.data.data || []);
-      if (menuRes.status === "fulfilled") setRestaurantItems(menuRes.value.data.data || []);
-      if (ordersRes.status === "fulfilled") setRestaurantOrders(ordersRes.value.data.data || []);
-      if (companiesRes.status === "fulfilled") setCompanies(companiesRes.value.data.data || []);
-      if (vendorsRes.status === "fulfilled") setVendors(vendorsRes.value.data.data || []);
-      if (roomBlocksRes.status === "fulfilled") setRoomBlocks(roomBlocksRes.value.data.data || []);
-      if (pettyCashRes.status === "fulfilled") setPettyCash(pettyCashRes.value.data.data || []);
-      if (liabilitiesRes.status === "fulfilled") setLiabilities(liabilitiesRes.value.data.data || []);
-      if (statsRes && (statsRes as any).status === "fulfilled") setDashboardStats((statsRes as any).value.data.data);
+      const aggregateByHotel = async (endpoint: string) => {
+        const hotelIds = fetchedHotels.map((h: Hotel) => h.id);
+        if (hotelIds.length === 0) return [];
+
+        const settled = await Promise.allSettled(
+          hotelIds.map((id) => api.get(`${endpoint}?hotelId=${id}`))
+        );
+
+        const merged = settled
+          .filter((result): result is PromiseFulfilledResult<any> => result.status === "fulfilled")
+          .flatMap((result) => result.value.data?.data || []);
+
+        return uniqueById(merged);
+      };
+
+      if (isAdminConsolidated) {
+        const [
+          users,
+          roomsData,
+          bookingsData,
+          billsData,
+          invoicesData,
+          expensesData,
+          advancesData,
+          miscData,
+          vouchersData,
+          categoriesData,
+          menuData,
+          ordersData,
+          companiesData,
+          vendorsData,
+          roomBlocksData,
+          pettyCashData,
+          liabilitiesData,
+          statsSettled,
+        ] = await Promise.all([
+          aggregateByHotel(`/users`),
+          aggregateByHotel(`/rooms`),
+          aggregateByHotel(`/bookings`),
+          aggregateByHotel(`/bills`),
+          aggregateByHotel(`/invoices`),
+          aggregateByHotel(`/expenses`),
+          aggregateByHotel(`/advances`),
+          aggregateByHotel(`/misc-charges`),
+          aggregateByHotel(`/vouchers`),
+          aggregateByHotel(`/restaurant/categories`),
+          aggregateByHotel(`/restaurant/menu`),
+          aggregateByHotel(`/restaurant/orders`),
+          aggregateByHotel(`/companies`),
+          aggregateByHotel(`/vendors`),
+          aggregateByHotel(`/room-blocks`),
+          aggregateByHotel(`/petty-cash`),
+          aggregateByHotel(`/liabilities`),
+          Promise.allSettled(fetchedHotels.map((h: Hotel) => api.get(`/hotels/${h.id}/stats`))),
+        ]);
+
+        setAppUsers(users || []);
+        setRooms(roomsData || []);
+        setBookings(bookingsData || []);
+        setBills(billsData || []);
+        setInvoices(invoicesData || []);
+        setExpenses(expensesData || []);
+        setAdvances(advancesData || []);
+        setMiscCharges(miscData || []);
+        setVouchers(vouchersData || []);
+        setRestaurantCategories(categoriesData || []);
+        setRestaurantItems(menuData || []);
+        setRestaurantOrders(ordersData || []);
+        setCompanies(companiesData || []);
+        setVendors(vendorsData || []);
+        setRoomBlocks(roomBlocksData || []);
+        setPettyCash(pettyCashData || []);
+        setLiabilities(liabilitiesData || []);
+
+        const statsList = statsSettled
+          .filter((result): result is PromiseFulfilledResult<any> => result.status === "fulfilled")
+          .map((result) => result.value.data?.data)
+          .filter(Boolean);
+
+        const totalRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.totalRooms || 0), 0);
+        const occupiedRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.occupiedRooms || 0), 0);
+        const vacantRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.vacantRooms || 0), 0);
+        const occupancyRate = totalRooms > 0 ? Number(((occupiedRooms / totalRooms) * 100).toFixed(2)) : 0;
+
+        setDashboardStats({
+          totalHotels: fetchedHotels.length,
+          totalRooms,
+          occupiedRooms,
+          vacantRooms,
+          occupancyRate,
+        });
+      } else {
+        const [
+          usersRes,
+          roomsRes,
+          bookingsRes,
+          billsRes,
+          invoicesRes,
+          expensesRes,
+          advancesRes,
+          miscRes,
+          vouchersRes,
+          catsRes,
+          menuRes,
+          ordersRes,
+          companiesRes,
+          vendorsRes,
+          roomBlocksRes,
+          pettyCashRes,
+          liabilitiesRes,
+          statsRes,
+        ] = await Promise.allSettled([
+          api.get(`/users${consolidatedQp}`),
+          api.get(`/rooms${consolidatedQp}`),
+          api.get(`/bookings${consolidatedQp}`),
+          api.get(`/bills${consolidatedQp}`),
+          api.get(`/invoices${consolidatedQp}`),
+          api.get(`/expenses${consolidatedQp}`),
+          api.get(`/advances${consolidatedQp}`),
+          api.get(`/misc-charges${consolidatedQp}`),
+          api.get(`/vouchers${consolidatedQp}`),
+          api.get(`/restaurant/categories${consolidatedQp}`),
+          api.get(`/restaurant/menu${consolidatedQp}`),
+          api.get(`/restaurant/orders${consolidatedQp}`),
+          api.get(`/companies${consolidatedQp}`),
+          api.get(`/vendors${consolidatedQp}`),
+          api.get(`/room-blocks${consolidatedQp}`),
+          api.get(`/petty-cash${consolidatedQp}`),
+          api.get(`/liabilities${consolidatedQp}`),
+          api.get(`/hotels${currentHotelId ? `/${currentHotelId}` : ""}/stats`),
+        ]);
+
+        if (usersRes.status === "fulfilled") setAppUsers(usersRes.value.data.data || []);
+        if (roomsRes.status === "fulfilled") setRooms(roomsRes.value.data.data || []);
+        if (bookingsRes.status === "fulfilled") setBookings(bookingsRes.value.data.data || []);
+        if (billsRes.status === "fulfilled") setBills(billsRes.value.data.data || []);
+        if (invoicesRes.status === "fulfilled") setInvoices(invoicesRes.value.data.data || []);
+        if (expensesRes.status === "fulfilled") setExpenses(expensesRes.value.data.data || []);
+        if (advancesRes.status === "fulfilled") setAdvances(advancesRes.value.data.data || []);
+        if (miscRes.status === "fulfilled") setMiscCharges(miscRes.value.data.data || []);
+        if (vouchersRes.status === "fulfilled") setVouchers(vouchersRes.value.data.data || []);
+        if (catsRes.status === "fulfilled") setRestaurantCategories(catsRes.value.data.data || []);
+        if (menuRes.status === "fulfilled") setRestaurantItems(menuRes.value.data.data || []);
+        if (ordersRes.status === "fulfilled") setRestaurantOrders(ordersRes.value.data.data || []);
+        if (companiesRes.status === "fulfilled") setCompanies(companiesRes.value.data.data || []);
+        if (vendorsRes.status === "fulfilled") setVendors(vendorsRes.value.data.data || []);
+        if (roomBlocksRes.status === "fulfilled") setRoomBlocks(roomBlocksRes.value.data.data || []);
+        if (pettyCashRes.status === "fulfilled") setPettyCash(pettyCashRes.value.data.data || []);
+        if (liabilitiesRes.status === "fulfilled") setLiabilities(liabilitiesRes.value.data.data || []);
+        if (statsRes && (statsRes as any).status === "fulfilled") setDashboardStats((statsRes as any).value.data.data);
+      }
     } catch (err: any) {
       if (!silent) setError(err.message || "Failed to load data");
       else console.error("Silent fetch error:", err);
@@ -638,9 +731,11 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user || user.role !== "admin") return;
-    if (currentHotelId) return;
-    if (hotels.length === 0) return;
-    setCurrentHotelId(hotels[0].id);
+    if (!currentHotelId) return;
+    const exists = hotels.some((h) => h.id === currentHotelId);
+    if (!exists) {
+      setCurrentHotelId(null);
+    }
   }, [user, currentHotelId, hotels, setCurrentHotelId]);
 
   // Boss Mode fix: On initial page load, `hotels` is empty when fetchAll first runs,
