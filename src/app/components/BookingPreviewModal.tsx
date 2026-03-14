@@ -266,6 +266,57 @@ export function BookingPreviewModal({
 
                     </div>
 
+                    {/* Terms and Conditions */}
+                    <div className="mt-2">
+                        <h3
+                            className="text-sm font-bold uppercase tracking-wider pb-2 border-b"
+                            style={{ color: T.darkGold, borderColor: T.border }}
+                        >
+                            Hotel Booking Terms & Conditions
+                        </h3>
+                        <div className="mt-3 text-xs leading-relaxed text-gray-700 space-y-2">
+                            <p>
+                                <span className="font-semibold">1. Booking Confirmation:</span> All room bookings are subject to availability. A booking is considered confirmed only after receiving a confirmation from the hotel and/or after advance payment (if applicable).
+                            </p>
+                            <p>
+                                <span className="font-semibold">2. Check-In and Check-Out Policy:</span> Standard Check-In Time: 12:00 PM. Standard Check-Out Time: 11:00 AM. Early check-in and late check-out are subject to availability and may incur additional charges.
+                            </p>
+                            <p>
+                                <span className="font-semibold">3. Valid ID Requirement:</span> All guests must present a valid government-issued photo ID at the time of check-in. Accepted IDs include Aadhaar Card, Passport, Driving License, and Voter ID. The hotel reserves the right to refuse check-in if valid identification is not provided.
+                            </p>
+                            <p>
+                                <span className="font-semibold">4. Guest Responsibility:</span> Guests are responsible for maintaining decorum and respecting hotel property. Any damage caused to hotel property may be charged to the guest.
+                            </p>
+                            <p>
+                                <span className="font-semibold">5. Advance Payment Policy:</span> The hotel may require partial or full advance payment to confirm a booking. Advance payment policies may vary depending on the booking type, season, or promotional offer.
+                            </p>
+                            <p>
+                                <span className="font-semibold">6. Cancellation Policy:</span><br />
+                                A) If a booking is cancelled more than 48 hours before the scheduled check-in time, the guest is eligible for a full refund (100%).<br />
+                                B) If cancellation occurs between 24 and 48 hours before check-in, 50% of the booking amount may be deducted as cancellation charges.<br />
+                                C) If cancellation occurs within 24 hours of the scheduled check-in time, the hotel may charge up to one full night as cancellation charges.
+                            </p>
+                            <p>
+                                <span className="font-semibold">7. No Show Policy:</span> If the guest fails to arrive at the hotel on the scheduled check-in date without prior cancellation, the booking will be marked as a No Show. In such cases, the hotel reserves the right to charge one night's stay or the entire advance amount.
+                            </p>
+                            <p>
+                                <span className="font-semibold">8. Early Check-Out Policy:</span> If a guest checks out earlier than the booked stay period, at least one night charge may apply. Refund for remaining nights will depend on the hotel's discretion.
+                            </p>
+                            <p>
+                                <span className="font-semibold">9. Refund Policy:</span> Refunds will be processed according to the cancellation policy mentioned above. Refunds will be issued using the same payment method used during booking (UPI, Card, Cash, or Bank Transfer). Refund processing time may take 3 to 7 working days.
+                            </p>
+                            <p>
+                                <span className="font-semibold">10. Hotel Rights:</span> The hotel reserves the right to cancel or modify bookings in case of unforeseen circumstances such as technical issues, natural calamities, or operational constraints.
+                            </p>
+                            <p>
+                                <span className="font-semibold">11. Force Majeure:</span> The hotel shall not be held responsible for cancellations or service interruptions caused by events beyond reasonable control including natural disasters, government regulations, or emergencies.
+                            </p>
+                            <p>
+                                <span className="font-semibold">12. Acceptance of Terms:</span> By confirming a booking or checking into the hotel, the guest agrees to abide by the above terms and conditions.
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Signatures */}
                     <div className="mt-8 pt-6 flex justify-between text-sm border-t print:flex print:mt-12 print:pt-8" style={{ borderColor: T.border }}>
                         <div className="text-center">
