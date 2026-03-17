@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { usePMS } from "../contexts/PMSContext";
 import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
-import { printHtml } from "../utils/print";
 import {
     Search,
     Filter,
@@ -64,6 +63,12 @@ export default function RestaurantInvoices() {
         fetchInvoices();
     }, []);
 
+    useEffect(() => {
+        const handleAfterPrint = () => setIsPrinting(false);
+        window.addEventListener("afterprint", handleAfterPrint);
+        return () => window.removeEventListener("afterprint", handleAfterPrint);
+    }, []);
+
     const filteredInvoices = invoices.filter((inv) => {
         const matchesSearch =
             inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,215 +111,9 @@ export default function RestaurantInvoices() {
         setShowPreviewModal(true);
     };
 
-    const printThermalBill = (invoice: any) => {
-        const activeHotel = hotels.find(h => h.id === invoice.hotelId);
-
-                const subtotal = Number(invoice.subtotal || 0);
-                const cgst = Number(invoice.cgst || 0);
-                const sgst = Number(invoice.sgst || 0);
-                const taxAmount = cgst + sgst > 0 ? cgst + sgst : Math.max(Number(invoice.totalAmount || 0) - subtotal, 0);
-                const discount = Number(invoice.discountAmount ?? invoice.restaurantOrder?.discount ?? 0);
-                const paidAmount = Number(invoice.paidAmount ?? (invoice.status === "paid" ? invoice.totalAmount : 0) ?? 0);
-                const balanceAmount = Number(invoice.balanceDue ?? Math.max(Number(invoice.totalAmount || 0) - paidAmount, 0));
-                const paymentMode = invoice.paymentMode || invoice.paymentMethod || (invoice.status === "paid" ? "Settled" : "Pending");
-                const tableNumber = invoice.restaurantOrder?.tableNumber || "N/A";
-                const roomNumber = invoice.restaurantOrder?.room?.roomNumber || "-";
-                const guestName = invoice.restaurantOrder?.guestName || invoice.restaurantOrder?.stewardName || "Walk-in";
-                const logoUrl = resolveLogoUrl(activeHotel?.logoUrl);
-
-        const receiptData = {
-            hotelName: activeHotel?.name || "HOTEL RESTAURANT",
-            address: activeHotel?.address || "Hotel Address Line 1",
-            gstin: activeHotel?.gstNumber || "N/A",
-                        logoUrl,
-            items: invoice.restaurantOrder?.orderItems?.map((i: any) => ({
-                name: i.menuItem?.itemName || "Item",
-                qty: i.quantity,
-                rate: Number(i.price),
-                amt: Number(i.itemTotal)
-            })) || [],
-            subtotal,
-                        taxAmount,
-                        discount,
-                        total: Number(invoice.totalAmount || 0),
-            billNo: invoice.invoiceNumber,
-                        date: format(new Date(invoice.invoiceDate || invoice.createdAt), "dd/MM/yyyy"),
-                        time: format(new Date(invoice.invoiceDate || invoice.createdAt), "hh:mm a"),
-                        tableNumber,
-                        roomNumber,
-                        guestName,
-                        paymentMode,
-                        paidAmount,
-                        balanceAmount,
-                        cashier: user?.fullName || "Admin"
-        };
-
-        const html = `<html><head><title>Print Receipt</title>
-        <style>
-                    @page { size: auto; margin: 10mm; }
-          body { 
-                        font-family: 'Segoe UI', Arial, sans-serif;
-                        font-size: 12px;
-                        line-height: 1.35;
-            margin: 0;
-            background: white;
-                        color: #111827;
-          }
-                    .invoice-wrap {
-                        width: 100%;
-                        max-width: 780px;
-                        margin: 0 auto;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 10px;
-                        padding: 18px;
-                        box-sizing: border-box;
-                    }
-                    .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        gap: 14px;
-                        border-bottom: 1px solid #e5e7eb;
-                        padding-bottom: 12px;
-                        margin-bottom: 12px;
-                    }
-                    .brand {
-                        display: flex;
-                        gap: 10px;
-                        align-items: flex-start;
-                    }
-                    .logo {
-                        width: 54px;
-                        height: 54px;
-                        object-fit: contain;
-                        border: 1px solid #e5e7eb;
-                        border-radius: 8px;
-                        padding: 4px;
-                    }
-                    .title { font-size: 20px; font-weight: 700; margin: 0; color: #111827; }
-                    .meta-grid {
-                        display: grid;
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
-                        gap: 6px 16px;
-                        margin: 12px 0;
-                    }
-                    .meta-row { display: flex; gap: 8px; }
-                    .meta-label { min-width: 92px; color: #6b7280; font-weight: 600; }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 10px;
-                    }
-                    th, td {
-                        border-bottom: 1px solid #f1f5f9;
-                        padding: 8px 6px;
-                        vertical-align: top;
-                    }
-                    th {
-                        text-align: left;
-                        color: #475569;
-                        font-size: 11px;
-                        text-transform: uppercase;
-                        letter-spacing: .03em;
-                    }
-                    .num { text-align: right; white-space: nowrap; }
-                    .summary-payment {
-                        display: grid;
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
-                        gap: 14px;
-                        margin-top: 16px;
-                    }
-                    .box {
-                        border: 1px solid #e5e7eb;
-                        border-radius: 10px;
-                        padding: 10px 12px;
-                    }
-                    .box-title {
-                        font-size: 11px;
-                        text-transform: uppercase;
-                        letter-spacing: .05em;
-                        color: #6b7280;
-                        font-weight: 700;
-                        margin-bottom: 8px;
-                    }
-                    .line {
-                        display: flex;
-                        justify-content: space-between;
-                        gap: 8px;
-                        padding: 3px 0;
-                    }
-                    .total { font-weight: 800; font-size: 16px; color: #A8832D; border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 8px; }
-                    .footer { margin-top: 12px; font-size: 11px; color: #6b7280; text-align: center; }
-                    @media print {
-                        .invoice-wrap { max-width: none; border: none; border-radius: 0; padding: 0; }
-                    }
-        </style></head><body>
-                    <div class="invoice-wrap">
-                        <div class="header">
-                            <div class="brand">
-                                <img src="${receiptData.logoUrl}" alt="Hotel Logo" class="logo" />
-                                <div>
-                                    <h1 class="title">${receiptData.hotelName}</h1>
-                                    <div>${receiptData.address}</div>
-                                    <div>GSTIN: ${receiptData.gstin}</div>
-                                </div>
-                            </div>
-                            <div style="text-align:right">
-                                <div style="font-size:18px;font-weight:700;color:#A8832D;">Restaurant Invoice</div>
-                                <div>Invoice No: <strong>${receiptData.billNo}</strong></div>
-                                <div>Date: ${receiptData.date} ${receiptData.time}</div>
-                            </div>
-                        </div>
-
-                        <div class="meta-grid">
-                            <div class="meta-row"><span class="meta-label">Table Number</span><span>${receiptData.tableNumber}</span></div>
-                            <div class="meta-row"><span class="meta-label">Room Number</span><span>${receiptData.roomNumber}</span></div>
-                            <div class="meta-row"><span class="meta-label">Guest Name</span><span>${receiptData.guestName}</span></div>
-                            <div class="meta-row"><span class="meta-label">Cashier</span><span>${receiptData.cashier}</span></div>
-                        </div>
-
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style="width:52%">Item Name</th>
-                                    <th class="num" style="width:12%">Quantity</th>
-                                    <th class="num" style="width:18%">Rate</th>
-                                    <th class="num" style="width:18%">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${receiptData.items.map((i: any) => `
-                                    <tr>
-                                        <td>${i.name}</td>
-                                        <td class="num">${i.qty}</td>
-                                        <td class="num">₹${i.rate.toFixed(2)}</td>
-                                        <td class="num">₹${i.amt.toFixed(2)}</td>
-                                    </tr>
-                                `).join("")}
-                            </tbody>
-                        </table>
-
-                        <div class="summary-payment">
-                            <div class="box">
-                                <div class="box-title">Summary</div>
-                                <div class="line"><span>Subtotal</span><strong>₹${receiptData.subtotal.toFixed(2)}</strong></div>
-                                <div class="line"><span>Taxes (GST)</span><strong>₹${receiptData.taxAmount.toFixed(2)}</strong></div>
-                                <div class="line"><span>Discount</span><strong>- ₹${receiptData.discount.toFixed(2)}</strong></div>
-                                <div class="line total"><span>Total Amount</span><span>₹${receiptData.total.toFixed(2)}</span></div>
-                            </div>
-                            <div class="box">
-                                <div class="box-title">Payment</div>
-                                <div class="line"><span>Payment Mode</span><strong>${receiptData.paymentMode}</strong></div>
-                                <div class="line"><span>Paid Amount</span><strong>₹${receiptData.paidAmount.toFixed(2)}</strong></div>
-                                <div class="line"><span>Balance</span><strong>₹${receiptData.balanceAmount.toFixed(2)}</strong></div>
-                            </div>
-                        </div>
-
-                        <div class="footer">Thank you for dining with us.</div>
-                    </div>
-        </body></html>`;
-
-        printHtml(html);
+    const handlePreviewPrint = () => {
+        setIsPrinting(true);
+        window.print();
     };
 
     return (
@@ -572,10 +371,10 @@ export default function RestaurantInvoices() {
 
             {/* Preview Modal */}
             {showPreviewModal && invoiceToPreview && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in thermal-print-modal">
+                    <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col thermal-print-shell">
                         {/* Modal Header */}
-                        <div className="bg-[#C6A75E] px-6 py-4 flex items-center justify-between text-white">
+                        <div className="bg-[#C6A75E] px-6 py-4 flex items-center justify-between text-white no-thermal-print">
                             <h2 className="text-xl font-bold">Invoice Preview</h2>
                             <button
                                 onClick={() => setShowPreviewModal(false)}
@@ -586,99 +385,152 @@ export default function RestaurantInvoices() {
                         </div>
 
                         {/* Bill Content Area */}
-                        <div className="flex-1 overflow-y-auto p-8 bg-white max-h-[70vh]">
+                        <div className="flex-1 overflow-y-auto p-6 bg-white max-h-[70vh] no-thermal-print">
                             {(() => {
                                 const selectedHotel = hotels.find(h => h.id === invoiceToPreview.hotelId);
                                 const subtotal = Number(invoiceToPreview.subtotal || 0);
-                                const cgst = Number(invoiceToPreview.cgst || 0);
-                                const sgst = Number(invoiceToPreview.sgst || 0);
-                                const taxAmount = cgst + sgst > 0 ? cgst + sgst : Math.max(Number(invoiceToPreview.totalAmount || 0) - subtotal, 0);
-                                const discount = Number(invoiceToPreview.discountAmount ?? invoiceToPreview.restaurantOrder?.discount ?? 0);
-                                const paidAmount = Number(invoiceToPreview.paidAmount ?? (invoiceToPreview.status === "paid" ? invoiceToPreview.totalAmount : 0) ?? 0);
-                                const balanceAmount = Number(invoiceToPreview.balanceDue ?? Math.max(Number(invoiceToPreview.totalAmount || 0) - paidAmount, 0));
-                                const paymentMode = invoiceToPreview.paymentMode || invoiceToPreview.paymentMethod || (invoiceToPreview.status === "paid" ? "Settled" : "Pending");
+                                const serviceCharge = subtotal * 0.10;
+                                const netPayable = subtotal + serviceCharge;
 
                                 return (
-                                    <>
-                                        <div className="border border-[#e2e8f0] rounded-xl p-5 mb-6">
-                                            <div className="flex items-start justify-between gap-4 border-b border-[#e2e8f0] pb-4 mb-4">
-                                                <div className="flex items-start gap-3">
-                                                    <img
-                                                        src={resolveLogoUrl(selectedHotel?.logoUrl)}
-                                                        alt="Hotel Logo"
-                                                        className="w-14 h-14 rounded-lg border border-[#e2e8f0] object-contain p-1"
-                                                        onError={handleLogoImageError}
-                                                    />
-                                                    <div>
-                                                        <h3 className="text-2xl font-bold text-[#1e293b] leading-tight">{selectedHotel?.name || "Restaurant"}</h3>
-                                                        <p className="text-[#64748b] text-sm">{selectedHotel?.address || ""}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xl font-bold text-[#A8832D]">Restaurant Invoice</p>
-                                                    <p className="text-sm text-[#1e293b]"><span className="font-semibold">Invoice No:</span> {invoiceToPreview.invoiceNumber}</p>
-                                                    <p className="text-sm text-[#1e293b]"><span className="font-semibold">Date & Time:</span> {format(new Date(invoiceToPreview.invoiceDate || invoiceToPreview.createdAt), "dd MMM yyyy, hh:mm a")}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-[#1e293b] text-sm">
-                                                <div className="flex"><span className="font-semibold w-28">Table Number:</span> <span>{invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</span></div>
-                                                <div className="flex"><span className="font-semibold w-28">Room Number:</span> <span>{invoiceToPreview.restaurantOrder?.room?.roomNumber || "-"}</span></div>
-                                                <div className="flex"><span className="font-semibold w-28">Guest Name:</span> <span>{invoiceToPreview.restaurantOrder?.guestName || invoiceToPreview.restaurantOrder?.stewardName || "Walk-in"}</span></div>
-                                                <div className="flex"><span className="font-semibold w-28">Status:</span> <span className="uppercase">{invoiceToPreview.status || "issued"}</span></div>
-                                            </div>
+                                    <div
+                                        className="mx-auto bg-white text-black"
+                                        style={{ width: "80mm", fontFamily: "Arial, sans-serif", fontSize: "11px", lineHeight: 1.35 }}
+                                    >
+                                        <div className="text-center">
+                                            <img
+                                                src={resolveLogoUrl(selectedHotel?.logoUrl)}
+                                                alt="Hotel Logo"
+                                                className="mx-auto h-10 w-10 object-contain"
+                                                onError={handleLogoImageError}
+                                            />
+                                            <div className="font-bold text-[13px]">{selectedHotel?.name || "Restaurant"}</div>
+                                            <div>{selectedHotel?.address || ""}</div>
                                         </div>
 
-                                        <div className="border border-[#e2e8f0] rounded-xl overflow-hidden mb-6">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-[#f8fafc] text-[#1e293b]">
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Item Name</th>
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Quantity</th>
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Rate</th>
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {invoiceToPreview.restaurantOrder?.orderItems?.map((item: any, idx: number) => (
-                                            <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"}>
-                                                <td className="py-3 px-4 text-[#1e293b]">{item.menuItem?.itemName || "Item"}</td>
-                                                <td className="py-3 px-4 text-[#1e293b] text-right">{item.quantity}</td>
-                                                <td className="py-3 px-4 text-[#1e293b] text-right">₹{Number(item.price || 0).toFixed(2)}</td>
-                                                <td className="py-3 px-4 font-bold text-[#1e293b] text-right">₹{item.itemTotal}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <div>
+                                            <div><strong>Bill No.:</strong> {invoiceToPreview.invoiceNumber}</div>
+                                            <div><strong>Date:</strong> {format(new Date(invoiceToPreview.invoiceDate || invoiceToPreview.createdAt), "dd/MM/yyyy hh:mm a")}</div>
+                                            <div><strong>Table:</strong> {invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</div>
+                                            <div><strong>Room:</strong> {invoiceToPreview.restaurantOrder?.room?.roomNumber || "-"}</div>
+                                            <div><strong>Steward:</strong> {invoiceToPreview.restaurantOrder?.stewardName || "Staff"}</div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[#1e293b]">
-                                            <div className="border border-[#e2e8f0] rounded-xl p-4">
-                                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64748b] mb-3">Summary</p>
-                                                <div className="space-y-2 text-sm">
-                                                    <div className="flex justify-between"><span>Subtotal</span><span className="font-semibold">₹{subtotal.toFixed(2)}</span></div>
-                                                    <div className="flex justify-between"><span>Taxes (GST)</span><span className="font-semibold">₹{taxAmount.toFixed(2)}</span></div>
-                                                    <div className="flex justify-between"><span>Discount</span><span className="font-semibold">- ₹{discount.toFixed(2)}</span></div>
-                                                    <div className="border-t border-[#e2e8f0] pt-2 mt-2 flex justify-between text-lg font-bold text-[#C6A75E]"><span>Total Amount</span><span>₹{Number(invoiceToPreview.totalAmount || 0).toFixed(2)}</span></div>
-                                                </div>
-                                            </div>
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
 
-                                            <div className="border border-[#e2e8f0] rounded-xl p-4">
-                                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64748b] mb-3">Payment</p>
-                                                <div className="space-y-2 text-sm">
-                                                    <div className="flex justify-between"><span>Payment Mode</span><span className="font-semibold">{paymentMode}</span></div>
-                                                    <div className="flex justify-between"><span>Paid Amount</span><span className="font-semibold">₹{paidAmount.toFixed(2)}</span></div>
-                                                    <div className="flex justify-between"><span>Balance</span><span className="font-semibold">₹{balanceAmount.toFixed(2)}</span></div>
-                                                </div>
-                                            </div>
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-[#999]">
+                                                    <th className="py-1 text-left font-bold">Item Name</th>
+                                                    <th className="py-1 text-right font-bold">Qty</th>
+                                                    <th className="py-1 text-right font-bold">Rate</th>
+                                                    <th className="py-1 text-right font-bold">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {invoiceToPreview.restaurantOrder?.orderItems?.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-1">{item.menuItem?.itemName || "Item"}</td>
+                                                        <td className="py-1 text-right">{item.quantity}</td>
+                                                        <td className="py-1 text-right">₹{Number(item.price || 0).toFixed(2)}</td>
+                                                        <td className="py-1 text-right">₹{Number(item.itemTotal || 0).toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                                            <div className="flex justify-between"><span>Service Charge (10%)</span><span>₹{serviceCharge.toFixed(2)}</span></div>
+                                            <div className="flex justify-between font-bold"><span>Net Payable</span><span>₹{netPayable.toFixed(2)}</span></div>
                                         </div>
-                                    </>
+
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <div className="text-center">Thank you for dining with us.</div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="thermal-print-area" aria-hidden>
+                            {(() => {
+                                const selectedHotel = hotels.find(h => h.id === invoiceToPreview.hotelId);
+                                const subtotal = Number(invoiceToPreview.subtotal || 0);
+                                const serviceCharge = subtotal * 0.10;
+                                const netPayable = subtotal + serviceCharge;
+
+                                return (
+                                    <div
+                                        className="bg-white text-black"
+                                        style={{ width: "80mm", fontFamily: "Arial, sans-serif", fontSize: "11px", lineHeight: 1.35, padding: "4mm" }}
+                                    >
+                                        <div className="text-center">
+                                            <img
+                                                src={resolveLogoUrl(selectedHotel?.logoUrl)}
+                                                alt="Hotel Logo"
+                                                className="mx-auto h-10 w-10 object-contain"
+                                                onError={handleLogoImageError}
+                                            />
+                                            <div className="font-bold text-[13px]">{selectedHotel?.name || "Restaurant"}</div>
+                                            <div>{selectedHotel?.address || ""}</div>
+                                        </div>
+
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <div>
+                                            <div><strong>Bill No.:</strong> {invoiceToPreview.invoiceNumber}</div>
+                                            <div><strong>Date:</strong> {format(new Date(invoiceToPreview.invoiceDate || invoiceToPreview.createdAt), "dd/MM/yyyy hh:mm a")}</div>
+                                            <div><strong>Table:</strong> {invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</div>
+                                            <div><strong>Room:</strong> {invoiceToPreview.restaurantOrder?.room?.roomNumber || "-"}</div>
+                                            <div><strong>Steward:</strong> {invoiceToPreview.restaurantOrder?.stewardName || "Staff"}</div>
+                                        </div>
+
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-[#999]">
+                                                    <th className="py-1 text-left font-bold">Item Name</th>
+                                                    <th className="py-1 text-right font-bold">Qty</th>
+                                                    <th className="py-1 text-right font-bold">Rate</th>
+                                                    <th className="py-1 text-right font-bold">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {invoiceToPreview.restaurantOrder?.orderItems?.map((item: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td className="py-1">{item.menuItem?.itemName || "Item"}</td>
+                                                        <td className="py-1 text-right">{item.quantity}</td>
+                                                        <td className="py-1 text-right">₹{Number(item.price || 0).toFixed(2)}</td>
+                                                        <td className="py-1 text-right">₹{Number(item.itemTotal || 0).toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+                                            <div className="flex justify-between"><span>Service Charge (10%)</span><span>₹{serviceCharge.toFixed(2)}</span></div>
+                                            <div className="flex justify-between font-bold"><span>Net Payable</span><span>₹{netPayable.toFixed(2)}</span></div>
+                                        </div>
+
+                                        <hr className="my-2 border-0 border-t border-[#999]" />
+
+                                        <div className="text-center">Thank you for dining with us.</div>
+                                    </div>
                                 );
                             })()}
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="p-6 bg-white border-t border-[#e2e8f0] flex gap-4">
+                        <div className="p-6 bg-white border-t border-[#e2e8f0] flex gap-4 no-thermal-print">
                             <button
                                 onClick={() => setShowPreviewModal(false)}
                                 className="flex-1 py-3 border border-gray-200 rounded-lg font-bold text-base hover:bg-gray-50 transition-colors"
@@ -686,16 +538,45 @@ export default function RestaurantInvoices() {
                                 Close
                             </button>
                             <button
-                                onClick={() => printThermalBill(invoiceToPreview)}
+                                onClick={handlePreviewPrint}
                                 className="flex-1 py-3 bg-[#C6A75E] hover:bg-[#A8832D] text-white rounded-lg font-bold text-base transition-colors flex items-center justify-center gap-2"
                             >
                                 <Printer className="w-5 h-5" />
-                                Print
+                                {isPrinting ? "Printing..." : "Print"}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+            <style>{`
+                .thermal-print-area {
+                    display: none;
+                }
+                @media print {
+                    @page { size: 80mm auto; margin: 0; }
+                    body { width: 80mm; font-size: 11px; }
+                    .no-thermal-print { display: none !important; }
+                    .thermal-print-modal {
+                        position: static !important;
+                        background: #fff !important;
+                        backdrop-filter: none !important;
+                        align-items: flex-start !important;
+                        justify-content: flex-start !important;
+                        padding: 0 !important;
+                    }
+                    .thermal-print-shell {
+                        width: 80mm !important;
+                        max-width: 80mm !important;
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                        margin: 0 !important;
+                    }
+                    .thermal-print-area {
+                        display: block !important;
+                    }
+                }
+            `}</style>
         </AppLayout>
     );
 }

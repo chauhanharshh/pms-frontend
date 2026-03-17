@@ -342,10 +342,8 @@ export function RestaurantPOS() {
 
   const subtotal = cart.reduce((sum, item) => sum + Number(item.itemTotal), 0);
   const totalQty = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
-  const netSubtotal = Math.max(0, subtotal - discount);
-  const gst = 0; // Removed GST from restaurant
-  const serviceCharge = netSubtotal * 0.10; // 10% Service Charge
-  const total = netSubtotal + gst + serviceCharge;
+  const serviceCharge = subtotal * 0.10; // 10% Service Charge
+  const total = subtotal + serviceCharge;
 
   const resetPOS = () => {
     setCart([]);
@@ -471,8 +469,6 @@ export function RestaurantPOS() {
       id: "draft",
       invoiceNumber: "DRAFT",
       subtotal,
-      cgst: gst / 2,
-      sgst: gst / 2,
       totalAmount: total,
       invoiceDate: new Date().toISOString(),
       status: "draft"
@@ -494,6 +490,8 @@ export function RestaurantPOS() {
           items: cart,
           discount,
           guestName: guestName || "Walk-in",
+          stewardName: stewardName || user?.fullName || "Staff",
+          stewardId: stewardId || undefined,
           tableNumber: tableNumber || undefined,
           roomId: roomId || undefined,
           bookingId: bookingId || undefined,
@@ -729,9 +727,12 @@ export function RestaurantPOS() {
     const a4Subtotal = Number(invoice?.subtotal ?? subtotal ?? 0);
     const a4Service = a4Subtotal * 0.10;
     const a4Net = a4Subtotal + a4Service;
+    const printTableNumber = invoice?.restaurantOrder?.tableNumber || tableNumber || "N/A";
+    const printRoomNumber = invoice?.restaurantOrder?.room?.roomNumber || roomNumber || "N/A";
+    const printSteward = invoice?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
     const html = `<html><head><title>Invoice ${invoice.invoiceNumber}</title>
     <style>
-    body{font-family: Arial, sans-serif; padding:28px; line-height:1.45; color:#111; background:#fff;}
+    body{font-family: Arial, sans-serif; padding:28px; line-height:1.45; color:#000; background:#fff;}
     h1,h2,h3,p{margin:0;}
     hr{border:0;border-top:1px solid #999;margin:10px 0;}
     .header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
@@ -761,9 +762,9 @@ export function RestaurantPOS() {
     <div class="meta">
       <div><strong>Bill No.:</strong> ${invoice.invoiceNumber}</div>
       <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
-      <div><strong>Table:</strong> ${tableNumber || "N/A"}</div>
-      <div><strong>Room:</strong> ${roomNumber || "N/A"}</div>
-      <div><strong>Steward:</strong> ${stewardName || user?.fullName || "Staff"}</div>
+      <div><strong>Table:</strong> ${printTableNumber}</div>
+      <div><strong>Room:</strong> ${printRoomNumber}</div>
+      <div><strong>Steward:</strong> ${printSteward}</div>
     </div>
     <hr />
     <table>
