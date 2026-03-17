@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { usePMS } from "../contexts/PMSContext";
+import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
+import { printHtml } from "../utils/print";
 import {
     Search,
     Filter,
@@ -106,16 +108,25 @@ export default function RestaurantInvoices() {
 
     const printThermalBill = (invoice: any) => {
         const activeHotel = hotels.find(h => h.id === invoice.hotelId);
-        const w = window.open("", "_blank", "width=400,height=600");
-        if (!w) return;
 
-        const subtotal = Number(invoice.subtotal);
-        const serviceCharge = Number(invoice.totalAmount) - subtotal;
+                const subtotal = Number(invoice.subtotal || 0);
+                const cgst = Number(invoice.cgst || 0);
+                const sgst = Number(invoice.sgst || 0);
+                const taxAmount = cgst + sgst > 0 ? cgst + sgst : Math.max(Number(invoice.totalAmount || 0) - subtotal, 0);
+                const discount = Number(invoice.discountAmount ?? invoice.restaurantOrder?.discount ?? 0);
+                const paidAmount = Number(invoice.paidAmount ?? (invoice.status === "paid" ? invoice.totalAmount : 0) ?? 0);
+                const balanceAmount = Number(invoice.balanceDue ?? Math.max(Number(invoice.totalAmount || 0) - paidAmount, 0));
+                const paymentMode = invoice.paymentMode || invoice.paymentMethod || (invoice.status === "paid" ? "Settled" : "Pending");
+                const tableNumber = invoice.restaurantOrder?.tableNumber || "N/A";
+                const roomNumber = invoice.restaurantOrder?.room?.roomNumber || "-";
+                const guestName = invoice.restaurantOrder?.guestName || invoice.restaurantOrder?.stewardName || "Walk-in";
+                const logoUrl = resolveLogoUrl(activeHotel?.logoUrl);
 
         const receiptData = {
             hotelName: activeHotel?.name || "HOTEL RESTAURANT",
             address: activeHotel?.address || "Hotel Address Line 1",
             gstin: activeHotel?.gstNumber || "N/A",
+                        logoUrl,
             items: invoice.restaurantOrder?.orderItems?.map((i: any) => ({
                 name: i.menuItem?.itemName || "Item",
                 qty: i.quantity,
@@ -123,64 +134,187 @@ export default function RestaurantInvoices() {
                 amt: Number(i.itemTotal)
             })) || [],
             subtotal,
-            serviceCharge,
-            total: Number(invoice.totalAmount),
+                        taxAmount,
+                        discount,
+                        total: Number(invoice.totalAmount || 0),
             billNo: invoice.invoiceNumber,
-            date: format(new Date(invoice.invoiceDate), 'dd/MM/yyyy'),
-            time: format(new Date(invoice.createdAt), 'hh:mm a'),
-            table: invoice.restaurantOrder?.tableNumber || "POS-1",
-            cashier: user?.fullName || "Admin"
+                        date: format(new Date(invoice.invoiceDate || invoice.createdAt), "dd/MM/yyyy"),
+                        time: format(new Date(invoice.invoiceDate || invoice.createdAt), "hh:mm a"),
+                        tableNumber,
+                        roomNumber,
+                        guestName,
+                        paymentMode,
+                        paidAmount,
+                        balanceAmount,
+                        cashier: user?.fullName || "Admin"
         };
 
-        const line = (left: string, right: string = "") => {
-            const space = 32 - left.length - right.length;
-            return `<div>${left}${"&nbsp;".repeat(Math.max(0, space))}${right}</div>`;
-        };
-
-        const separator = "<div>" + "-".repeat(32) + "</div>";
-
-        w.document.write(`<html><head><title>Print Receipt</title>
+        const html = `<html><head><title>Print Receipt</title>
         <style>
-          @page { margin: 0; }
+                    @page { size: auto; margin: 10mm; }
           body { 
-            font-family: 'Courier New', Courier, monospace; 
-            font-size: 12px; 
-            width: 80mm; 
-            padding: 5mm; 
+                        font-family: 'Segoe UI', Arial, sans-serif;
+                        font-size: 12px;
+                        line-height: 1.35;
             margin: 0;
             background: white;
+                        color: #111827;
           }
-          .center { text-align: center; }
-          .bold { font-weight: bold; }
-          .items-row { display: flex; justify-content: space-between; }
-          @media print { body { width: 80mm; } }
+                    .invoice-wrap {
+                        width: 100%;
+                        max-width: 780px;
+                        margin: 0 auto;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 10px;
+                        padding: 18px;
+                        box-sizing: border-box;
+                    }
+                    .header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        gap: 14px;
+                        border-bottom: 1px solid #e5e7eb;
+                        padding-bottom: 12px;
+                        margin-bottom: 12px;
+                    }
+                    .brand {
+                        display: flex;
+                        gap: 10px;
+                        align-items: flex-start;
+                    }
+                    .logo {
+                        width: 54px;
+                        height: 54px;
+                        object-fit: contain;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 8px;
+                        padding: 4px;
+                    }
+                    .title { font-size: 20px; font-weight: 700; margin: 0; color: #111827; }
+                    .meta-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 6px 16px;
+                        margin: 12px 0;
+                    }
+                    .meta-row { display: flex; gap: 8px; }
+                    .meta-label { min-width: 92px; color: #6b7280; font-weight: 600; }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                    }
+                    th, td {
+                        border-bottom: 1px solid #f1f5f9;
+                        padding: 8px 6px;
+                        vertical-align: top;
+                    }
+                    th {
+                        text-align: left;
+                        color: #475569;
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        letter-spacing: .03em;
+                    }
+                    .num { text-align: right; white-space: nowrap; }
+                    .summary-payment {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 14px;
+                        margin-top: 16px;
+                    }
+                    .box {
+                        border: 1px solid #e5e7eb;
+                        border-radius: 10px;
+                        padding: 10px 12px;
+                    }
+                    .box-title {
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        letter-spacing: .05em;
+                        color: #6b7280;
+                        font-weight: 700;
+                        margin-bottom: 8px;
+                    }
+                    .line {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 8px;
+                        padding: 3px 0;
+                    }
+                    .total { font-weight: 800; font-size: 16px; color: #A8832D; border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 8px; }
+                    .footer { margin-top: 12px; font-size: 11px; color: #6b7280; text-align: center; }
+                    @media print {
+                        .invoice-wrap { max-width: none; border: none; border-radius: 0; padding: 0; }
+                    }
         </style></head><body>
-          <div class="center bold">${receiptData.hotelName}</div>
-          <div class="center">${receiptData.address}</div>
-          <div class="center bold" style="margin: 5px 0">INVOICE</div>
-          ${separator}
-          ${line("DATE: " + receiptData.date, receiptData.time)}
-          ${line("BILL NO: " + receiptData.billNo)}
-          ${line("TABLE/ROOM: " + receiptData.table)}
-          ${separator}
-          ${line("ITEM", "QTY  RATE  AMT")}
-          ${separator}
-          ${receiptData.items.map((i: any) => `
-            <div style="font-weight:bold">${i.name.toUpperCase()}</div>
-            ${line("", `${i.qty.toString().padEnd(3)} ${i.rate.toString().padStart(5)} ${i.amt.toString().padStart(5)}`)}
-          `).join("")}
-          ${separator}
-          ${line("SUBTOTAL:", receiptData.subtotal.toFixed(2))}
-          ${line("SERVICE:", receiptData.serviceCharge.toFixed(2))}
-          ${separator}
-          <div class="bold" style="font-size:14px">${line("NET AMOUNT:", receiptData.total.toFixed(2))}</div>
-          ${separator}
-          <div style="margin-top:10px">CASHIER: ${receiptData.cashier}</div>
-          <div class="center" style="margin-top:20px">*** THANK YOU ***</div>
-          <script>setTimeout(() => { window.print(); window.close(); }, 500);</script>
-        </body></html>`);
-        w.document.close();
-        w.focus();
+                    <div class="invoice-wrap">
+                        <div class="header">
+                            <div class="brand">
+                                <img src="${receiptData.logoUrl}" alt="Hotel Logo" class="logo" />
+                                <div>
+                                    <h1 class="title">${receiptData.hotelName}</h1>
+                                    <div>${receiptData.address}</div>
+                                    <div>GSTIN: ${receiptData.gstin}</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-size:18px;font-weight:700;color:#A8832D;">Restaurant Invoice</div>
+                                <div>Invoice No: <strong>${receiptData.billNo}</strong></div>
+                                <div>Date: ${receiptData.date} ${receiptData.time}</div>
+                            </div>
+                        </div>
+
+                        <div class="meta-grid">
+                            <div class="meta-row"><span class="meta-label">Table Number</span><span>${receiptData.tableNumber}</span></div>
+                            <div class="meta-row"><span class="meta-label">Room Number</span><span>${receiptData.roomNumber}</span></div>
+                            <div class="meta-row"><span class="meta-label">Guest Name</span><span>${receiptData.guestName}</span></div>
+                            <div class="meta-row"><span class="meta-label">Cashier</span><span>${receiptData.cashier}</span></div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width:52%">Item Name</th>
+                                    <th class="num" style="width:12%">Quantity</th>
+                                    <th class="num" style="width:18%">Rate</th>
+                                    <th class="num" style="width:18%">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${receiptData.items.map((i: any) => `
+                                    <tr>
+                                        <td>${i.name}</td>
+                                        <td class="num">${i.qty}</td>
+                                        <td class="num">₹${i.rate.toFixed(2)}</td>
+                                        <td class="num">₹${i.amt.toFixed(2)}</td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+
+                        <div class="summary-payment">
+                            <div class="box">
+                                <div class="box-title">Summary</div>
+                                <div class="line"><span>Subtotal</span><strong>₹${receiptData.subtotal.toFixed(2)}</strong></div>
+                                <div class="line"><span>Taxes (GST)</span><strong>₹${receiptData.taxAmount.toFixed(2)}</strong></div>
+                                <div class="line"><span>Discount</span><strong>- ₹${receiptData.discount.toFixed(2)}</strong></div>
+                                <div class="line total"><span>Total Amount</span><span>₹${receiptData.total.toFixed(2)}</span></div>
+                            </div>
+                            <div class="box">
+                                <div class="box-title">Payment</div>
+                                <div class="line"><span>Payment Mode</span><strong>${receiptData.paymentMode}</strong></div>
+                                <div class="line"><span>Paid Amount</span><strong>₹${receiptData.paidAmount.toFixed(2)}</strong></div>
+                                <div class="line"><span>Balance</span><strong>₹${receiptData.balanceAmount.toFixed(2)}</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="footer">Thank you for dining with us.</div>
+                    </div>
+        </body></html>`;
+
+        printHtml(html);
     };
 
     return (
@@ -453,27 +587,55 @@ export default function RestaurantInvoices() {
 
                         {/* Bill Content Area */}
                         <div className="flex-1 overflow-y-auto p-8 bg-white max-h-[70vh]">
-                            <div className="text-center mb-6">
-                                <h3 className="text-3xl font-bold text-[#1e293b] mb-2">{hotels.find(h => h.id === invoiceToPreview.hotelId)?.name || "Restaurant"}</h3>
-                                <p className="text-[#64748b] text-sm">{hotels.find(h => h.id === invoiceToPreview.hotelId)?.address || ""}</p>
-                            </div>
+                            {(() => {
+                                const selectedHotel = hotels.find(h => h.id === invoiceToPreview.hotelId);
+                                const subtotal = Number(invoiceToPreview.subtotal || 0);
+                                const cgst = Number(invoiceToPreview.cgst || 0);
+                                const sgst = Number(invoiceToPreview.sgst || 0);
+                                const taxAmount = cgst + sgst > 0 ? cgst + sgst : Math.max(Number(invoiceToPreview.totalAmount || 0) - subtotal, 0);
+                                const discount = Number(invoiceToPreview.discountAmount ?? invoiceToPreview.restaurantOrder?.discount ?? 0);
+                                const paidAmount = Number(invoiceToPreview.paidAmount ?? (invoiceToPreview.status === "paid" ? invoiceToPreview.totalAmount : 0) ?? 0);
+                                const balanceAmount = Number(invoiceToPreview.balanceDue ?? Math.max(Number(invoiceToPreview.totalAmount || 0) - paidAmount, 0));
+                                const paymentMode = invoiceToPreview.paymentMode || invoiceToPreview.paymentMethod || (invoiceToPreview.status === "paid" ? "Settled" : "Pending");
 
-                            <div className="w-full h-px bg-[#C6A75E] mb-6"></div>
+                                return (
+                                    <>
+                                        <div className="border border-[#e2e8f0] rounded-xl p-5 mb-6">
+                                            <div className="flex items-start justify-between gap-4 border-b border-[#e2e8f0] pb-4 mb-4">
+                                                <div className="flex items-start gap-3">
+                                                    <img
+                                                        src={resolveLogoUrl(selectedHotel?.logoUrl)}
+                                                        alt="Hotel Logo"
+                                                        className="w-14 h-14 rounded-lg border border-[#e2e8f0] object-contain p-1"
+                                                        onError={handleLogoImageError}
+                                                    />
+                                                    <div>
+                                                        <h3 className="text-2xl font-bold text-[#1e293b] leading-tight">{selectedHotel?.name || "Restaurant"}</h3>
+                                                        <p className="text-[#64748b] text-sm">{selectedHotel?.address || ""}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xl font-bold text-[#A8832D]">Restaurant Invoice</p>
+                                                    <p className="text-sm text-[#1e293b]"><span className="font-semibold">Invoice No:</span> {invoiceToPreview.invoiceNumber}</p>
+                                                    <p className="text-sm text-[#1e293b]"><span className="font-semibold">Date & Time:</span> {format(new Date(invoiceToPreview.invoiceDate || invoiceToPreview.createdAt), "dd MMM yyyy, hh:mm a")}</p>
+                                                </div>
+                                            </div>
 
-                            <div className="grid grid-cols-2 gap-y-2 mb-8 text-[#1e293b]">
-                                <div className="flex"><span className="font-bold w-24">Bill No:</span> <span>{invoiceToPreview.invoiceNumber}</span></div>
-                                <div className="flex"><span className="font-bold w-24">Table No:</span> <span>{invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</span></div>
-                                <div className="flex"><span className="font-bold w-24">Date & Time:</span> <span>{format(new Date(invoiceToPreview.invoiceDate), 'PPpp')}</span></div>
-                                <div className="flex"><span className="font-bold w-32">Steward:</span> <span>{invoiceToPreview.restaurantOrder?.stewardName || invoiceToPreview.restaurantOrder?.guestName || "Walk-in"}</span></div>
-                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8 text-[#1e293b] text-sm">
+                                                <div className="flex"><span className="font-semibold w-28">Table Number:</span> <span>{invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</span></div>
+                                                <div className="flex"><span className="font-semibold w-28">Room Number:</span> <span>{invoiceToPreview.restaurantOrder?.room?.roomNumber || "-"}</span></div>
+                                                <div className="flex"><span className="font-semibold w-28">Guest Name:</span> <span>{invoiceToPreview.restaurantOrder?.guestName || invoiceToPreview.restaurantOrder?.stewardName || "Walk-in"}</span></div>
+                                                <div className="flex"><span className="font-semibold w-28">Status:</span> <span className="uppercase">{invoiceToPreview.status || "issued"}</span></div>
+                                            </div>
+                                        </div>
 
-                            <div className="border border-[#e2e8f0] rounded-xl overflow-hidden mb-6">
+                                        <div className="border border-[#e2e8f0] rounded-xl overflow-hidden mb-6">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-[#f8fafc] text-[#1e293b]">
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Item</th>
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Qty</th>
-                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Price</th>
+                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Item Name</th>
+                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Quantity</th>
+                                            <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Rate</th>
                                             <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Amount</th>
                                         </tr>
                                     </thead>
@@ -481,30 +643,38 @@ export default function RestaurantInvoices() {
                                         {invoiceToPreview.restaurantOrder?.orderItems?.map((item: any, idx: number) => (
                                             <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"}>
                                                 <td className="py-3 px-4 text-[#1e293b]">{item.menuItem?.itemName || "Item"}</td>
-                                                <td className="py-3 px-4 text-[#1e293b]">{item.quantity}</td>
-                                                <td className="py-3 px-4 text-[#1e293b]">₹{item.price}</td>
+                                                <td className="py-3 px-4 text-[#1e293b] text-right">{item.quantity}</td>
+                                                <td className="py-3 px-4 text-[#1e293b] text-right">₹{Number(item.price || 0).toFixed(2)}</td>
                                                 <td className="py-3 px-4 font-bold text-[#1e293b] text-right">₹{item.itemTotal}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
+                                        </div>
 
-                            <div className="space-y-3 ms-auto w-1/2 min-w-[300px] text-[#1e293b]">
-                                <div className="flex justify-between items-center text-[15px]">
-                                    <span>Subtotal</span>
-                                    <span className="font-bold">₹{Number(invoiceToPreview.subtotal).toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[15px]">
-                                    <span>Service Charge (10%)</span>
-                                    <span className="font-bold">₹{(Number(invoiceToPreview.subtotal) * 0.1).toFixed(2)}</span>
-                                </div>
-                                <div className="w-full h-px bg-[#e2e8f0] my-2"></div>
-                                <div className="flex justify-between items-center text-xl font-bold text-[#C6A75E]">
-                                    <span>Grand Total</span>
-                                    <span>₹{Number(invoiceToPreview.totalAmount).toFixed(2)}</span>
-                                </div>
-                            </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[#1e293b]">
+                                            <div className="border border-[#e2e8f0] rounded-xl p-4">
+                                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64748b] mb-3">Summary</p>
+                                                <div className="space-y-2 text-sm">
+                                                    <div className="flex justify-between"><span>Subtotal</span><span className="font-semibold">₹{subtotal.toFixed(2)}</span></div>
+                                                    <div className="flex justify-between"><span>Taxes (GST)</span><span className="font-semibold">₹{taxAmount.toFixed(2)}</span></div>
+                                                    <div className="flex justify-between"><span>Discount</span><span className="font-semibold">- ₹{discount.toFixed(2)}</span></div>
+                                                    <div className="border-t border-[#e2e8f0] pt-2 mt-2 flex justify-between text-lg font-bold text-[#C6A75E]"><span>Total Amount</span><span>₹{Number(invoiceToPreview.totalAmount || 0).toFixed(2)}</span></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="border border-[#e2e8f0] rounded-xl p-4">
+                                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64748b] mb-3">Payment</p>
+                                                <div className="space-y-2 text-sm">
+                                                    <div className="flex justify-between"><span>Payment Mode</span><span className="font-semibold">{paymentMode}</span></div>
+                                                    <div className="flex justify-between"><span>Paid Amount</span><span className="font-semibold">₹{paidAmount.toFixed(2)}</span></div>
+                                                    <div className="flex justify-between"><span>Balance</span><span className="font-semibold">₹{balanceAmount.toFixed(2)}</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
 
                         {/* Action Buttons */}

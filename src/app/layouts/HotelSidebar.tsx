@@ -125,6 +125,11 @@ const HOTEL_SECTIONS: NavSection[] = [
         icon: <Users className="w-4 h-4" />,
       },
       {
+        label: "Service Charge Report",
+        path: "/hotel/restaurant/service-charge-report",
+        icon: <IndianRupee className="w-4 h-4" />,
+      },
+      {
         label: "POS / Billing",
         path: "/hotel/restaurant/pos",
         icon: <IndianRupee className="w-4 h-4" />,

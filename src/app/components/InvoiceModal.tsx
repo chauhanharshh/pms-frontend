@@ -1,3 +1,7 @@
+import { useMemo } from "react";
+import { resolveBrandName } from "../utils/branding";
+import { printHtml } from "../utils/print";
+import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { Printer, X, Download } from "lucide-react";
 import { numberToWords } from "../utils/numberToWords";
@@ -9,6 +13,7 @@ interface InvoiceModalProps {
 
 export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const { hotels, bookings, activeHotel } = usePMS() as any;
+  const { user } = useAuth();
 
   const bk = bookings.find(
     (b: any) =>
@@ -20,43 +25,79 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     invoice.hotelId ||
     invoice.bill?.hotelId ||
     invoice.bill?.booking?.hotelId ||
-    bk?.hotelId ||
-    (invoice as any)?.hotel?.id;
+    (invoice as any)?.hotel?.id ||
+    (invoice as any)?.hotel?._id ||
+    null;
 
   const hotel: any =
     hotels.find((h: any) =>
       String(h.id) === String(invoiceHotelId) ||
       String(h._id) === String(invoiceHotelId)
     ) ||
-    hotels.find((h: any) =>
-      String(h.id) === String((activeHotel as any)?.id) ||
-      String(h._id) === String((activeHotel as any)?._id)
-    ) ||
-    hotels.find((h: any) =>
-      String(h.id) === String((invoice as any)?.bill?.booking?.hotelId) ||
-      String(h._id) === String((invoice as any)?.bill?.booking?.hotelId)
-    ) ||
-    hotels.find((h: any) =>
-      String(h.name || "").toLowerCase() === String((invoice as any)?.hotelName || "").toLowerCase() ||
-      String(h.brandName || "").toLowerCase() === String((invoice as any)?.hotelName || "").toLowerCase()
-    ) ||
     (invoice as any)?.hotel ||
     (invoice as any)?.bill?.hotel ||
     (invoice as any)?.bill?.booking?.hotel ||
-    (activeHotel ?? null);
+    (user as any)?.hotel ||
+    (user as any)?.hotelData ||
+    (user as any)?.property ||
+    null;
 
   console.log("hotel resolved:", hotel);
   console.log("activeHotel:", activeHotel);
   console.log("hotels in context:", hotels);
 
-  const hotelName =
-    hotel?.brandName || hotel?.name || hotel?.hotelName || "NA";
+  const hotelFields = useMemo(() => {
+    const name =
+      (hotel as any)?.brandName ||
+      (hotel as any)?.name ||
+      (hotel as any)?.hotelName ||
+      (invoice as any)?.hotelName ||
+      "NA";
 
-  const hotelPhone =
-    hotel?.phone || hotel?.contactNumber || hotel?.mobile || "NA";
+    const phone =
+      (hotel as any)?.phone ||
+      (hotel as any)?.phoneNumber ||
+      (hotel as any)?.contactNo ||
+      (hotel as any)?.contact ||
+      (hotel as any)?.contactNumber ||
+      (hotel as any)?.mobile ||
+      "NA";
 
-  const hotelGstNumber =
-    hotel?.gstNumber || hotel?.gstNo || hotel?.gst || "NA";
+    const gst =
+      (hotel as any)?.gstNumber ||
+      (hotel as any)?.gstin ||
+      (hotel as any)?.gst_number ||
+      (hotel as any)?.gstNo ||
+      (hotel as any)?.gst ||
+      "NA";
+
+    const rawAddress =
+      (hotel as any)?.address ||
+      (hotel as any)?.addressLine ||
+      (hotel as any)?.fullAddress ||
+      (hotel as any)?.location ||
+      (hotel as any)?.hotelAddress ||
+      [(hotel as any)?.city, (hotel as any)?.state]
+        .filter(Boolean).join(", ") ||
+      "NA";
+
+    const addressParts = rawAddress
+      .split(",")
+      .map((p: string) => p.trim())
+      .filter(Boolean);
+
+    return {
+      name,
+      phone,
+      gst,
+      addressLine1: addressParts[0] || "NA",
+      addressLine2: addressParts.slice(1).join(", ") || "",
+      isComposition:
+        (hotel as any)?.isComposition === true ||
+        (hotel as any)?.isCompositionScheme === true ||
+        String((hotel as any)?.taxType || "").toLowerCase() === "composition",
+    };
+  }, [hotel, invoice]);
 
   const totalGst = Number(invoice.cgst || 0) + Number(invoice.sgst || 0);
   const subtotal = Number(invoice.subtotal || 0) - Number(invoice.bill?.restaurantCharges || 0);
@@ -78,34 +119,6 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const billDateStr = invoice.createdAt ? formatDateForBill(new Date(invoice.createdAt)) : '-';
   const arrivalDateStr = bk?.checkInDate ? formatDateTime(new Date(bk.checkInDate)) : '-';
   const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
-
-  const rawAddress =
-    (hotel as any)?.address ||
-    (hotel as any)?.hotelAddress ||
-    [
-      (hotel as any)?.city,
-      (hotel as any)?.state,
-    ]
-      .filter(Boolean)
-      .join(", ") ||
-    "";
-
-  const addressParts = rawAddress
-    .split(",")
-    .map((part: string) => part.trim())
-    .filter(Boolean);
-  const hotelAddressLine1 =
-    addressParts[0] ||
-    [hotel?.city, hotel?.state].filter(Boolean).join(", ") ||
-    "-";
-  const hotelAddressLine2 = addressParts.length > 1 ? addressParts.slice(1).join(", ") : "";
-  const hotelAddressLine3 = !addressParts.length && (hotel as any)?.state ? (hotel as any).state : "";
-
-  const isCompositionHotel =
-    (hotel as any)?.isComposition === true ||
-    (hotel as any)?.isCompositionScheme === true ||
-    (hotel as any)?.compositionScheme === true ||
-    String((hotel as any)?.taxType || "").toLowerCase() === "composition";
 
   // Calculate GST percentage
   const taxRate = Number(hotel?.taxRate || 12);
@@ -216,11 +229,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       <body>
         <div class="invoice-wrapper" style="border: 1px solid #C6A75E; min-height: 100vh;">
           <div class="text-center" style="margin-bottom: 10px;">
-            <div class="hotel-name">${hotelName}</div>
-            <div class="hotel-info">${hotelAddressLine1}</div>
-            ${hotelAddressLine2 ? `<div class="hotel-info">${hotelAddressLine2}</div>` : ""}
-            <div class="hotel-info">Contact No:- ${hotelPhone}</div>
-            <div class="hotel-info">GST Number: ${hotelGstNumber}</div>
+            <div class="hotel-name">${hotelFields.name}</div>
+            <div class="hotel-info">${hotelFields.addressLine1}</div>
+            ${hotelFields.addressLine2 ? `<div class="hotel-info">${hotelFields.addressLine2}</div>` : ""}
+            <div class="hotel-info">Contact No:- ${hotelFields.phone}</div>
+            <div class="hotel-info">GST Number: ${hotelFields.gst}</div>
             <div class="proforma-title">PROFORMA TAX INVOICE</div>
           </div>
 
@@ -304,14 +317,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
 
   const handlePrint = () => {
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(getInvoiceHtml());
-    w.document.close();
-    w.focus();
-    setTimeout(() => {
-      w.print();
-    }, 250);
+    printHtml(getInvoiceHtml());
   };
 
   const handleDownload = () => {

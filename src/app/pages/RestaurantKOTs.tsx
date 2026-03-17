@@ -19,6 +19,8 @@ import {
 import { format } from "date-fns";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import { printHtml } from "../utils/print";
+import { resolveBrandName } from "../utils/branding";
 
 export default function RestaurantKOTs() {
     const [kots, setKots] = useState<any[]>([]);
@@ -100,65 +102,80 @@ export default function RestaurantKOTs() {
     };
 
     const printThermalKOT = (kot: any) => {
-        const w = window.open("", "_blank", "width=600,height=600");
-        if (!w) return;
+                const tableNumber = kot.order?.tableNumber || "N/A";
+                const roomNumber = kot.order?.room?.roomNumber || "-";
+                const orderType = kot.order?.room?.roomNumber ? "Room Service" : "Dine-in";
+                const printedAt = kot.printedAt || kot.createdAt;
 
-        const html = `
+        const getKotHtml = () => `
         <html>
           <head>
             <title>KOT - ${kot.kotNumber}</title>
             <style>
-              @page { margin: 0; }
+                            @page { size: auto; margin: 6mm; }
               body { 
                 font-family: 'Courier New', Courier, monospace; 
-                width: 80mm; 
-                padding: 10px;
-                font-size: 12px;
+                                width: 100%;
+                                max-width: 80mm;
+                                padding: 0;
+                                margin: 0 auto;
+                                font-size: 13px;
+                                line-height: 1.35;
+                                color: #111;
               }
-              .center { text-align: center; }
-              .bold { font-weight: bold; }
-              .hr { border-bottom: 1px dashed #000; margin: 5px 0; }
-              table { width: 100%; border-collapse: collapse; }
-              th { text-align: left; }
-              .footer { margin-top: 10px; font-size: 10px; }
+                            .kot-wrap {
+                                border: 1px dashed #444;
+                                border-radius: 6px;
+                                padding: 8px;
+                                box-sizing: border-box;
+                            }
+                            .center { text-align: center; }
+                            .title { font-size: 18px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 6px; }
+                            .hr { border-bottom: 1px dashed #000; margin: 6px 0; }
+                            .meta-row { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; }
+                            .meta-row strong { font-size: 14px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+                            th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+                            th, td { padding: 7px 2px; border-bottom: 1px dashed #ddd; }
+                            td.item { font-size: 14px; font-weight: 700; }
+                            td.qty { text-align: right; font-size: 20px; font-weight: 900; }
+                            @media print {
+                                .kot-wrap { border: none; border-radius: 0; }
+                            }
             </style>
           </head>
           <body>
-            <div class="center bold" style="font-size: 16px;">KITCHEN ORDER TICKET</div>
-            <div class="hr"></div>
-            <div><strong>KOT No:</strong> ${kot.kotNumber}</div>
-            <div><strong>Date:</strong> ${new Date(kot.printedAt).toLocaleString()}</div>
-            <div><strong>Table:</strong> ${kot.order?.tableNumber || "N/A"}</div>
-            <div><strong>Steward:</strong> ${kot.order?.stewardName || kot.order?.guestName || "Walk-in"}</div>
-            ${kot.order?.room ? `<div><strong>Room:</strong> ${kot.order.room.roomNumber}</div>` : ""}
-            <div class="hr"></div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th style="text-align: right;">Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${kot.items.map((item: any) => `
-                  <tr>
-                    <td>${item.itemName}</td>
-                    <td style="text-align: right;">${item.quantity}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-            <div class="hr"></div>
-            <div style="font-size: 14px;"><strong>Order ID:</strong> ${kot.id.slice(-6).toUpperCase()}</div>
-            <script>setTimeout(() => { window.print(); window.close(); }, 500);</script>
+                        <div class="kot-wrap">
+                            <div class="center title">KITCHEN ORDER TICKET</div>
+                            <div class="hr"></div>
+                            <div class="meta-row"><span>KOT Number</span><strong>${kot.kotNumber}</strong></div>
+                            <div class="meta-row"><span>Date & Time</span><strong>${new Date(printedAt).toLocaleString()}</strong></div>
+                            <div class="meta-row"><span>Table Number</span><strong>${tableNumber}</strong></div>
+                            <div class="meta-row"><span>Room Number</span><strong>${roomNumber}</strong></div>
+                            <div class="meta-row"><span>Order Type</span><strong>${orderType}</strong></div>
+                            <div class="hr"></div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Item Name</th>
+                                        <th style="text-align: right;">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${kot.items.map((item: any) => `
+                                        <tr>
+                                            <td class="item">${item.itemName}</td>
+                                            <td class="qty">${item.quantity}</td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
           </body>
         </html>
       `;
 
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
-        w.focus();
+        printHtml(getKotHtml());
     };
 
     return (
@@ -386,25 +403,21 @@ export default function RestaurantKOTs() {
                                     <div className="text-[11px] text-slate-400 mt-1 uppercase tracking-tighter">Kitchen Order Token</div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-y-2 text-[12px]">
+                                <div className="grid grid-cols-2 gap-y-2 text-[13px]">
                                     <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">KOT No</div>
                                     <div className="text-right font-bold text-slate-900">{kotToPreview.kotNumber}</div>
 
                                     <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Date & Time</div>
-                                    <div className="text-right font-medium">{new Date(kotToPreview.printedAt).toLocaleString()}</div>
+                                    <div className="text-right font-medium">{new Date(kotToPreview.printedAt || kotToPreview.createdAt).toLocaleString()}</div>
 
-                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Table No</div>
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Table Number</div>
                                     <div className="text-right font-bold text-slate-900">{kotToPreview.order?.tableNumber || "N/A"}</div>
 
-                                    {kotToPreview.order?.room?.roomNumber && (
-                                        <>
-                                            <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Room No</div>
-                                            <div className="text-right font-bold text-slate-900">{kotToPreview.order.room.roomNumber}</div>
-                                        </>
-                                    )}
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Room Number</div>
+                                    <div className="text-right font-bold text-slate-900">{kotToPreview.order?.room?.roomNumber || "-"}</div>
 
-                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Steward</div>
-                                    <div className="text-right font-medium">{kotToPreview.printedBy || "System"}</div>
+                                    <div className="text-slate-400 uppercase font-bold tracking-tighter text-[10px]">Order Type</div>
+                                    <div className="text-right font-bold text-slate-900">{kotToPreview.order?.room?.roomNumber ? "Room Service" : "Dine-in"}</div>
                                 </div>
 
                                 <table className="w-full border-t border-b border-dashed border-slate-200 py-4 my-4">
@@ -417,16 +430,12 @@ export default function RestaurantKOTs() {
                                     <tbody className="divide-y divide-slate-50">
                                         {kotToPreview.items.map((item: any, idx: number) => (
                                             <tr key={idx} className="text-[13px]">
-                                                <td className="py-3 font-bold text-slate-800">{item.itemName.toUpperCase()}</td>
+                                                <td className="py-3 font-bold text-slate-800 text-[15px] leading-tight">{item.itemName.toUpperCase()}</td>
                                                 <td className="py-3 text-right font-black text-lg">{item.quantity}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-
-                                <div className="text-center text-[10px] text-slate-400 italic">
-                                    --- End of Order ---
-                                </div>
                             </div>
                         </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
-import { Hotel, KeyRound, Lock, User, Loader2 } from "lucide-react";
+import { Hotel, Lock, User, Loader2 } from "lucide-react";
 import { DEFAULT_BRAND_NAME, handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 
 export function LoginPage() {
@@ -238,45 +238,16 @@ export function LoginPage() {
           </form>
         </div>
 
-        {/* Credentials */}
-        <div
-          className="mt-4 bg-white border border-[#e8e2d8]"
-          style={{
-            borderRadius: "12px",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-            padding: "20px 40px",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <KeyRound className="w-5 h-5 text-gray-500" />
-            <h3 className="font-semibold text-gray-800">Login Credentials</h3>
-          </div>
-
-          <div className="space-y-2 text-sm text-gray-700">
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span>Super Admin:</span>
-              <code className="font-mono text-[#A8832D]">superadmin / superadmin123</code>
-            </div>
-
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span>System Admin:</span>
-              <code className="font-mono text-[#A8832D]">admin / admin123</code>
-            </div>
-
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span>Hotel Manager:</span>
-              <code className="font-mono text-[#A8832D]">
-                manager / manager123
-              </code>
-            </div>
-
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span>Front Desk:</span>
-              <code className="font-mono text-[#A8832D]">
-                frontdesk / user123
-              </code>
-            </div>
-          </div>
+        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '1rem', color: '#9CA3AF', fontFamily: 'Times New Roman, serif', fontWeight: 'bold' }}>
+          Developed by{' '}          <a 
+            href="https://www.avaialable.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#080808', textDecoration: 'none' }}
+            title="Avaialable.com - Website | Webapp | Android app"
+          >
+            Avaialable.com
+          </a>
         </div>
       </div>
     </div>

@@ -990,26 +990,117 @@ export function HotelManagement() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [cloneSource, setCloneSource] = useState<Hotel | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
+  const showError = (msg: string) => {
+    setErrorMsg(msg);
+    setTimeout(() => setErrorMsg(""), 3500);
+  };
+
   const handleSave = async (data: any) => {
+    if (isSaving) return;
+
+    const rawWebsite = data?.website == null ? "" : String(data.website).trim();
+    const normalizedWebsite =
+      rawWebsite && !/^https?:\/\//i.test(rawWebsite)
+        ? `https://${rawWebsite}`
+        : rawWebsite;
+
+    const payload = {
+      ...data,
+      name: String(data?.name || "").trim(),
+      city: data?.city == null ? "" : String(data.city).trim(),
+      address: data?.address == null ? "" : String(data.address).trim(),
+      state: data?.state == null ? "" : String(data.state).trim(),
+      phone: data?.phone == null ? "" : String(data.phone).trim(),
+      email: data?.email == null ? "" : String(data.email).trim().toLowerCase(),
+      website: normalizedWebsite,
+      gstNumber: data?.gstNumber == null ? "" : String(data.gstNumber).trim(),
+      checkInTime: data?.checkInTime || "14:00",
+      checkOutTime: data?.checkOutTime || "12:00",
+      floors: data?.floors === "" || data?.floors == null ? null : Number(data.floors),
+      totalRooms:
+        data?.totalRooms === "" || data?.totalRooms == null
+          ? null
+          : Number(data.totalRooms),
+      taxRate: data?.taxRate === "" || data?.taxRate == null ? 12 : Number(data.taxRate),
+      rating: data?.rating === "" || data?.rating == null ? null : Number(data.rating),
+      hotelUsername: data?.hotelUsername == null ? undefined : String(data.hotelUsername).trim(),
+      hotelPassword: data?.hotelPassword == null ? undefined : String(data.hotelPassword),
+    };
+
+    if (!payload.name) {
+      showError("Hotel name is required");
+      return;
+    }
+
+    if (!editingHotel) {
+      const hasUsername = !!payload.hotelUsername;
+      const hasPassword = !!payload.hotelPassword;
+      if (hasUsername !== hasPassword) {
+        showError("Provide both hotel username and password, or leave both empty");
+        return;
+      }
+
+      if (hasUsername && payload.hotelUsername!.length < 3) {
+        showError("Hotel username must be at least 3 characters");
+        return;
+      }
+
+      if (hasPassword && payload.hotelPassword!.length < 6) {
+        showError("Hotel password must be at least 6 characters");
+        return;
+      }
+    }
+
+    if (payload.floors !== null && (!Number.isFinite(payload.floors) || payload.floors < 1)) {
+      showError("Floors must be at least 1");
+      return;
+    }
+
+    if (payload.totalRooms !== null && (!Number.isFinite(payload.totalRooms) || payload.totalRooms < 0)) {
+      showError("Total rooms cannot be negative");
+      return;
+    }
+
+    if (!Number.isFinite(payload.taxRate) || payload.taxRate < 0 || payload.taxRate > 100) {
+      showError("GST rate must be between 0 and 100");
+      return;
+    }
+
+    if (payload.rating !== null && (!Number.isFinite(payload.rating) || payload.rating < 0 || payload.rating > 5)) {
+      showError("Rating must be between 0 and 5");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       if (editingHotel) {
-        await updateHotel(editingHotel.id, data);
-        showSuccess(`"${data.name}" updated successfully`);
+        await updateHotel(editingHotel.id, payload);
+        showSuccess(`"${payload.name}" updated successfully`);
       } else {
-        await addHotel(data);
-        showSuccess(`"${data.name}" hotel created successfully`);
+        await addHotel(payload);
+        showSuccess(`"${payload.name}" hotel created successfully`);
       }
       setShowForm(false);
       setEditingHotel(null);
     } catch (err: any) {
       console.error("Save failed:", err);
-      // Optional: show error toast here if needed, but showSuccess is for success
+      const message =
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Unable to save hotel. Please check the form and try again.";
+      showError(message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1039,6 +1130,15 @@ export function HotelManagement() {
             style={{ background: "linear-gradient(135deg, #15803d, #166534)" }}
           >
             ✓ {successMsg}
+          </div>
+        )}
+
+        {errorMsg && (
+          <div
+            className="fixed top-20 right-6 z-50 px-5 py-3 rounded-xl text-white text-sm font-medium shadow-xl max-w-md"
+            style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)" }}
+          >
+            {errorMsg}
           </div>
         )}
 
@@ -1167,7 +1267,7 @@ export function HotelManagement() {
           <HotelFormModal
             hotel={editingHotel ? { ...editingHotel } : emptyHotel()}
             isNew={!editingHotel}
-            onSave={handleSave}
+            onSave={isSaving ? () => { } : handleSave}
             onClose={() => {
               setShowForm(false);
               setEditingHotel(null);

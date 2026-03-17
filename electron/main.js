@@ -111,8 +111,22 @@ function createMainWindow() {
 
   mainWindow.setMenuBarVisibility(false);
 
-  // Open all target=_blank and programmatic popups in the user's default browser.
+  // Allow window.open() for print windows
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === 'about:blank' || url === '') {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 800,
+          height: 600,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+          }
+        }
+      }
+    }
+    // Open external URLs in system browser
     shell.openExternal(url);
     return { action: 'deny' };
   });
@@ -141,6 +155,32 @@ ipcMain.handle('app:get-info', () => ({
   version: app.getVersion(),
   platform: process.platform,
 }));
+
+ipcMain.on('print-html', (event, html) => {
+  const printWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    }
+  });
+  
+  printWindow.loadURL('about:blank');
+  printWindow.webContents.on('did-finish-load', () => {
+    printWindow.webContents.executeJavaScript(`
+      document.write(${JSON.stringify(html)});
+      document.close();
+    `).then(() => {
+      setTimeout(() => {
+        printWindow.webContents.print({}, (success) => {
+          printWindow.close();
+        });
+      }, 500);
+    });
+  });
+});
 
 // Register IPC handlers before any renderer tries to use them.
 registerWindowControlHandlers();

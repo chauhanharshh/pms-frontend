@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
   platform: process.platform,
   getAppInfo: () => ipcRenderer.invoke('app:get-info'),
+  printHtml: (html) => ipcRenderer.send('print-html', html),
 });

@@ -325,6 +325,11 @@ const ADMIN_SECTIONS: NavSection[] = [
         icon: <Users className="w-4 h-4" />,
       },
       {
+        label: "Service Charge Report",
+        path: "/admin/restaurant/service-charge-report",
+        icon: <IndianRupee className="w-4 h-4" />,
+      },
+      {
         label: "POS / Billing",
         path: "/admin/restaurant/pos",
         icon: <IndianRupee className="w-4 h-4" />,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
@@ -913,6 +913,22 @@ export function HotelDashboard() {
 
   const hotelId = currentHotelId || user?.hotelId || user?.hotel?.id || "";
   const hotel = hotels.find((h) => String(h.id) === String(hotelId));
+  const hotelFromUser: any =
+    (user as any)?.hotel ||
+    (user as any)?.hotelData ||
+    (user as any)?.property ||
+    null;
+  const resolvedHotel = hotel || hotelFromUser || null;
+  const hotelForInvoice: any =
+    hotel ||
+    (user as any)?.hotel ||
+    (user as any)?.hotelData ||
+    (user as any)?.property ||
+    null;
+
+  useEffect(() => {
+    console.log("user object:", JSON.stringify(user, null, 2));
+  }, [user]);
 
   // Banner display mapping: read available values from common key variants.
   const hotelData = (hotel || {}) as any;
@@ -1687,7 +1703,10 @@ export function HotelDashboard() {
 
       {viewInvoice && (
         <InvoiceModal
-          invoice={viewInvoice}
+          invoice={{
+            ...viewInvoice,
+            hotel: (viewInvoice as any).hotel || hotelForInvoice || resolvedHotel
+          }}
           onClose={() => setViewInvoice(null)}
         />
       )}

@@ -314,9 +314,12 @@ export interface RestaurantOrder {
   bookingId?: string;
   tableNumber?: string;
   guestName?: string;
+  stewardId?: string;
+  stewardName?: string;
   discount?: number | string;
   subtotal: number | string;
   gst: number | string;
+  serviceCharge?: number | string;
   totalAmount: number | string;
   status: string;
   paymentMethod?: string;
@@ -541,18 +544,33 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   const fetchAll = useCallback(async (silent = false) => {
     if (!user || !token) return;
-    if (user.role === "super_admin") {
-      if (!silent) {
-        setIsLoading(false);
-        setError(null);
-      }
-      return;
-    }
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {
       const hotelsRes = await api.get(`/hotels`);
-      const fetchedHotels = hotelsRes.data?.data || [];
+      let fetchedHotels: Hotel[] = hotelsRes.data?.data || [];
+
+      // For hotel-role users, list endpoint can return an empty array even when a valid hotelId exists.
+      // Fallback to a direct single-hotel fetch so full hotel details are always available in context.
+      if (
+        fetchedHotels.length === 0 &&
+        user.role !== "admin" &&
+        user.role !== "super_admin"
+      ) {
+        const hId = currentHotelId || user.hotelId || user.hotel?.id;
+        if (hId) {
+          try {
+            const singleHotelRes = await api.get(`/hotels/${hId}`);
+            const singleHotel = singleHotelRes.data?.data;
+            if (singleHotel) {
+              fetchedHotels = Array.isArray(singleHotel) ? singleHotel : [singleHotel];
+            }
+          } catch (singleHotelErr) {
+            console.error("Fallback single hotel fetch failed:", singleHotelErr);
+          }
+        }
+      }
+
       setHotels(fetchedHotels);
 
       const effectiveHotelId = currentHotelId || (user.role === "admin" ? null : user.hotelId);
@@ -1308,7 +1326,10 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         updateLiability,
         addLiabilityPayment,
         deleteLiability,
-        activeHotel: hotels.find(h => h.id === currentHotelId) || null,
+        activeHotel: hotels.find(h =>
+          String(h.id) === String(currentHotelId) ||
+          String((h as any)._id) === String(currentHotelId)
+        ) || null,
       }}
     >
       {children}

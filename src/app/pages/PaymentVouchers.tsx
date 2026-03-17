@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { formatCurrency, formatDate } from "../utils/format";
 import { PaymentVoucher } from "../contexts/PMSContext";
+import { printHtml } from "../utils/print";
 import {
   BookmarkCheck,
   Plus,
@@ -77,9 +78,7 @@ export function PaymentVouchers() {
 
   const handlePrint = (v: PaymentVoucher) => {
     const hotel = hotels.find((h) => h.id === v.hotelId);
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`
+    const html = `
       <html><head><title>Voucher ${v.voucherNumber}</title>
       <style>
         body { font-family: 'Times New Roman', serif; padding: 40px; max-width: 600px; margin: 0 auto; }
@@ -112,9 +111,9 @@ export function PaymentVouchers() {
           <div class="sig-line">Received By</div>
         </div>
       </body></html>
-    `);
-    w.document.close();
-    w.print();
+    `;
+
+    printHtml(html);
   };
 
   const statusColors: Record<string, { bg: string; text: string }> = {
