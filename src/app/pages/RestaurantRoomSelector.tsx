@@ -7,10 +7,11 @@ import { BedDouble, AlertCircle, Building2, ChevronDown } from "lucide-react";
 
 export function RestaurantRoomSelector() {
     const { user } = useAuth();
-    const { getCheckedInRooms, hotels, systemSettings, rooms } = usePMS();
+    const { getCheckedInRooms, getKOTs, hotels, systemSettings, rooms } = usePMS();
     const navigate = useNavigate();
     const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
     const [allRooms, setAllRooms] = useState<any[]>([]);
+    const [roomsWithOpenKOT, setRoomsWithOpenKOT] = useState<Set<string>>(new Set());
     const currentHotelId = user?.hotelId || "";
     const currentUserHotel = hotels.find(h => h.id === currentHotelId);
     const isPosBossMode = currentUserHotel?.posBossMode === true;
@@ -31,11 +32,45 @@ export function RestaurantRoomSelector() {
     const activeHotel = hotels.find((h) => h.id === activeSelectorHotelId) || { name: user?.role === "admin" ? "All Hotels (Consolidated)" : "Unknown Hotel", showAllRooms: false } as Hotel;
 
     useEffect(() => {
-        getCheckedInRooms(activeSelectorHotelId).then(setCheckedInRooms).catch(console.error);
+        let isMounted = true;
+
+        const fetchRoomAndKotData = async () => {
+            try {
+                const [roomData, openKots] = await Promise.all([
+                    getCheckedInRooms(activeSelectorHotelId),
+                    getKOTs("OPEN"),
+                ]);
+
+                if (!isMounted) return;
+
+                setCheckedInRooms(roomData);
+
+                const relevantKots = (openKots || []).filter((kot: any) => {
+                    return !activeSelectorHotelId || kot.hotelId === activeSelectorHotelId;
+                });
+
+                const roomIdsWithOpenKOT = new Set<string>(
+                    relevantKots
+                        .map((kot: any) => kot.order?.roomId)
+                        .filter((roomId: unknown): roomId is string => typeof roomId === "string" && roomId.length > 0)
+                );
+
+                setRoomsWithOpenKOT(roomIdsWithOpenKOT);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        fetchRoomAndKotData();
+
         if (activeHotel?.showAllRooms) {
             setAllRooms(rooms.filter(r => r.hotelId === activeSelectorHotelId));
         }
-    }, [activeSelectorHotelId, getCheckedInRooms, activeHotel?.showAllRooms, rooms]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [activeSelectorHotelId, getCheckedInRooms, getKOTs, activeHotel?.showAllRooms, rooms]);
 
     // Create a base path depending on the user role to redirect correctly
     const getPosPath = () => {
@@ -123,22 +158,23 @@ export function RestaurantRoomSelector() {
                                     {roomsToDisplay.map((room: any) => {
                                         const currentBooking = room.bookings?.find((b: any) => b.status === 'checked_in') || checkedInRooms.find(r => r.id === room.id)?.bookings?.find((b: any) => b.status === 'checked_in');
                                         const guestName = currentBooking?.guest?.name || checkedInRooms.find(r => r.id === room.id)?.guestName || "Vacant";
+                                        const hasOpenKOT = roomsWithOpenKOT.has(room.id);
 
                                     return (
                                         <button
                                             key={room.id}
                                             onClick={() => handleRoomSelect(room.id)}
-                                            className="group bg-white rounded-xl p-5 border border-slate-200 hover:border-[#C6A75E] hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden"
+                                            className={`group rounded-xl p-5 border hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden ${hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : "bg-white border-slate-200 hover:border-[#C6A75E]"}`}
                                         >
                                             {/* Accent strip */}
-                                            <div className="absolute top-0 left-0 w-full h-1 bg-slate-100 group-hover:bg-[#C6A75E] transition-colors" />
+                                            <div className={`absolute top-0 left-0 w-full h-1 transition-colors ${hasOpenKOT ? "bg-red-400 group-hover:bg-red-500" : "bg-slate-100 group-hover:bg-[#C6A75E]"}`} />
 
                                             <div className="flex justify-between items-start mt-1">
                                                 <div>
                                                     <p className="text-2xl font-bold text-slate-800">Room {room.roomNumber}</p>
                                                 </div>
-                                                <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0 border border-green-100 mt-1">
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${hasOpenKOT ? "bg-red-100 border border-red-200" : "bg-green-50 border border-green-100"}`}>
+                                                    <div className={`w-2.5 h-2.5 rounded-full ${hasOpenKOT ? "bg-red-500" : "bg-green-500"}`} />
                                                 </div>
                                             </div>
 
