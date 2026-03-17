@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room } from "../contexts/PMSContext";
 import { formatCurrency } from "../utils/format";
+import { useRoomStatusColors } from "../utils/roomStatusColors";
 import {
   BedDouble,
   Search,
@@ -102,6 +103,18 @@ function RoomCard({
   onDelete: (id: string) => void;
 }) {
   const cfg = STATUS_CONFIG[room.status];
+  const roomStatusColors = useRoomStatusColors({
+    checkInColor: "#b91c1c",
+    checkOutColor: "#14532d",
+    maintenanceColor: "#14532d",
+  });
+  const cardBg =
+    room.status === "occupied"
+      ? roomStatusColors.checkInColor
+      : room.status === "maintenance"
+        ? roomStatusColors.maintenanceColor
+        : roomStatusColors.checkOutColor;
+  const cardBorder = cardBg;
   const roomBill = bills.find((b) => b.roomNumber === room.roomNumber);
   const runningBill = roomBill ? roomBill.totalAmount - roomBill.paidAmount : 0;
   const nights =
@@ -111,16 +124,15 @@ function RoomCard({
 
   return (
     <div
-      className="relative rounded-2xl overflow-hidden transition-all group"
+      className="relative rounded-xl overflow-hidden transition-all group"
       style={{
-        background: cfg.bg,
-        border: `1.5px solid ${cfg.border}`,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-        minHeight: "185px",
+        background: cardBg,
+        border: `1.5px solid ${cardBorder}`,
+        minHeight: "160px",
       }}
     >
       {/* Status dot + Room number header */}
-      <div className="px-4 pt-4 pb-3 flex items-start justify-between">
+      <div className="px-3 pt-3 pb-2 flex items-start justify-between">
         <div className="flex items-center gap-2">
           <div
             className="w-2.5 h-2.5 rounded-full animate-pulse"
@@ -128,12 +140,12 @@ function RoomCard({
           />
           <div>
             <div
-              className="text-base font-bold"
-              style={{ fontFamily: "Times New Roman, serif", color: "#1F2937" }}
+              className="text-sm font-bold"
+              style={{ fontFamily: "Times New Roman, serif", color: "#f8fafc" }}
             >
               {room.roomNumber}
             </div>
-            <div className="text-xs" style={{ color: "#6B7280" }}>
+            <div className="text-xs" style={{ color: "#d1fae5" }}>
               Floor {room.floor} • {(room as any).type || room.roomType?.name || ''}
             </div>
           </div>
@@ -151,7 +163,7 @@ function RoomCard({
       </div>
 
       {/* Context body */}
-      <div className="px-4 pb-3 space-y-1.5">
+      <div className="px-3 pb-2 space-y-1">
         {room.status === "vacant" && (
           <>
             <div
@@ -161,7 +173,7 @@ function RoomCard({
               {formatCurrency(Number((room as any).price || room.basePrice || 0))}
               <span className="text-xs font-normal text-gray-500">/night</span>
             </div>
-            <div className="text-xs" style={{ color: "#6B7280" }}>
+            <div className="text-xs" style={{ color: "#d1fae5" }}>
               Max {room.maxOccupancy} guests
             </div>
           </>
@@ -172,14 +184,14 @@ function RoomCard({
               <User className="w-3.5 h-3.5" style={{ color: "#dc2626" }} />
               <span
                 className="text-sm font-semibold"
-                style={{ color: "#1F2937" }}
+                style={{ color: "#f8fafc" }}
               >
                 {(room as any).guestName}
               </span>
             </div>
             <div
               className="flex items-center gap-1.5 text-xs"
-              style={{ color: "#6B7280" }}
+              style={{ color: "#d1fae5" }}
             >
               <Calendar className="w-3 h-3" />
               {(room as any).checkInDate} → {(room as any).checkOutDate}
@@ -216,7 +228,7 @@ function RoomCard({
       </div>
 
       {/* Quick action buttons */}
-      <div className="px-4 pb-4 flex gap-2">
+      <div className="px-3 pb-3 flex gap-2">
         {room.status === "vacant" && (
           <button
             onClick={() => onStatusChange(room.id, "cleaning")}
@@ -837,7 +849,7 @@ export function RoomManagement() {
                       <div
                         className="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider"
                         style={{
-                          background: "rgba(221, 215, 204,0.1)",
+                          background: "#EDE6D9",
                           color: DARKGOLD,
                           border: "1px solid #E5E1DA",
                         }}

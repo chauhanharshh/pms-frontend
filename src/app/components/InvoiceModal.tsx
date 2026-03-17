@@ -120,8 +120,8 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const arrivalDateStr = bk?.checkInDate ? formatDateTime(new Date(bk.checkInDate)) : '-';
   const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
 
-  // Calculate GST percentage
-  const taxRate = Number(hotel?.taxRate || 12);
+  // Calculate GST percentage from actual invoice tax amounts.
+  const taxRate = subtotal > 0 ? (totalGst / subtotal) * 100 : 0;
   const gstPercentage = (taxRate / 2).toFixed(2); // CGST + SGST each half of total rate
 
   const items: any[] = [];

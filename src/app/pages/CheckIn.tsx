@@ -1016,7 +1016,7 @@ export function CheckIn() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span style={{ color: "#6B7280" }}>
-                        GST ({hotel?.taxRate || 12}%)
+                        GST ({taxInfo.rate}%)
                       </span>
                       <span>{formatCurrency(gst)}</span>
                     </div>

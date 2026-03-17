@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room, Booking } from "../contexts/PMSContext";
 import { formatCurrency } from "../utils/format";
+import { calculateRoomTax } from "../utils/tax";
 import {
   DoorOpen,
   Users,
@@ -40,6 +41,7 @@ import {
 import { InvoiceModal } from "../components/InvoiceModal";
 import { BookingPreviewModal } from "../components/BookingPreviewModal";
 import { Eye } from "lucide-react";
+import { useRoomStatusColors } from "../utils/roomStatusColors";
 
 // ── THEME TOKENS ───────────────────────────────────────────────
 const T = {
@@ -526,11 +528,8 @@ function CheckOutModal({
   onConfirm: (bookingId: string, roomId: string, paymentMode: string) => void;
   onClose: () => void;
 }) {
-  const { bills, miscCharges, restaurantOrders, hotels } = usePMS();
+  const { bills, miscCharges, restaurantOrders } = usePMS();
   const [paymentMode, setPaymentMode] = useState("Cash");
-
-  const hotel = hotels.find((h) => h.id === hotelId);
-  const taxRate = hotel?.taxRate || 12;
 
   const roomBills = bills.filter(
     (b) => b.hotelId === hotelId && (b.booking?.id === booking.id || b.bookingId === booking.id),
@@ -555,9 +554,15 @@ function CheckOutModal({
   const miscTotal = miscList.reduce((s, m) => s + Number(m.amount), 0);
   const restaurantTotal = restaurantList.reduce((s, o) => s + Number(o.totalAmount), 0);
   const subTotal = roomCharge + miscTotal + restaurantTotal;
+  const effectiveDailyRent = Math.max(0, roomCharge) / Math.max(nights, 1);
+  const fallbackTaxRate = calculateRoomTax(effectiveDailyRent, 1).rate;
   const tax = existingBill
     ? Number(existingBill.taxAmount || 0)
-    : Math.round((subTotal * Number(taxRate)) / 100);
+    : Math.round((subTotal * fallbackTaxRate) / 100);
+  const displayTaxRate =
+    subTotal > 0
+      ? Number(((tax / subTotal) * 100).toFixed(2))
+      : fallbackTaxRate;
   const grandTotal = existingBill
     ? Number(existingBill.totalAmount || 0)
     : subTotal + tax;
@@ -660,7 +665,7 @@ function CheckOutModal({
                 <span className="font-medium">{formatCurrency(subTotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span style={{ color: T.sub }}>GST ({taxRate}%)</span>
+                <span style={{ color: T.sub }}>GST ({displayTaxRate}%)</span>
                 <span className="font-medium">{formatCurrency(tax)}</span>
               </div>
               <div
@@ -810,6 +815,18 @@ function RoomCard({
   onClick: () => void;
 }) {
   const cfg = SC[room.status];
+  const roomStatusColors = useRoomStatusColors({
+    checkInColor: "#b91c1c",
+    checkOutColor: "#07b44c",
+    maintenanceColor: "#07b44c",
+  });
+  const cardBg =
+    room.status === "occupied"
+      ? roomStatusColors.checkInColor
+      : room.status === "maintenance"
+        ? roomStatusColors.maintenanceColor
+        : roomStatusColors.checkOutColor;
+  const cardBorder = cardBg;
   const nights = booking
     ? daysBetween(booking.checkInDate, booking.checkOutDate)
     : 0;
@@ -817,30 +834,28 @@ function RoomCard({
   return (
     <button
       onClick={onClick}
-      className="rounded-xl text-left transition-all w-full"
+      className="rounded-lg text-left transition-all w-full"
       style={{
-        background: cfg.bg,
-        border: `1.5px solid ${cfg.border}`,
-        padding: "12px",
+        background: cardBg,
+        border: `1.5px solid ${cardBorder}`,
+        padding: "9px",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
       }}
     >
       <div className="flex items-start justify-between mb-2">
         <div>
           <div
-            className="text-base font-bold"
-            style={{ fontFamily: "Times New Roman, serif", color: T.text }}
+            className="text-sm font-bold"
+            style={{ fontFamily: "Times New Roman, serif", color: "#f8fafc" }}
           >
             {room.roomNumber}
           </div>
-          <div className="text-xs" style={{ color: T.sub }}>
+          <div className="text-xs" style={{ color: "#d1fae5" }}>
             {room.roomType?.name || "Standard"} · F{room.floor}
           </div>
         </div>
@@ -862,7 +877,7 @@ function RoomCard({
               {formatCurrency(Number(room.basePrice || 0))}
               <span className="text-xs font-normal text-gray-400">/night</span>
             </div>
-            <div className="text-xs" style={{ color: T.sub }}>
+            <div className="text-xs" style={{ color: "#d1fae5" }}>
               Max {room.maxOccupancy} guests
             </div>
           </>
@@ -873,7 +888,7 @@ function RoomCard({
               {booking.guestName}
               {(booking.companyName || (booking as any).company?.name) && ` • ${booking.companyName || (booking as any).company?.name}`}
             </div>
-            <div className="text-xs" style={{ color: T.sub }}>
+            <div className="text-xs" style={{ color: "#d1fae5" }}>
               {booking.checkInDate} {booking.checkInTime ? `(${booking.checkInTime})` : ""} → {booking.checkOutDate}
             </div>
             <div className="text-xs font-medium" style={{ color: T.gold }}>
@@ -1143,7 +1158,7 @@ export function HotelDashboard() {
             value={occupied}
             sub={`${vacant} vacant`}
             icon={<BedDouble className="w-5 h-5" />}
-            color="#ef4444"
+            color="#850505"
           />
           <StatCard
             label="Today's Check-outs"
@@ -1188,7 +1203,7 @@ export function HotelDashboard() {
                 status: "occupied",
                 label: "Occupied",
                 count: occupied,
-                color: "#ef4444",
+                color: "#9c0000",
               },
               {
                 status: "cleaning",
@@ -1334,7 +1349,7 @@ export function HotelDashboard() {
                       <div
                         className="px-3 py-1 rounded-sm text-xs font-bold uppercase tracking-wider"
                         style={{
-                          background: "rgba(221, 215, 204,0.1)",
+                          background: "#EDE6D9",
                           color: T.darkGold,
                           border: `1px solid #E5E1DA`,
                         }}
@@ -1431,7 +1446,7 @@ export function HotelDashboard() {
                   label: "Walk-in Check-in",
                   icon: <Users className="w-4 h-4" />,
                   path: "/hotel/check-in",
-                  color: "#16a34a",
+                  color: "#149500",
                 },
                 {
                   label: "New Reservation",

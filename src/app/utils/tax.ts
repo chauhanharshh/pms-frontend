@@ -9,8 +9,7 @@ export interface TaxBreakdown {
 
 /**
  * Calculates GST based on Indian Hotel GST rules:
- * - ₹0 to ₹1000: 0%
- * - ₹1001 to ₹7500: 5%
+ * - ₹0 to ₹7500: 5%
  * - Above ₹7500: 18%
  * 
  * @param dailyRent The rent per day for one room
@@ -21,13 +20,9 @@ export function calculateRoomTax(dailyRent: number, nights: number = 1): TaxBrea
     const rent = dailyRent;
     const numNights = nights;
 
-    let rate = 0;
+    let rate = 5;
     if (rent > 7500) {
         rate = 18;
-    } else if (rent >= 1001) {
-        rate = 5;
-    } else {
-        rate = 0;
     }
 
     const cgstRate = rate / 2;

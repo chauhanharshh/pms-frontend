@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Save, RotateCcw, Building2, Paintbrush } from "lucide-react";
 import { usePMS } from "../contexts/PMSContext";
 import { useAuth } from "../contexts/AuthContext";
+import {
+    DEFAULT_ROOM_STATUS_COLORS,
+    getRoomStatusColors,
+    saveRoomStatusColors,
+    type RoomStatusColors,
+} from "../utils/roomStatusColors";
 
 // Optional: you can extract these to a robust validation util, but standard hex is easy
 const isValidHex = (color: string) => /^#([0-9A-F]{3}){1,2}$/i.test(color);
@@ -28,6 +34,7 @@ export function AppearanceSettings() {
     const [hotelSidebar, setHotelSidebar] = useState("#1F2937");
     const [hotelHeader, setHotelHeader] = useState("#ffffff");
     const [hotelAccent, setHotelAccent] = useState("#C6A75E");
+    const [roomStatusColors, setRoomStatusColors] = useState<RoomStatusColors>(() => getRoomStatusColors());
 
     const [message, setMessage] = useState({ text: "", type: "" });
 
@@ -111,6 +118,24 @@ export function AppearanceSettings() {
         } catch (e) {
             setMessage({ text: "Error removing hotel theme.", type: "error" });
         }
+    };
+
+    const handleSaveRoomStatusColors = () => {
+        if (
+            !isValidHex(roomStatusColors.checkInColor) ||
+            !isValidHex(roomStatusColors.checkOutColor) ||
+            !isValidHex(roomStatusColors.maintenanceColor)
+        ) {
+            setMessage({ text: "Please provide valid room status hex codes (e.g., #EF4444).", type: "error" });
+            return;
+        }
+
+        saveRoomStatusColors(roomStatusColors);
+        setMessage({ text: "Room status colors saved successfully.", type: "success" });
+    };
+
+    const handleResetRoomStatusColors = () => {
+        setRoomStatusColors(DEFAULT_ROOM_STATUS_COLORS);
     };
 
     // Hide message after 3 seconds
@@ -273,6 +298,90 @@ export function AppearanceSettings() {
 
             </div>
 
+            {/* SECTION C: ROOM STATUS COLORS */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
+                <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Paintbrush className="w-5 h-5 text-gray-400" />
+                        Room Status Colors
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                        Configure room card background colors by room status.
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    <RoomStatusColorRow
+                        label="Check In Color"
+                        value={roomStatusColors.checkInColor}
+                        onChange={(value) =>
+                            setRoomStatusColors((prev) => ({ ...prev, checkInColor: value }))
+                        }
+                    />
+                    <RoomStatusColorRow
+                        label="Check Out Color"
+                        value={roomStatusColors.checkOutColor}
+                        onChange={(value) =>
+                            setRoomStatusColors((prev) => ({ ...prev, checkOutColor: value }))
+                        }
+                    />
+                    <RoomStatusColorRow
+                        label="Maintenance Color"
+                        value={roomStatusColors.maintenanceColor}
+                        onChange={(value) =>
+                            setRoomStatusColors((prev) => ({ ...prev, maintenanceColor: value }))
+                        }
+                    />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button
+                        onClick={handleResetRoomStatusColors}
+                        className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-700"
+                    >
+                        <RotateCcw className="w-4 h-4" />
+                        Reset to Default
+                    </button>
+                    <button
+                        onClick={handleSaveRoomStatusColors}
+                        className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
+                        style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
+                    >
+                        <Save className="w-4 h-4" />
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    );
+}
+
+function RoomStatusColorRow({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: string;
+    onChange: (val: string) => void;
+}) {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+            <label className="text-sm font-medium">{label}</label>
+            <input
+                type="color"
+                value={isValidHex(value) ? value : "#000000"}
+                onChange={(e) => onChange(e.target.value)}
+                className="h-10 w-20 border rounded-lg cursor-pointer"
+            />
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full border rounded-lg p-2 text-sm uppercase font-mono dark:bg-gray-900 dark:border-gray-700"
+                placeholder="#FFFFFF"
+            />
         </div>
     );
 }

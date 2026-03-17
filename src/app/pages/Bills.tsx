@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { Bill, BillItem } from "../contexts/PMSContext";
 import { formatCurrency as utilFormatCurrency, formatDate as utilFormatDate } from "../utils/format";
+import { calculateRoomTax } from "../utils/tax";
 import {
   FileText,
   Search,
@@ -37,8 +38,14 @@ function EditBillModal({
   const roomSubtotal = items.filter(i => i.type === "room").reduce((s, i) => s + i.amount, 0);
   const otherSubtotal = items.filter(i => i.type !== "room").reduce((s, i) => s + i.amount, 0);
 
-  const taxRate = 0.06; // 6% CGST + 6% SGST = 12% total (as per example)
-  const taxAmount = Math.max(0, roomSubtotal) * taxRate * 2;
+  const checkIn = b?.booking?.checkInDate ? new Date(b.booking.checkInDate) : null;
+  const checkOut = b?.booking?.checkOutDate ? new Date(b.booking.checkOutDate) : null;
+  const nights = checkIn && checkOut
+    ? Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)))
+    : 1;
+  const effectiveDailyRent = Math.max(0, roomSubtotal) / Math.max(1, nights);
+  const taxRatePercent = calculateRoomTax(effectiveDailyRent, 1).rate;
+  const taxAmount = Math.max(0, roomSubtotal) * (taxRatePercent / 100);
   const total = Math.max(0, roomSubtotal + otherSubtotal - discount) + taxAmount;
 
   const updateItem = (
@@ -293,11 +300,11 @@ function EditBillModal({
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span style={{ color: "#6B7280" }}>CGST (9%)</span>
+                <span style={{ color: "#6B7280" }}>CGST ({(taxRatePercent / 2).toFixed(2)}%)</span>
                 <span>{utilFormatCurrency(taxAmount / 2)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span style={{ color: "#6B7280" }}>SGST (9%)</span>
+                <span style={{ color: "#6B7280" }}>SGST ({(taxRatePercent / 2).toFixed(2)}%)</span>
                 <span>{utilFormatCurrency(taxAmount / 2)}</span>
               </div>
               <div
