@@ -111,9 +111,11 @@ function RoomCard({
   const cardBg =
     room.status === "occupied"
       ? roomStatusColors.checkInColor
+      : room.status === "vacant"
+        ? roomStatusColors.checkOutColor
       : room.status === "maintenance"
         ? roomStatusColors.maintenanceColor
-        : roomStatusColors.checkOutColor;
+        : cfg.bg;
   const cardBorder = cardBg;
   const roomBill = bills.find((b) => b.roomNumber === room.roomNumber);
   const runningBill = roomBill ? roomBill.totalAmount - roomBill.paidAmount : 0;

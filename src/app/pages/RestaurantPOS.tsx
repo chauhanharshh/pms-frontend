@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Hotel, RestaurantOrder, RestaurantOrderItem as OrderItem } from "../contexts/PMSContext";
@@ -18,7 +18,6 @@ import {
   Search,
   Users,
   UtensilsCrossed,
-  History as LucideHistory,
   FileText,
   ChevronRight,
   Trash2,
@@ -33,8 +32,10 @@ import {
 
 const GOLD = "var(--accent-color, #C6A75E)";
 const DARKGOLD = "var(--primary, #A8832D)";
+const RECEIPT_DASH = "- - - - - - - - - - - - - -";
 
 export function RestaurantPOS() {
+  const navigate = useNavigate();
   const { user, setCurrentHotelId } = useAuth();
   const {
     restaurantCategories,
@@ -134,7 +135,6 @@ export function RestaurantPOS() {
   // Data State
   const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
   const [allRooms, setAllRooms] = useState<any[]>([]);
-  const [showOpenOrders, setShowOpenOrders] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showKOTPreview, setShowKOTPreview] = useState(false);
   const [kotToPreview, setKotToPreview] = useState<any>(null);
@@ -241,10 +241,6 @@ export function RestaurantPOS() {
     return items;
   }, [restaurantItems, localItems, isBossAdmin, selectedHotelId, activeCat, searchQuery]);
 
-  const openOrders = restaurantOrders.filter(
-    (o) => o.hotelId === selectedHotelId && o.status !== "cancelled" && o.status !== "billed" && !o.invoicedAt
-  );
-
   const addItemOptions = useMemo(() => {
     // Category filter is respected; text search is handled by browser datalist matching.
     const sourceItems = (isBossAdmin && bossMenuLoaded)
@@ -345,6 +341,63 @@ export function RestaurantPOS() {
   const serviceCharge = subtotal * 0.10; // 10% Service Charge
   const total = subtotal + serviceCharge;
 
+  const formatReceiptDateTime = (value?: string) => {
+    const dt = value ? new Date(value) : new Date();
+    if (Number.isNaN(dt.getTime())) return "-";
+    const dd = String(dt.getDate()).padStart(2, "0");
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const yy = String(dt.getFullYear()).slice(-2);
+    const hh = String(dt.getHours()).padStart(2, "0");
+    const min = String(dt.getMinutes()).padStart(2, "0");
+    const ss = String(dt.getSeconds()).padStart(2, "0");
+    return `${dd}-${mm}-${yy} ${hh}:${min}:${ss}`;
+  };
+
+  const splitAddressLines = (address?: string) => {
+    const chunks = String(address || "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return {
+      line1: chunks[0] || "",
+      line2: chunks[1] || "",
+      cityState: chunks.slice(2).join(", ") || "",
+    };
+  };
+
+  const formatReceiptItemLine = (itemName: string, qty: number, price: number, amount: number) => {
+    const name = String(itemName || "").slice(0, 12).padEnd(12, " ");
+    const qtyText = String(qty).padStart(3, " ");
+    const priceText = price.toFixed(2).padStart(7, " ");
+    const amountText = amount.toFixed(2).padStart(8, " ");
+    return `${name}${qtyText}${priceText}${amountText}`;
+  };
+
+  const getReceiptItems = (invoice?: any) => {
+    const orderItems = invoice?.restaurantOrder?.orderItems;
+    if (Array.isArray(orderItems) && orderItems.length > 0) {
+      return orderItems.map((item: any) => {
+        const qty = Number(item.quantity || 0);
+        const price = Number(item.price || 0);
+        const amount = Number(item.itemTotal || qty * price);
+        return {
+          itemName: item.menuItem?.itemName || item.itemName || "Item",
+          quantity: qty,
+          price,
+          amount,
+        };
+      });
+    }
+
+    return cart.map((item: any) => ({
+      itemName: item.itemName || "Item",
+      quantity: Number(item.quantity || 0),
+      price: Number(item.price || 0),
+      amount: Number(item.itemTotal || 0),
+    }));
+  };
+
   const resetPOS = () => {
     setCart([]);
     setTableNumber("");
@@ -365,27 +418,6 @@ export function RestaurantPOS() {
     setKotToPreview(null);
     setShowBillPreview(false);
     setBillToPreview(null);
-  };
-
-  const loadOrder = (order: any) => {
-    setActiveOrderId(order.id);
-    setCart(order.orderItems.map((oi: any) => ({
-      menuItemId: oi.menuItemId,
-      itemName: oi.menuItem.itemName,
-      quantity: oi.quantity,
-      price: Number(oi.price),
-      itemTotal: Number(oi.itemTotal)
-    })));
-    setDiscount(Number(order.discount || 0));
-    setTableNumber(order.tableNumber || "");
-    setBookingId(order.bookingId || null);
-    setGuestName(order.guestName || "");
-    setStewardName(order.stewardName || "");
-    if (order.booking?.room?.roomNumber) {
-      setRoomNumber(order.booking.room.roomNumber);
-    }
-    setShowOpenOrders(false);
-    toast.info(`Loaded order ${order.orderNumber}`);
   };
 
   const handleGenerateKOT = async () => {
@@ -544,56 +576,66 @@ export function RestaurantPOS() {
         const thermalSubtotal = Number(invoice?.subtotal ?? subtotal ?? 0);
         const thermalService = thermalSubtotal * 0.10;
         const thermalNet = thermalSubtotal + thermalService;
+        const printTableNumber = invoice?.restaurantOrder?.tableNumber || tableNumber || "-";
+        const printRoomNumber = invoice?.restaurantOrder?.room?.roomNumber || roomNumber || "";
+        const printSteward = invoice?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
+        const addressLines = splitAddressLines(activeHotel?.address);
+        const items = getReceiptItems(invoice);
+        const contactNo = activeHotel?.phone || activeHotel?.mobile || activeHotel?.contactNumber || "-";
+        const gstNo = activeHotel?.gstNumber || activeHotel?.gstNo || "-";
+
         const getThermalHtml = () => `
         <html><head><title>Print Receipt</title>
         <style>
-          @page { margin: 0; }
-          body { 
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            width: 80mm; 
-            padding: 5mm; 
+          @page { size: 80mm auto; margin: 2mm; }
+          body {
+            width: 76mm;
             margin: 0;
-            color: #111;
+            color: #000;
             background: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.35;
           }
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          hr { border: 0; border-top: 1px solid #999; margin: 6px 0; }
-          @media print { body { width: 80mm; } }
+          .big { font-size: 14px; }
+          pre { margin: 0; white-space: pre; font-family: inherit; }
+          .row { display: flex; justify-content: space-between; }
+          @media print {
+            html, body { width: 80mm; }
+          }
         </style></head><body>
-          <div class="center bold">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
-          <div class="center">${activeHotel?.address || ""}</div>
-          <div class="center bold" style="margin: 5px 0">INVOICE</div>
-          <hr />
-          <div>DATE: ${new Date(invoice.invoiceDate).toLocaleDateString()}</div>
-          <div>BILL NO: ${invoice.invoiceNumber}</div>
-          <div>TABLE: ${tableNumber || "N/A"}</div>
-          <div>ROOM: ${roomNumber || "N/A"}</div>
-          <div>STEWARD: ${stewardName || user?.fullName || "Staff"}</div>
-          <hr />
-          ${cart.map(i => `
-            <div style="font-weight:bold">${i.itemName.toUpperCase()}</div>
-            <div style="display:flex; justify-content:space-between">
-              <span>${i.quantity} x ${i.price}</span>
-              <span>${i.itemTotal}</span>
-            </div>
-          `).join("")}
-          <hr />
-          <div style="display:flex; justify-content:space-between">
-            <span>SUBTOTAL:</span>
-            <span>${thermalSubtotal.toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between">
-            <span>SERVICE CHARGE (10%):</span>
-            <span>${thermalService.toFixed(2)}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-weight:bold">
-            <span>NET PAYABLE:</span>
-            <span>${thermalNet.toFixed(2)}</span>
-          </div>
-          <hr />
-          <div class="center" style="margin-top:20px">*** THANK YOU ***</div>
+          <div class="center bold big">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
+          ${addressLines.line1 ? `<div class="center">${addressLines.line1}</div>` : ""}
+          ${addressLines.line2 ? `<div class="center">${addressLines.line2}</div>` : ""}
+          ${addressLines.cityState ? `<div class="center">${addressLines.cityState}</div>` : ""}
+          <div class="center">Contact No: ${contactNo}</div>
+          <div class="center">GST No: ${gstNo}</div>
+          <div class="center">${RECEIPT_DASH}</div>
+          <div class="center bold">TAX INVOICE</div>
+          <div class="center">${RECEIPT_DASH}</div>
+          <div>Bill Date : ${formatReceiptDateTime(invoice?.invoiceDate || invoice?.createdAt)}</div>
+          <div>Bill No.  : ${invoice?.invoiceNumber || "-"}</div>
+          <div>Table No. : ${printTableNumber}</div>
+          ${printRoomNumber ? `<div>Room No.  : ${printRoomNumber}</div>` : ""}
+          <div>Steward   : ${printSteward}</div>
+          <div class="center">${RECEIPT_DASH}</div>
+          <pre>Item          Qty  Price  Amount</pre>
+          <div class="center">${RECEIPT_DASH}</div>
+          <pre>${items.map((item: any) => formatReceiptItemLine(item.itemName, item.quantity, item.price, item.amount)).join("\n")}</pre>
+          <div class="center">${RECEIPT_DASH}</div>
+          <div class="row"><span></span><span>Total Amount : ${thermalSubtotal.toFixed(2)}</span></div>
+          <div class="row"><span></span><span>Gross Amount : ${thermalSubtotal.toFixed(2)}</span></div>
+          ${thermalService > 0 ? `<div class="row"><span></span><span>Service(10%) : ${thermalService.toFixed(2)}</span></div>` : ""}
+          <div class="center">${RECEIPT_DASH}</div>
+          <div class="row bold big"><span></span><span>NET AMOUNT : ${thermalNet.toFixed(2)}</span></div>
+          <div class="center">${RECEIPT_DASH}</div>
+          <div>Cashier : ${printSteward}</div>
+          <div class="center">${RECEIPT_DASH}</div>
+          <div class="center">Thank you for your visit</div>
+          <div class="center">${RECEIPT_DASH}</div>
+          <div class="center">HSN/SAC Code: 996332</div>
         </body></html>
       `;
 
@@ -649,6 +691,10 @@ export function RestaurantPOS() {
         toast.success(`KOT ${finalKot.kotNumber} printed!`);
       }
 
+      const kotDate = formatReceiptDateTime(finalKot.printedAt || finalKot.createdAt);
+      const kotTable = finalKot.order?.tableNumber || tableNumber || "N/A";
+      const kotSteward = finalKot.order?.stewardName || stewardName || user?.fullName || "Staff";
+      const totalItems = Array.isArray(finalKot.items) ? finalKot.items.length : 0;
       const html = `
         <html>
           <head>
@@ -667,9 +713,7 @@ export function RestaurantPOS() {
               .center { text-align: center; }
               .bold { font-weight: bold; }
               .divider { border-bottom: 1px dashed black; margin: 5px 0; }
-              table { width: 100%; border-collapse: collapse; }
-              th, td { text-align: left; padding: 2px 0; vertical-align: top; }
-              .text-right { text-align: right; }
+              .item-line { margin: 2px 0; white-space: pre-wrap; }
               @media print {
                 body { width: 80mm; margin: 0; padding: 0; }
                 .page-break { page-break-after: always; }
@@ -677,34 +721,22 @@ export function RestaurantPOS() {
             </style>
           </head>
           <body>
-            <div class="center bold" style="font-size: 13px;">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
-            <div class="center bold" style="font-size: 13px; margin: 5px 0;">KITCHEN ORDER TICKET</div>
+            <div class="center">- - - - - - - - - - - - - - - -</div>
+            <div class="center bold" style="font-size: 13px;">GUEST KOT</div>
+            <div class="center">- - - - - - - - - - - - - - - -</div>
+            <div><strong>KOT No :</strong> ${finalKot.kotNumber || "-"}</div>
+            <div><strong>Date   :</strong> ${kotDate}</div>
+            <div><strong>Table  :</strong> ${kotTable}</div>
+            <div><strong>Steward:</strong> ${kotSteward}</div>
             <div class="divider"></div>
-            <div><strong>KOT No:</strong> ${finalKot.kotNumber}</div>
-            <div><strong>Date:</strong> ${new Date(finalKot.printedAt).toLocaleString()}</div>
-            <div><strong>Table:</strong> ${finalKot.order?.tableNumber || tableNumber || "N/A"}</div>
-            ${finalKot.order?.room ? `<div><strong>Room:</strong> ${finalKot.order.room.roomNumber}</div>` : (roomNumber ? `<div><strong>Room:</strong> ${roomNumber}</div>` : "")}
-            <div><strong>Steward:</strong> ${stewardName || user?.fullName || "Staff"}</div>
-            <div class="divider"></div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th class="text-right">Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${finalKot.items.map((item: any) => `
-                  <tr>
-                    <td>${item.itemName}${item.specialNote ? `<br><i>* ${item.specialNote}</i>` : ''}</td>
-                    <td class="text-right bold" style="font-size: 13px;">${item.quantity}</td>
-                  </tr>
+            ${finalKot.items.map((item: any) => `
+              <div class="item-line">${Number(item.quantity || 0)} - ${item.itemName || "-"}</div>
+              ${item.specialNote ? `<div class="item-line">   * ${item.specialNote}</div>` : ""}
             `).join("")}
-              </tbody>
-            </table>
             <div class="divider"></div>
-            <div style="font-size: 14px;"><strong>Order ID:</strong> ${finalKot.id.slice(-6).toUpperCase()}</div>
-            <div class="center" style="margin-top: 10px;">** END OF KOT **</div>
+            <div><strong>Total Items :</strong> ${totalItems}</div>
+            <div class="divider"></div>
+            <div class="center">Thank You</div>
             <div class="page-break"></div>
           </body>
         </html>
@@ -784,22 +816,26 @@ export function RestaurantPOS() {
     printHtml(html);
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(user?.role === "admin" ? "/admin/restaurant/rooms" : "/hotel/restaurant/rooms", { replace: true });
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[#f0ece0] overflow-hidden text-[#222]" style={{ fontFamily: "Segoe UI, Tahoma, Arial, sans-serif" }}>
       <div className="px-4 py-2 border-b border-[#a9a9a9] bg-[#ece7d9] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} className="h-8 w-8 border border-[#8d8d8d] bg-[#f7f5ee] flex items-center justify-center">
+          <button
+            onClick={handleBack}
+            className="h-8 w-8 border border-[#8d8d8d] bg-[#f7f5ee] flex items-center justify-center transition-shadow hover:shadow-md"
+          >
             <ChevronRight className="w-4 h-4 rotate-180" />
           </button>
           <div className="text-[15px] font-semibold">Restaurant Billing</div>
         </div>
-        <button
-          onClick={() => setShowOpenOrders(true)}
-          className="h-8 px-3 border border-[#8d8d8d] bg-[#f7f5ee] text-[12px] font-medium flex items-center gap-2"
-        >
-          <LucideHistory className="w-4 h-4" />
-          Open Orders {openOrders.length > 0 ? `(${openOrders.length})` : ""}
-        </button>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
@@ -1073,55 +1109,6 @@ export function RestaurantPOS() {
         </div>
       </div>
 
-      {/* MODAL: Open Orders Terminal View */}
-      {showOpenOrders && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in transition-all">
-          <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl overflow-hidden animate-in zoom-in-95 border border-slate-200">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">Active Sessions</h2>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">Manage pending settlements and active tables</p>
-              </div>
-              <button onClick={() => setShowOpenOrders(false)} className="p-2 hover:bg-slate-100 rounded transition-colors">
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-3">
-              {openOrders.length === 0 && (
-                <div className="py-20 text-center text-slate-300">
-                  <p className="text-sm font-medium">No active sessions at the moment</p>
-                </div>
-              )}
-              {openOrders.map(order => (
-                <div key={order.id} className="flex items-center gap-4 p-4 rounded-lg border border-slate-100 hover:border-[#C6A75E] hover:bg-slate-50 transition-all group">
-                  <div className="w-12 h-12 bg-slate-900 rounded flex flex-col items-center justify-center text-white">
-                    <span className="text-[10px] font-bold opacity-50 uppercase">Tbl</span>
-                    <span className="text-lg font-bold">#{order.tableNumber || "POS"}</span>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-slate-800 text-sm">{order.orderNumber}</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Guest: {order.guestName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-slate-900">₹{order.totalAmount}</p>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded font-bold uppercase tracking-wider">{order.status}</span>
-                  </div>
-                  <button
-                    onClick={() => loadOrder(order)}
-                    className="p-3 bg-slate-50 text-slate-400 rounded hover:bg-[#C6A75E] hover:text-white transition-all"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-center">
-              <button onClick={() => setShowOpenOrders(false)} className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest">Close Panel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* MODAL: KOT Professional Preview */}
       {showKOTPreview && kotToPreview && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in transition-all">
@@ -1172,25 +1159,14 @@ export function RestaurantPOS() {
                   <div className="text-right font-bold text-[#C6A75E]">{kotToPreview.order?.room ? 'ROOM SERVICE' : 'DINE-IN'}</div>
                 </div>
 
-                <table className="w-full border-t border-b border-dashed border-slate-200 py-4 my-4">
-                  <thead>
-                    <tr className="text-[10px] text-slate-400 uppercase font-bold text-left">
-                      <th className="py-2">Item Name</th>
-                      <th className="py-2 text-right">Qty</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {kotToPreview.items.map((item: any, idx: number) => (
-                      <tr key={idx} className="text-[13px]">
-                        <td className="py-3 font-bold text-slate-800">
-                          {item.itemName.toUpperCase()}
-                          {item.specialNote && <div className="text-[10px] font-medium text-[#C6A75E] italic mt-0.5">* {item.specialNote}</div>}
-                        </td>
-                        <td className="py-3 text-right font-black text-lg">{item.quantity}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="border-t border-b border-dashed border-slate-200 py-4 my-4 space-y-2">
+                  {kotToPreview.items.map((item: any, idx: number) => (
+                    <div key={idx} className="text-[13px] font-bold text-slate-800 leading-tight break-words">
+                      {`${Number(item.quantity || 0)} - ${item.itemName || "-"}`}
+                      {item.specialNote && <div className="text-[10px] font-medium text-[#C6A75E] italic mt-0.5">* {item.specialNote}</div>}
+                    </div>
+                  ))}
+                </div>
 
                 <div className="text-center text-[10px] text-slate-400 italic">
                   --- End of Order ---
@@ -1248,61 +1224,56 @@ export function RestaurantPOS() {
 
             {/* Bill Content Area */}
             <div className="flex-1 overflow-y-auto p-8 bg-white max-h-[70vh]">
-              <div className="text-center mb-6">
-                <h3 className="text-3xl font-bold text-[#1e293b] mb-2">{activeHotel?.name || "Grand Hotel Restaurant"}</h3>
-                <p className="text-[#64748b] text-sm">{activeHotel?.address || "123 Main Street, Mumbai - 400001"}</p>
-                <p className="text-[#64748b] text-sm">Phone: {activeHotel?.phone || "+91 22 1234 5678"} | GST: {activeHotel?.gstNumber || "27XXXXX1234X1ZX"}</p>
-              </div>
+              {(() => {
+                const receiptItems = getReceiptItems(billToPreview);
+                const billSubtotal = Number(billToPreview?.subtotal ?? subtotal ?? 0);
+                const billService = billSubtotal * 0.10;
+                const billNet = billSubtotal + billService;
+                const tableNo = billToPreview?.restaurantOrder?.tableNumber || tableNumber || "-";
+                const roomNo = billToPreview?.restaurantOrder?.room?.roomNumber || roomNumber || "";
+                const steward = billToPreview?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
+                const lines = splitAddressLines(activeHotel?.address);
+                const contactNo = activeHotel?.phone || activeHotel?.mobile || activeHotel?.contactNumber || "-";
+                const gstNo = activeHotel?.gstNumber || activeHotel?.gstNo || "-";
 
-              <div className="w-full h-px bg-[#C6A75E] mb-6"></div>
-
-              <div className="grid grid-cols-2 gap-y-2 mb-8 text-[#1e293b]">
-                <div className="flex"><span className="font-bold w-24">Bill No:</span> <span>{billToPreview.invoiceNumber}</span></div>
-                <div className="flex"><span className="font-bold w-24">Room No:</span> <span>{roomNumber || "N/A"}</span></div>
-                <div className="flex"><span className="font-bold w-24">Date & Time:</span> <span>{new Date().toLocaleString()}</span></div>
-                <div className="flex"><span className="font-bold w-24">Table No:</span> <span>{tableNumber || "N/A"}</span></div>
-                <div className="flex"><span className="font-bold w-24">Steward:</span> <span>{stewardName || "N/A"}</span></div>
-                <div className="flex"><span className="font-bold w-24">Order Type:</span> <span>{roomId ? "Room Service" : "Dine-in"}</span></div>
-              </div>
-
-              <div className="border border-[#e2e8f0] rounded-xl overflow-hidden mb-6">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[#f8fafc] text-[#1e293b]">
-                      <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Item</th>
-                      <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Qty</th>
-                      <th className="py-3 px-4 font-bold border-b border-[#e2e8f0]">Price</th>
-                      <th className="py-3 px-4 font-bold border-b border-[#e2e8f0] text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cart.map((item: any, idx: number) => (
-                      <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"}>
-                        <td className="py-3 px-4 text-[#1e293b]">{item.itemName}</td>
-                        <td className="py-3 px-4 text-[#1e293b]">{item.quantity}</td>
-                        <td className="py-3 px-4 text-[#1e293b]">₹{item.price}</td>
-                        <td className="py-3 px-4 font-bold text-[#1e293b] text-right">₹{item.itemTotal.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="space-y-3 ms-auto w-1/2 min-w-[300px] text-[#1e293b]">
-                <div className="flex justify-between items-center text-[15px]">
-                  <span>Subtotal</span>
-                  <span className="font-bold">₹{subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-[15px]">
-                  <span>Service Charge (10%)</span>
-                  <span className="font-bold">₹{(Number(subtotal) * 0.10).toFixed(2)}</span>
-                </div>
-                <div className="w-full h-px bg-[#e2e8f0] my-2"></div>
-                <div className="flex justify-between items-center text-xl font-bold">
-                  <span>Grand Total</span>
-                  <span>₹{(Number(subtotal) + Number(subtotal) * 0.10).toFixed(2)}</span>
-                </div>
-              </div>
+                return (
+                  <div
+                    className="mx-auto bg-white text-black"
+                    style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
+                  >
+                    <div className="text-center font-bold text-[14px]">{activeHotel?.name || "HOTEL RESTAURANT"}</div>
+                    {lines.line1 && <div className="text-center">{lines.line1}</div>}
+                    {lines.line2 && <div className="text-center">{lines.line2}</div>}
+                    {lines.cityState && <div className="text-center">{lines.cityState}</div>}
+                    <div className="text-center">Contact No: {contactNo}</div>
+                    <div className="text-center">GST No: {gstNo}</div>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div className="text-center font-bold">TAX INVOICE</div>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div>Bill Date : {formatReceiptDateTime(billToPreview?.invoiceDate || billToPreview?.createdAt)}</div>
+                    <div>Bill No.  : {billToPreview?.invoiceNumber || "-"}</div>
+                    <div>Table No. : {tableNo}</div>
+                    {roomNo && <div>Room No.  : {roomNo}</div>}
+                    <div>Steward   : {steward}</div>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <pre className="m-0">Item          Qty  Price  Amount</pre>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <pre className="m-0 whitespace-pre-wrap">{receiptItems.map((item: any) => formatReceiptItemLine(item.itemName, item.quantity, item.price, item.amount)).join("\n")}</pre>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div className="flex justify-between"><span></span><span>Total Amount : {billSubtotal.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span></span><span>Gross Amount : {billSubtotal.toFixed(2)}</span></div>
+                    {billService > 0 && <div className="flex justify-between"><span></span><span>Service(10%) : {billService.toFixed(2)}</span></div>}
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div className="flex justify-between font-bold text-[14px]"><span></span><span>NET AMOUNT : {billNet.toFixed(2)}</span></div>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div>Cashier : {steward}</div>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div className="text-center">Thank you for your visit</div>
+                    <div className="text-center">{RECEIPT_DASH}</div>
+                    <div className="text-center">HSN/SAC Code: 996332</div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Action Buttons */}

@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import api from "../services/api";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import { printHtml } from "../utils/print";
 
 export default function RestaurantInvoices() {
     const { isLoading: pmsLoading } = usePMS();
@@ -44,8 +45,10 @@ export default function RestaurantInvoices() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { payRestaurantInvoice, hotels } = usePMS();
+    const invoicesPath = user?.role === "admin" ? "/admin/restaurant/invoices" : "/hotel/restaurant/invoices";
     const GOLD = "var(--accent-color, #C6A75E)";
     const DARKGOLD = "var(--primary, #A8832D)";
+    const RECEIPT_DASH = "- ".repeat(21).trim();
 
     const fetchInvoices = async () => {
         try {
@@ -113,8 +116,230 @@ export default function RestaurantInvoices() {
 
     const handlePreviewPrint = () => {
         setIsPrinting(true);
+        if (typeof window !== "undefined" && (window as any).electronAPI?.printHtml && invoiceToPreview) {
+            printHtml(buildThermalReceiptHtml(invoiceToPreview));
+            setTimeout(() => setIsPrinting(false), 250);
+            return;
+        }
         window.print();
     };
+
+    const getNonEmptyValue = (...values: any[]) => {
+        for (const value of values) {
+            if (value === 0) return "0";
+            const text = String(value ?? "").trim();
+            if (text) return text;
+        }
+        return "";
+    };
+
+    const getShortBillNumber = (invoiceNumber?: string) => {
+        const full = String(invoiceNumber || "").trim();
+        if (!full) return "-";
+        const parts = full.split("-").filter(Boolean);
+        if (parts.length === 0) return full;
+        const last = parts[parts.length - 1];
+        if (/^\d+$/.test(last)) return last;
+        if (parts.length >= 2) {
+            return `${parts[parts.length - 2]}-${parts[parts.length - 1]}`;
+        }
+        return full;
+    };
+
+    const formatReceiptDateTime = (value?: string) => {
+        const dt = value ? new Date(value) : new Date();
+        if (Number.isNaN(dt.getTime())) return "-";
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        const yy = String(dt.getFullYear()).slice(-2);
+        const hh = String(dt.getHours()).padStart(2, "0");
+        const min = String(dt.getMinutes()).padStart(2, "0");
+        const ss = String(dt.getSeconds()).padStart(2, "0");
+        return `${dd}-${mm}-${yy} ${hh}:${min}:${ss}`;
+    };
+
+    const splitAddressLines = (address?: string) => {
+        const chunks = String(address || "")
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+
+        return {
+            line1: chunks[0] || "",
+            line2: chunks[1] || "",
+            cityState: chunks.slice(2).join(", ") || "",
+        };
+    };
+
+    const formatReceiptItemLine = (itemName: string, qty: number, price: number, amount: number) => {
+        const name = String(itemName || "").slice(0, 16).padEnd(16, " ");
+        const qtyText = String(qty).padStart(4, " ");
+        const priceText = price.toFixed(2).padStart(6, " ");
+        const amountText = amount.toFixed(2).padStart(6, " ");
+        return `${name} ${qtyText} ${priceText} ${amountText}`;
+    };
+
+    const formatReceiptMetaLine = (label: string, value: string) => {
+        return `${label.padEnd(9, " ")} : ${value}`;
+    };
+
+    const formatReceiptTotalLine = (label: string, amount: number) => {
+        const amountColEnd = 35;
+        const valuePart = amount.toFixed(2).padStart(8, " ");
+        const combined = `${label} : ${valuePart}`;
+        return combined.padStart(amountColEnd, " ");
+    };
+
+    const renderThermalReceipt = (inv: any) => {
+        const selectedHotel = hotels.find(h => h.id === inv.hotelId);
+        const subtotal = Number(inv.subtotal || 0);
+        const serviceCharge = subtotal * 0.10;
+        const netPayable = subtotal + serviceCharge;
+        const tableNo = getNonEmptyValue(
+            inv.restaurantOrder?.tableNumber,
+            inv.tableNumber,
+            inv.order?.tableNumber,
+            inv.restaurantOrder?.order?.tableNumber,
+        ) || "-";
+        const roomNo = inv.restaurantOrder?.room?.roomNumber || "";
+        const steward = inv.restaurantOrder?.stewardName || "Staff";
+        const lines = splitAddressLines(selectedHotel?.address);
+        const contactNo = (selectedHotel as any)?.phone || (selectedHotel as any)?.mobile || (selectedHotel as any)?.contactNumber || "-";
+        const gstNo = (selectedHotel as any)?.gstNumber || (selectedHotel as any)?.gstNo || "-";
+        const items = (inv.restaurantOrder?.orderItems || []).map((item: any) => {
+            const qty = Number(item.quantity || 0);
+            const price = Number(item.price || 0);
+            const amount = Number(item.itemTotal || qty * price);
+            return {
+                itemName: item.menuItem?.itemName || "Item",
+                qty,
+                price,
+                amount,
+            };
+        });
+
+        return (
+            <div
+                className="mx-auto bg-white text-black"
+                style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
+            >
+                <div className="text-center font-bold text-[14px] leading-tight">{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+                {lines.line1 && <div className="text-center leading-tight">{lines.line1}</div>}
+                {lines.line2 && <div className="text-center leading-tight">{lines.line2}</div>}
+                {lines.cityState && <div className="text-center leading-tight">{lines.cityState}</div>}
+                <div className="text-center leading-tight">Contact No: {contactNo}</div>
+                <div className="text-center leading-tight">GST No: {gstNo}</div>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <div className="text-center font-bold leading-tight">TAX INVOICE</div>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <pre className="m-0 whitespace-pre leading-tight">
+{formatReceiptMetaLine("Bill Date", formatReceiptDateTime(inv.invoiceDate || inv.createdAt))}
+{"\n"}{formatReceiptMetaLine("Bill No.", getShortBillNumber(inv.invoiceNumber))}
+{"\n"}{formatReceiptMetaLine("Table No.", tableNo || "-")}
+{"\n"}{formatReceiptMetaLine("Room No.", roomNo || "-")}
+{"\n"}{formatReceiptMetaLine("Steward", steward)}
+                </pre>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <pre className="m-0 whitespace-pre leading-tight">Item             Qty  Price Amount</pre>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <pre className="m-0 whitespace-pre leading-tight">{items.map((item: any) => formatReceiptItemLine(item.itemName, item.qty, item.price, item.amount)).join("\n")}</pre>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <pre className="m-0 whitespace-pre leading-tight">
+{formatReceiptTotalLine("Total Amount", subtotal)}
+{"\n"}{formatReceiptTotalLine("Gross Amount", subtotal)}
+{serviceCharge > 0 ? `\n${formatReceiptTotalLine("Service(10%)", serviceCharge)}` : ""}
+                </pre>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <div className="text-center font-bold text-[14px] leading-tight">NET AMOUNT : {netPayable.toFixed(2)}</div>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <div className="leading-tight">Cashier : {steward}</div>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <div className="text-center leading-tight">Thank you for your visit</div>
+                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
+                <div className="text-center leading-tight">HSN/SAC Code: 996332</div>
+            </div>
+        );
+    };
+
+        const buildThermalReceiptHtml = (inv: any) => {
+                const selectedHotel = hotels.find(h => h.id === inv.hotelId);
+                const subtotal = Number(inv.subtotal || 0);
+                const serviceCharge = subtotal * 0.10;
+                const netPayable = subtotal + serviceCharge;
+                const tableNo = getNonEmptyValue(
+                        inv.restaurantOrder?.tableNumber,
+                        inv.tableNumber,
+                        inv.order?.tableNumber,
+                        inv.restaurantOrder?.order?.tableNumber,
+                ) || "-";
+                const roomNo = inv.restaurantOrder?.room?.roomNumber || "";
+                const steward = inv.restaurantOrder?.stewardName || "Staff";
+                const lines = splitAddressLines(selectedHotel?.address);
+                const contactNo = (selectedHotel as any)?.phone || (selectedHotel as any)?.mobile || (selectedHotel as any)?.contactNumber || "-";
+                const gstNo = (selectedHotel as any)?.gstNumber || (selectedHotel as any)?.gstNo || "-";
+                const items = (inv.restaurantOrder?.orderItems || []).map((item: any) => {
+                        const qty = Number(item.quantity || 0);
+                        const price = Number(item.price || 0);
+                        const amount = Number(item.itemTotal || qty * price);
+                        return formatReceiptItemLine(item.menuItem?.itemName || "Item", qty, price, amount);
+                }).join("\n");
+
+                return `
+                <html>
+                    <head>
+                        <title>Invoice ${getShortBillNumber(inv.invoiceNumber)}</title>
+                        <style>
+                            @page { size: 80mm auto; margin: 2mm; }
+                            body {
+                                width: 76mm;
+                                margin: 0;
+                                color: #000;
+                                background: #fff;
+                                font-family: 'Courier New', monospace;
+                                font-size: 11px;
+                                line-height: 1.35;
+                            }
+                            .center { text-align: center; }
+                            .bold { font-weight: bold; }
+                            .big { font-size: 14px; }
+                            pre { margin: 0; white-space: pre; font-family: inherit; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="center bold big" style="line-height:1.2;">${selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+                        ${lines.line1 ? `<div class="center" style="line-height:1.2;">${lines.line1}</div>` : ""}
+                        ${lines.line2 ? `<div class="center" style="line-height:1.2;">${lines.line2}</div>` : ""}
+                        ${lines.cityState ? `<div class="center" style="line-height:1.2;">${lines.cityState}</div>` : ""}
+                        <div class="center" style="line-height:1.2;">Contact No: ${contactNo}</div>
+                        <div class="center" style="line-height:1.2;">GST No: ${gstNo}</div>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <div class="center bold" style="line-height:1.2;">TAX INVOICE</div>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <pre style="line-height:1.2;">${formatReceiptMetaLine("Bill Date", formatReceiptDateTime(inv.invoiceDate || inv.createdAt))}
+${formatReceiptMetaLine("Bill No.", getShortBillNumber(inv.invoiceNumber))}
+${formatReceiptMetaLine("Table No.", tableNo || "-")}
+${formatReceiptMetaLine("Room No.", roomNo || "-")}
+${formatReceiptMetaLine("Steward", steward)}</pre>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <pre style="line-height:1.2;">Item             Qty  Price Amount</pre>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <pre>${items}</pre>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <pre style="line-height:1.2;">${formatReceiptTotalLine("Total Amount", subtotal)}
+${formatReceiptTotalLine("Gross Amount", subtotal)}
+${serviceCharge > 0 ? formatReceiptTotalLine("Service(10%)", serviceCharge) : ""}</pre>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <div class="center bold big" style="line-height:1.2;">NET AMOUNT : ${netPayable.toFixed(2)}</div>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <div style="line-height:1.2;">Cashier : ${steward}</div>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <div class="center" style="line-height:1.2;">Thank you for your visit</div>
+                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
+                        <div class="center" style="line-height:1.2;">HSN/SAC Code: 996332</div>
+                    </body>
+                </html>
+                `;
+        };
 
     return (
         <AppLayout title="Restaurant Invoices">
@@ -298,7 +523,7 @@ export default function RestaurantInvoices() {
                                                         )}
                                                         {inv.status !== 'paid' && inv.status !== 'cancelled' && (
                                                             <button
-                                                                onClick={() => navigate(`/hotel/restaurant/invoices/${inv.id}/edit`)}
+                                                                onClick={() => navigate(`${invoicesPath}/${inv.id}/edit`)}
                                                                 className="p-2 text-gray-400 hover:text-amber-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
                                                                 title="Edit Invoice"
                                                             >
@@ -386,147 +611,11 @@ export default function RestaurantInvoices() {
 
                         {/* Bill Content Area */}
                         <div className="flex-1 overflow-y-auto p-6 bg-white max-h-[70vh] no-thermal-print">
-                            {(() => {
-                                const selectedHotel = hotels.find(h => h.id === invoiceToPreview.hotelId);
-                                const subtotal = Number(invoiceToPreview.subtotal || 0);
-                                const serviceCharge = subtotal * 0.10;
-                                const netPayable = subtotal + serviceCharge;
-
-                                return (
-                                    <div
-                                        className="mx-auto bg-white text-black"
-                                        style={{ width: "80mm", fontFamily: "Arial, sans-serif", fontSize: "11px", lineHeight: 1.35 }}
-                                    >
-                                        <div className="text-center">
-                                            <img
-                                                src={resolveLogoUrl(selectedHotel?.logoUrl)}
-                                                alt="Hotel Logo"
-                                                className="mx-auto h-10 w-10 object-contain"
-                                                onError={handleLogoImageError}
-                                            />
-                                            <div className="font-bold text-[13px]">{selectedHotel?.name || "Restaurant"}</div>
-                                            <div>{selectedHotel?.address || ""}</div>
-                                        </div>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <div>
-                                            <div><strong>Bill No.:</strong> {invoiceToPreview.invoiceNumber}</div>
-                                            <div><strong>Date:</strong> {format(new Date(invoiceToPreview.invoiceDate || invoiceToPreview.createdAt), "dd/MM/yyyy hh:mm a")}</div>
-                                            <div><strong>Table:</strong> {invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</div>
-                                            <div><strong>Room:</strong> {invoiceToPreview.restaurantOrder?.room?.roomNumber || "-"}</div>
-                                            <div><strong>Steward:</strong> {invoiceToPreview.restaurantOrder?.stewardName || "Staff"}</div>
-                                        </div>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr className="border-b border-[#999]">
-                                                    <th className="py-1 text-left font-bold">Item Name</th>
-                                                    <th className="py-1 text-right font-bold">Qty</th>
-                                                    <th className="py-1 text-right font-bold">Rate</th>
-                                                    <th className="py-1 text-right font-bold">Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {invoiceToPreview.restaurantOrder?.orderItems?.map((item: any, idx: number) => (
-                                                    <tr key={idx}>
-                                                        <td className="py-1">{item.menuItem?.itemName || "Item"}</td>
-                                                        <td className="py-1 text-right">{item.quantity}</td>
-                                                        <td className="py-1 text-right">₹{Number(item.price || 0).toFixed(2)}</td>
-                                                        <td className="py-1 text-right">₹{Number(item.itemTotal || 0).toFixed(2)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                                            <div className="flex justify-between"><span>Service Charge (10%)</span><span>₹{serviceCharge.toFixed(2)}</span></div>
-                                            <div className="flex justify-between font-bold"><span>Net Payable</span><span>₹{netPayable.toFixed(2)}</span></div>
-                                        </div>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <div className="text-center">Thank you for dining with us.</div>
-                                    </div>
-                                );
-                            })()}
+                            {renderThermalReceipt(invoiceToPreview)}
                         </div>
 
-                        <div className="thermal-print-area" aria-hidden>
-                            {(() => {
-                                const selectedHotel = hotels.find(h => h.id === invoiceToPreview.hotelId);
-                                const subtotal = Number(invoiceToPreview.subtotal || 0);
-                                const serviceCharge = subtotal * 0.10;
-                                const netPayable = subtotal + serviceCharge;
-
-                                return (
-                                    <div
-                                        className="bg-white text-black"
-                                        style={{ width: "80mm", fontFamily: "Arial, sans-serif", fontSize: "11px", lineHeight: 1.35, padding: "4mm" }}
-                                    >
-                                        <div className="text-center">
-                                            <img
-                                                src={resolveLogoUrl(selectedHotel?.logoUrl)}
-                                                alt="Hotel Logo"
-                                                className="mx-auto h-10 w-10 object-contain"
-                                                onError={handleLogoImageError}
-                                            />
-                                            <div className="font-bold text-[13px]">{selectedHotel?.name || "Restaurant"}</div>
-                                            <div>{selectedHotel?.address || ""}</div>
-                                        </div>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <div>
-                                            <div><strong>Bill No.:</strong> {invoiceToPreview.invoiceNumber}</div>
-                                            <div><strong>Date:</strong> {format(new Date(invoiceToPreview.invoiceDate || invoiceToPreview.createdAt), "dd/MM/yyyy hh:mm a")}</div>
-                                            <div><strong>Table:</strong> {invoiceToPreview.restaurantOrder?.tableNumber || "N/A"}</div>
-                                            <div><strong>Room:</strong> {invoiceToPreview.restaurantOrder?.room?.roomNumber || "-"}</div>
-                                            <div><strong>Steward:</strong> {invoiceToPreview.restaurantOrder?.stewardName || "Staff"}</div>
-                                        </div>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr className="border-b border-[#999]">
-                                                    <th className="py-1 text-left font-bold">Item Name</th>
-                                                    <th className="py-1 text-right font-bold">Qty</th>
-                                                    <th className="py-1 text-right font-bold">Rate</th>
-                                                    <th className="py-1 text-right font-bold">Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {invoiceToPreview.restaurantOrder?.orderItems?.map((item: any, idx: number) => (
-                                                    <tr key={idx}>
-                                                        <td className="py-1">{item.menuItem?.itemName || "Item"}</td>
-                                                        <td className="py-1 text-right">{item.quantity}</td>
-                                                        <td className="py-1 text-right">₹{Number(item.price || 0).toFixed(2)}</td>
-                                                        <td className="py-1 text-right">₹{Number(item.itemTotal || 0).toFixed(2)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-                                            <div className="flex justify-between"><span>Service Charge (10%)</span><span>₹{serviceCharge.toFixed(2)}</span></div>
-                                            <div className="flex justify-between font-bold"><span>Net Payable</span><span>₹{netPayable.toFixed(2)}</span></div>
-                                        </div>
-
-                                        <hr className="my-2 border-0 border-t border-[#999]" />
-
-                                        <div className="text-center">Thank you for dining with us.</div>
-                                    </div>
-                                );
-                            })()}
+                        <div id="invoice-print-area" className="thermal-print-area" aria-hidden>
+                            {renderThermalReceipt(invoiceToPreview)}
                         </div>
 
                         {/* Action Buttons */}
@@ -553,27 +642,19 @@ export default function RestaurantInvoices() {
                     display: none;
                 }
                 @media print {
-                    @page { size: 80mm auto; margin: 0; }
-                    body { width: 80mm; font-size: 11px; }
-                    .no-thermal-print { display: none !important; }
-                    .thermal-print-modal {
-                        position: static !important;
-                        background: #fff !important;
-                        backdrop-filter: none !important;
-                        align-items: flex-start !important;
-                        justify-content: flex-start !important;
-                        padding: 0 !important;
-                    }
-                    .thermal-print-shell {
+                    @page { size: 80mm auto; margin: 2mm; }
+                    body * { visibility: hidden !important; }
+                    #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
+                    #invoice-print-area {
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
                         width: 80mm !important;
-                        max-width: 80mm !important;
-                        box-shadow: none !important;
-                        border-radius: 0 !important;
-                        border: none !important;
                         margin: 0 !important;
-                    }
-                    .thermal-print-area {
+                        padding: 0 !important;
                         display: block !important;
+                        background: #fff !important;
+                        z-index: 9999 !important;
                     }
                 }
             `}</style>

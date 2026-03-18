@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Hotel } from "../contexts/PMSContext";
@@ -12,6 +12,7 @@ export function RestaurantRoomSelector() {
     const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
     const [allRooms, setAllRooms] = useState<any[]>([]);
     const [roomsWithOpenKOT, setRoomsWithOpenKOT] = useState<Set<string>>(new Set());
+    const clickTimersRef = useRef<Record<string, number>>({});
     const currentHotelId = user?.hotelId || "";
     const currentUserHotel = hotels.find(h => h.id === currentHotelId);
     const isPosBossMode = currentUserHotel?.posBossMode === true;
@@ -81,6 +82,45 @@ export function RestaurantRoomSelector() {
         const queryParams = activeSelectorHotelId ? `?hotelId=${activeSelectorHotelId}&roomId=${roomId}` : `?roomId=${roomId}`;
         navigate(`${getPosPath()}${queryParams}`);
     };
+
+    const getKOTWallPath = () => {
+        return user?.role === "admin" ? "/admin/restaurant/kot-wall" : "/hotel/restaurant/kot-wall";
+    };
+
+    const handleRoomCardClick = (roomId: string) => {
+        if (clickTimersRef.current[roomId]) {
+            window.clearTimeout(clickTimersRef.current[roomId]);
+        }
+
+        clickTimersRef.current[roomId] = window.setTimeout(() => {
+            handleRoomSelect(roomId);
+            delete clickTimersRef.current[roomId];
+        }, 220);
+    };
+
+    const handleRoomCardDoubleClick = (room: any) => {
+        if (clickTimersRef.current[room.id]) {
+            window.clearTimeout(clickTimersRef.current[room.id]);
+            delete clickTimersRef.current[room.id];
+        }
+
+        const params = new URLSearchParams();
+        if (activeSelectorHotelId) params.set("hotelId", activeSelectorHotelId);
+        params.set("roomNumber", String(room.roomNumber || ""));
+        params.set("tableNumber", String(room.roomNumber || ""));
+        params.set("returnTo", user?.role === "admin" ? "/admin/restaurant/rooms" : "/hotel/restaurant/rooms");
+
+        navigate(`${getKOTWallPath()}?${params.toString()}`);
+    };
+
+    useEffect(() => {
+        return () => {
+            Object.values(clickTimersRef.current).forEach((timerId) => {
+                window.clearTimeout(timerId);
+            });
+            clickTimersRef.current = {};
+        };
+    }, []);
 
     return (
         <AppLayout title="Room Selection">
@@ -163,7 +203,8 @@ export function RestaurantRoomSelector() {
                                     return (
                                         <button
                                             key={room.id}
-                                            onClick={() => handleRoomSelect(room.id)}
+                                            onClick={() => handleRoomCardClick(room.id)}
+                                            onDoubleClick={() => handleRoomCardDoubleClick(room)}
                                             className={`group rounded-xl p-5 border hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden ${hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : "bg-white border-slate-200 hover:border-[#C6A75E]"}`}
                                         >
                                             {/* Accent strip */}

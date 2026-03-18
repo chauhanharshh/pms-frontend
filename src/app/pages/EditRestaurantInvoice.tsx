@@ -25,6 +25,7 @@ export default function EditRestaurantInvoice() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { restaurantItems, refreshAll } = usePMS();
+    const invoicesPath = user?.role === "admin" ? "/admin/restaurant/invoices" : "/hotel/restaurant/invoices";
 
     const [invoice, setInvoice] = useState<any>(null);
     const [cart, setCart] = useState<any[]>([]);
@@ -41,13 +42,13 @@ export default function EditRestaurantInvoice() {
                 const inv = res.data.data.find((i: any) => i.id === id);
                 if (!inv) {
                     toast.error("Invoice not found");
-                    navigate("/hotel/restaurant/invoices");
+                    navigate(invoicesPath);
                     return;
                 }
 
                 if (inv.status === 'paid' || inv.status === 'cancelled') {
                     toast.error(`Cannot edit a ${inv.status} invoice`);
-                    navigate("/hotel/restaurant/invoices");
+                    navigate(invoicesPath);
                     return;
                 }
 
@@ -69,7 +70,7 @@ export default function EditRestaurantInvoice() {
         };
 
         fetchInvoice();
-    }, [id, navigate]);
+    }, [id, navigate, invoicesPath]);
 
     const addToCart = (menuItem: any) => {
         setCart((prev) => {
@@ -142,7 +143,7 @@ export default function EditRestaurantInvoice() {
             });
             toast.success("Invoice updated successfully");
             refreshAll(true);
-            navigate("/hotel/restaurant/invoices");
+            navigate(invoicesPath);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to update invoice");
         } finally {
@@ -165,7 +166,7 @@ export default function EditRestaurantInvoice() {
             <div className="max-w-6xl mx-auto space-y-6 pb-20">
                 <div className="flex items-center justify-between">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate(invoicesPath)}
                         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4" />

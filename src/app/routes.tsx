@@ -87,6 +87,7 @@ const RestaurantInvoices = lazy(() => import("./pages/RestaurantInvoices"));
 const EditRestaurantInvoice = lazy(() => import("./pages/EditRestaurantInvoice"));
 const RestaurantKOTs = lazy(() => import("./pages/RestaurantKOTs"));
 const EditRestaurantKOT = lazy(() => import("./pages/EditRestaurantKOT"));
+const RoomKOTWall = lazy(() => import("./pages/RoomKOTWall"));
 const RoomManagement = lazy(() => import("./pages/RoomManagement").then(m => ({ default: m.RoomManagement })));
 const RestaurantRoomSelector = lazy(() => import("./pages/RestaurantRoomSelector").then(m => ({ default: m.RestaurantRoomSelector })));
 
@@ -101,6 +102,7 @@ const SuspendedRestaurantInvoices = withSuspense(RestaurantInvoices);
 const SuspendedEditRestaurantInvoice = withSuspense(EditRestaurantInvoice);
 const SuspendedRestaurantKOTs = withSuspense(RestaurantKOTs);
 const SuspendedEditRestaurantKOT = withSuspense(EditRestaurantKOT);
+const SuspendedRoomKOTWall = withSuspense(RoomKOTWall);
 const SuspendedRoomManagement = withSuspense(RoomManagement);
 
 const routes = [
@@ -152,6 +154,7 @@ const routes = [
   { path: "/admin/restaurant/invoices/:id/edit", Component: SuspendedEditRestaurantInvoice, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/kots", Component: SuspendedRestaurantKOTs, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/kots/:id/edit", Component: SuspendedEditRestaurantKOT, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/kot-wall", Component: SuspendedRoomKOTWall, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/menu", Component: SuspendedRestaurantMenu, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/stewards", Component: StewardManagement, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/service-charge-report", Component: ServiceChargeReport, errorElement: <ErrorBoundary /> },
@@ -223,6 +226,7 @@ const routes = [
   { path: "/hotel/restaurant/invoices/:id/edit", Component: SuspendedEditRestaurantInvoice, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/kots", Component: SuspendedRestaurantKOTs, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/kots/:id/edit", Component: SuspendedEditRestaurantKOT, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/kot-wall", Component: SuspendedRoomKOTWall, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/stewards", Component: StewardManagement, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/service-charge-report", Component: ServiceChargeReport, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/reports", Component: Reports, errorElement: <ErrorBoundary /> },

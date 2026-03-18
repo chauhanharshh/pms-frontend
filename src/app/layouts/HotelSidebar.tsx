@@ -173,7 +173,7 @@ const HOTEL_SECTIONS: NavSection[] = [
       {
         label: "Room Panel",
         path: "/hotel/rooms",
-        icon: <BedDouble className="w-4 h-4" />,
+        icon: <BedDouble className="w-2 h-2" />,
       },
     ],
   },

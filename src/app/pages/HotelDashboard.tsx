@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
@@ -823,9 +823,11 @@ function RoomCard({
   const cardBg =
     room.status === "occupied"
       ? roomStatusColors.checkInColor
+      : room.status === "vacant"
+        ? roomStatusColors.checkOutColor
       : room.status === "maintenance"
         ? roomStatusColors.maintenanceColor
-        : roomStatusColors.checkOutColor;
+        : cfg.bg;
   const cardBorder = cardBg;
   const nights = booking
     ? daysBetween(booking.checkInDate, booking.checkOutDate)
@@ -1004,6 +1006,7 @@ export function HotelDashboard() {
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
   const [viewInvoice, setViewInvoice] = useState<any>(null);
   const [lastRefresh] = useState(new Date());
+  const roomCardClickTimersRef = useRef<Record<string, number>>({});
 
   // Stats
   const occupied = hotelRooms.filter((r) => r.status === "occupied").length;
@@ -1075,6 +1078,27 @@ export function HotelDashboard() {
   const occupancyPct = hotelRooms.length
     ? Math.round((occupied / hotelRooms.length) * 100)
     : 0;
+
+  const handleRoomCardClick = useCallback((room: Room) => {
+    const existingTimer = roomCardClickTimersRef.current[room.id];
+    if (existingTimer) {
+      window.clearTimeout(existingTimer);
+    }
+
+    roomCardClickTimersRef.current[room.id] = window.setTimeout(() => {
+      setSelectedRoom(room);
+      delete roomCardClickTimersRef.current[room.id];
+    }, 220);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      Object.values(roomCardClickTimersRef.current).forEach((timerId) => {
+        window.clearTimeout(timerId);
+      });
+      roomCardClickTimersRef.current = {};
+    };
+  }, []);
 
   return (
     <AppLayout title="Hotel Dashboard" requiredRole="hotel">
@@ -1374,7 +1398,7 @@ export function HotelDashboard() {
                             key={room.id}
                             room={room}
                             booking={getBooking(room)}
-                            onClick={() => setSelectedRoom(room)}
+                            onClick={() => handleRoomCardClick(room)}
                           />
                         ))}
                     </div>

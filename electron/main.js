@@ -174,7 +174,7 @@ ipcMain.on('print-html', (event, html) => {
       document.close();
     `).then(() => {
       setTimeout(() => {
-        printWindow.webContents.print({}, (success) => {
+        printWindow.webContents.print({ silent: true, printBackground: true }, (success) => {
           printWindow.close();
         });
       }, 500);

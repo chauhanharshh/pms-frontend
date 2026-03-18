@@ -12,7 +12,7 @@ import {
     AlertCircle,
     Search
 } from "lucide-react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import api from "../services/api";
 
@@ -22,8 +22,15 @@ const DARKGOLD = "#A8832D";
 export default function EditRestaurantKOT() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const { restaurantItems, updateKOT } = usePMS();
+    const fallbackKotsPath = user?.role === "admin" ? "/admin/restaurant/kots" : "/hotel/restaurant/kots";
+    const returnTo = searchParams.get("returnTo") || "";
+
+    const goBackToSource = () => {
+        navigate(returnTo || fallbackKotsPath);
+    };
 
     const [kot, setKot] = useState<any>(null);
     const [cart, setCart] = useState<any[]>([]);
@@ -40,13 +47,13 @@ export default function EditRestaurantKOT() {
                 const k = res.data.data.find((item: any) => item.id === id);
                 if (!k) {
                     toast.error("KOT not found");
-                    navigate("/hotel/restaurant/kots");
+                    goBackToSource();
                     return;
                 }
 
                 if (k.status !== 'OPEN') {
                     toast.error(`Cannot edit a ${k.status} KOT`);
-                    navigate("/hotel/restaurant/kots");
+                    goBackToSource();
                     return;
                 }
 
@@ -69,7 +76,7 @@ export default function EditRestaurantKOT() {
         };
 
         fetchKOT();
-    }, [id, navigate]);
+    }, [id, navigate, returnTo, fallbackKotsPath]);
 
     const addToCart = (menuItem: any) => {
         setCart((prev) => {
@@ -139,7 +146,7 @@ export default function EditRestaurantKOT() {
                 totalAmount: total
             });
             toast.success("KOT updated successfully");
-            navigate("/hotel/restaurant/kots");
+            goBackToSource();
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to update KOT");
         } finally {
@@ -170,7 +177,7 @@ export default function EditRestaurantKOT() {
             <div className="max-w-6xl mx-auto space-y-6 pb-20">
                 <div className="flex items-center justify-between">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={goBackToSource}
                         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4" />
