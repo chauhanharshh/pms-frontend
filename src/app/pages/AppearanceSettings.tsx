@@ -2,12 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Save, RotateCcw, Building2, Paintbrush } from "lucide-react";
 import { usePMS } from "../contexts/PMSContext";
 import { useAuth } from "../contexts/AuthContext";
+import { AppLayout } from "../layouts/AppLayout";
 import {
     DEFAULT_ROOM_STATUS_COLORS,
     getRoomStatusColors,
     saveRoomStatusColors,
     type RoomStatusColors,
 } from "../utils/roomStatusColors";
+import {
+    getKotWallColors,
+    saveKotWallColors,
+    type KotWallColors,
+} from "../utils/kotWallColors";
 
 // Optional: you can extract these to a robust validation util, but standard hex is easy
 const isValidHex = (color: string) => /^#([0-9A-F]{3}){1,2}$/i.test(color);
@@ -35,6 +41,7 @@ export function AppearanceSettings() {
     const [hotelHeader, setHotelHeader] = useState("#ffffff");
     const [hotelAccent, setHotelAccent] = useState("#C6A75E");
     const [roomStatusColors, setRoomStatusColors] = useState<RoomStatusColors>(() => getRoomStatusColors());
+    const [kotWallColors, setKotWallColors] = useState<KotWallColors>(() => getKotWallColors());
 
     const [message, setMessage] = useState({ text: "", type: "" });
 
@@ -138,6 +145,22 @@ export function AppearanceSettings() {
         setRoomStatusColors(DEFAULT_ROOM_STATUS_COLORS);
     };
 
+    const handleSaveKotWallColors = () => {
+        if (
+            !isValidHex(kotWallColors.wallBackgroundColor) ||
+            !isValidHex(kotWallColors.cardBackgroundColor) ||
+            !isValidHex(kotWallColors.cardBorderColor) ||
+            !isValidHex(kotWallColors.cardTextColor) ||
+            !isValidHex(kotWallColors.headerBackgroundColor)
+        ) {
+            setMessage({ text: "Please provide valid KOT Wall hex codes (e.g., #000000).", type: "error" });
+            return;
+        }
+
+        saveKotWallColors(kotWallColors);
+        setMessage({ text: "KOT Wall colors saved successfully.", type: "success" });
+    };
+
     // Hide message after 3 seconds
     useEffect(() => {
         if (message.text) {
@@ -146,10 +169,17 @@ export function AppearanceSettings() {
         }
     }, [message]);
 
-    if (isLoading && !systemSettings) return <div className="p-8">Loading settings...</div>;
+    if (isLoading && !systemSettings) {
+        return (
+            <AppLayout title="Appearance Settings" requiredRole="admin">
+                <div className="p-8">Loading settings...</div>
+            </AppLayout>
+        );
+    }
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-8 animate-fade-in">
+        <AppLayout title="Appearance Settings" requiredRole="admin">
+            <div className="p-6 max-w-5xl mx-auto space-y-8 animate-fade-in">
             <div>
                 <h1 className="text-2xl font-bold font-serif text-[var(--accent-color)] flex items-center gap-2">
                     <Paintbrush className="w-6 h-6" />
@@ -353,11 +383,103 @@ export function AppearanceSettings() {
                 </div>
             </div>
 
-        </div>
+            {/* SECTION D: KOT WALL COLORS */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
+                <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Paintbrush className="w-5 h-5 text-gray-400" />
+                        KOT Wall Colors
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                        Configure color settings for the KOT Wall page.
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    <KOTWallColorRow
+                        label="KOT Wall Background Color"
+                        value={kotWallColors.wallBackgroundColor}
+                        onChange={(value) =>
+                            setKotWallColors((prev) => ({ ...prev, wallBackgroundColor: value }))
+                        }
+                    />
+                    <KOTWallColorRow
+                        label="KOT Card Background Color"
+                        value={kotWallColors.cardBackgroundColor}
+                        onChange={(value) =>
+                            setKotWallColors((prev) => ({ ...prev, cardBackgroundColor: value }))
+                        }
+                    />
+                    <KOTWallColorRow
+                        label="KOT Card Border Color"
+                        value={kotWallColors.cardBorderColor}
+                        onChange={(value) =>
+                            setKotWallColors((prev) => ({ ...prev, cardBorderColor: value }))
+                        }
+                    />
+                    <KOTWallColorRow
+                        label="KOT Card Text Color"
+                        value={kotWallColors.cardTextColor}
+                        onChange={(value) =>
+                            setKotWallColors((prev) => ({ ...prev, cardTextColor: value }))
+                        }
+                    />
+                    <KOTWallColorRow
+                        label="KOT Header Background"
+                        value={kotWallColors.headerBackgroundColor}
+                        onChange={(value) =>
+                            setKotWallColors((prev) => ({ ...prev, headerBackgroundColor: value }))
+                        }
+                    />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button
+                        onClick={handleSaveKotWallColors}
+                        className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
+                        style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
+                    >
+                        <Save className="w-4 h-4" />
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+
+            </div>
+        </AppLayout>
     );
 }
 
 function RoomStatusColorRow({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: string;
+    onChange: (val: string) => void;
+}) {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+            <label className="text-sm font-medium">{label}</label>
+            <input
+                type="color"
+                value={isValidHex(value) ? value : "#000000"}
+                onChange={(e) => onChange(e.target.value)}
+                className="h-10 w-20 border rounded-lg cursor-pointer"
+            />
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full border rounded-lg p-2 text-sm uppercase font-mono dark:bg-gray-900 dark:border-gray-700"
+                placeholder="#FFFFFF"
+            />
+        </div>
+    );
+}
+
+function KOTWallColorRow({
     label,
     value,
     onChange,
