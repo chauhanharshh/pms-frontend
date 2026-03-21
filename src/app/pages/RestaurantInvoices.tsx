@@ -33,7 +33,7 @@ export default function RestaurantInvoices() {
     const { isLoading: pmsLoading } = usePMS();
     const [invoices, setInvoices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [dateFilter, setDateFilter] = useState("");
     const [showPayModal, setShowPayModal] = useState<any>(null);
@@ -67,15 +67,43 @@ export default function RestaurantInvoices() {
     }, []);
 
     useEffect(() => {
+        const handleInvoiceGenerated = () => {
+            fetchInvoices();
+        };
+
+        window.addEventListener("restaurant:invoice-generated", handleInvoiceGenerated as EventListener);
+        return () => {
+            window.removeEventListener("restaurant:invoice-generated", handleInvoiceGenerated as EventListener);
+        };
+    }, []);
+
+    useEffect(() => {
         const handleAfterPrint = () => setIsPrinting(false);
         window.addEventListener("afterprint", handleAfterPrint);
         return () => window.removeEventListener("afterprint", handleAfterPrint);
     }, []);
 
+    const safeDateSearchText = (value?: string) => {
+        const raw = String(value || "").toLowerCase();
+        const dt = value ? new Date(value) : null;
+        if (!dt || Number.isNaN(dt.getTime())) return raw;
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        const yyyy = String(dt.getFullYear());
+        return `${raw} ${dd}-${mm}-${yyyy} ${dd}/${mm}/${yyyy}`;
+    };
+
     const filteredInvoices = invoices.filter((inv) => {
+        const query = searchQuery.toLowerCase().trim();
         const matchesSearch =
-            inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (inv.restaurantOrder?.stewardName || "").toLowerCase().includes(searchTerm.toLowerCase());
+            !query ||
+            String(inv?.guestName || inv?.restaurantOrder?.guestName || "").toLowerCase().includes(query) ||
+            String(inv?.companyName || inv?.restaurantOrder?.companyName || "").toLowerCase().includes(query) ||
+            String(inv?.invoiceNumber || "").toLowerCase().includes(query) ||
+            String(inv?.billNo || "").toLowerCase().includes(query) ||
+            safeDateSearchText(inv?.date).includes(query) ||
+            safeDateSearchText(inv?.invoiceDate).includes(query) ||
+            safeDateSearchText(inv?.createdAt).includes(query);
         const matchesStatus = statusFilter === "all" || inv.status === statusFilter;
         const matchesDate = !dateFilter || inv.invoiceDate.startsWith(dateFilter);
         return matchesSearch && matchesStatus && matchesDate;
@@ -205,7 +233,6 @@ export default function RestaurantInvoices() {
         const steward = inv.restaurantOrder?.stewardName || "Staff";
         const lines = splitAddressLines(selectedHotel?.address);
         const contactNo = (selectedHotel as any)?.phone || (selectedHotel as any)?.mobile || (selectedHotel as any)?.contactNumber || "-";
-        const gstNo = (selectedHotel as any)?.gstNumber || (selectedHotel as any)?.gstNo || "-";
         const items = (inv.restaurantOrder?.orderItems || []).map((item: any) => {
             const qty = Number(item.quantity || 0);
             const price = Number(item.price || 0);
@@ -228,7 +255,6 @@ export default function RestaurantInvoices() {
                 {lines.line2 && <div className="text-center leading-tight">{lines.line2}</div>}
                 {lines.cityState && <div className="text-center leading-tight">{lines.cityState}</div>}
                 <div className="text-center leading-tight">Contact No: {contactNo}</div>
-                <div className="text-center leading-tight">GST No: {gstNo}</div>
                 <div className="text-center leading-tight">{RECEIPT_DASH}</div>
                 <div className="text-center font-bold leading-tight">TAX INVOICE</div>
                 <div className="text-center leading-tight">{RECEIPT_DASH}</div>
@@ -276,7 +302,6 @@ export default function RestaurantInvoices() {
                 const steward = inv.restaurantOrder?.stewardName || "Staff";
                 const lines = splitAddressLines(selectedHotel?.address);
                 const contactNo = (selectedHotel as any)?.phone || (selectedHotel as any)?.mobile || (selectedHotel as any)?.contactNumber || "-";
-                const gstNo = (selectedHotel as any)?.gstNumber || (selectedHotel as any)?.gstNo || "-";
                 const items = (inv.restaurantOrder?.orderItems || []).map((item: any) => {
                         const qty = Number(item.quantity || 0);
                         const price = Number(item.price || 0);
@@ -311,7 +336,6 @@ export default function RestaurantInvoices() {
                         ${lines.line2 ? `<div class="center" style="line-height:1.2;">${lines.line2}</div>` : ""}
                         ${lines.cityState ? `<div class="center" style="line-height:1.2;">${lines.cityState}</div>` : ""}
                         <div class="center" style="line-height:1.2;">Contact No: ${contactNo}</div>
-                        <div class="center" style="line-height:1.2;">GST No: ${gstNo}</div>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
                         <div class="center bold" style="line-height:1.2;">TAX INVOICE</div>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
@@ -327,7 +351,7 @@ ${formatReceiptMetaLine("Steward", steward)}</pre>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
                         <pre style="line-height:1.2;">${formatReceiptTotalLine("Total Amount", subtotal)}
 ${formatReceiptTotalLine("Gross Amount", subtotal)}
-${serviceCharge > 0 ? formatReceiptTotalLine("Service(10%)", serviceCharge) : ""}</pre>
+${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</pre>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
                         <div class="center bold big" style="line-height:1.2;">NET AMOUNT : ${netPayable.toFixed(2)}</div>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
@@ -374,11 +398,21 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("Service(10%)", serviceCharge) : ""
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
                             type="text"
-                            placeholder="Search by Invoice No, Steward or Guest Name..."
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm transition-all"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search by Guest Name, Company, Invoice No, Date..."
+                            className="w-full pl-10 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm transition-all"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
+                        {searchQuery.trim() && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1"
+                                aria-label="Clear search"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
                     <div className="flex gap-4">
                         <div className="relative">
@@ -446,7 +480,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("Service(10%)", serviceCharge) : ""
                                                 <div className="bg-gray-100 p-4 rounded-full">
                                                     <FileText className="w-8 h-8 text-gray-400" />
                                                 </div>
-                                                <p className="text-gray-500">No invoices found</p>
+                                                <p className="text-gray-500">{searchQuery.trim() ? "No invoices found for your search" : "No invoices found"}</p>
                                             </div>
                                         </td>
                                     </tr>

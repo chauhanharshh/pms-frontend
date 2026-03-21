@@ -64,7 +64,7 @@ export function RoomGstReport() {
         const rows = data.map((r) => {
             const d = new Date(r.date);
             const formattedDate = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
-            const details = `${r.guestName} / NA / ${r.roomNumber || ""} / 1`;
+            const details = `${r.guestName} / NA / ${r.roomNumber || ""} / 5%`;
             return [
                 formattedDate, `"${r.invoiceNo}"`, `"${details}"`,
                 formatRawCurrency(r.roomRentDisc), formatRawCurrency(r.roomRent),
@@ -149,7 +149,7 @@ export function RoomGstReport() {
                                                     <div className="uppercase">{row.guestName}</div>
                                                     <div className="uppercase opacity-80 mt-0.5">NA</div>
                                                     <div className="mt-0.5">{row.roomNumber || ""}</div>
-                                                    <div className="mt-0.5">1</div>
+                                                    <div className="mt-0.5">5%</div>
                                                 </td>
                                                 <td className="px-2 py-2 text-right align-top">{formatCurrency(row.roomRentDisc)}</td>
                                                 <td className="px-2 py-2 text-right align-top">{formatCurrency(row.roomRent)}</td>

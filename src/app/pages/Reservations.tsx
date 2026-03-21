@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { formatCurrency, formatDate } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency, formatDate } from "../utils/format";
 import { Booking } from "../contexts/PMSContext";
 import { BookOpen, Plus, X, Save, Search, Eye } from "lucide-react";
 import { BookingPreviewModal } from "../components/BookingPreviewModal";
@@ -14,6 +14,7 @@ const emptyBooking = (hotelId: string): Omit<Booking, "id"> => ({
   hotelId,
   roomId: "",
   roomNumber: "",
+  plan: "EP",
   guestName: "",
   guestPhone: "",
   guestEmail: "",
@@ -76,15 +77,8 @@ export function Reservations() {
   const handleRoomSelect = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return;
-    const checkIn = new Date(form.checkInDate);
-    const checkOut = form.checkOutDate ? new Date(form.checkOutDate) : null;
-    const nights = checkOut
-      ? Math.max(
-        1,
-        Math.ceil(
-          (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
-        ),
-      )
+    const nights = form.checkOutDate
+      ? calculateRoomDays(form.checkInDate, form.checkOutDate)
       : 1;
     setForm((f) => ({
       ...f,
@@ -97,13 +91,7 @@ export function Reservations() {
   const recalcTotal = (checkIn: string, checkOut: string) => {
     const room = rooms.find((r) => r.id === form.roomId);
     if (!room || !checkIn || !checkOut) return;
-    const nights = Math.max(
-      1,
-      Math.ceil(
-        (new Date(checkOut).getTime() - new Date(checkIn).getTime()) /
-        (1000 * 60 * 60 * 24),
-      ),
-    );
+    const nights = calculateRoomDays(checkIn, checkOut);
     setForm((f) => ({ ...f, totalAmount: Number(room.basePrice) * nights }));
   };
 
@@ -294,7 +282,7 @@ export function Reservations() {
                         </td>
                       )}
                       <td className="px-4 py-3 text-sm">
-                        {formatDate(b.checkInDate)}
+                        {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {formatDate(b.checkOutDate)}
@@ -492,6 +480,27 @@ export function Reservations() {
                     <option value="Passport">Passport</option>
                     <option value="Driving License">Driving License</option>
                     <option value="Voter ID">Voter ID</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    style={{ color: DARKGOLD }}
+                  >
+                    PLAN
+                  </label>
+                  <select
+                    className="w-full px-3 py-2.5 rounded-lg outline-none"
+                    style={{ border: "2px solid #E5E1DA" }}
+                    value={form.plan || "EP"}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, plan: e.target.value }))
+                    }
+                  >
+                    <option value="EP">EP - European Plan (Room Only)</option>
+                    <option value="CP">CP - Continental Plan (Room + Breakfast)</option>
+                    <option value="AP">AP - American Plan (All Meals)</option>
+                    <option value="MAP">MAP - Modified American Plan (Breakfast + Dinner)</option>
                   </select>
                 </div>
                 <div>

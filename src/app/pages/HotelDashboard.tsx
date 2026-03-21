@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room, Booking } from "../contexts/PMSContext";
-import { formatCurrency } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import { calculateRoomTax } from "../utils/tax";
 import {
   DoorOpen,
@@ -88,10 +88,7 @@ const SC = {
 };
 
 function daysBetween(a: string, b: string) {
-  return Math.max(
-    1,
-    Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000),
-  );
+  return calculateRoomDays(a, b);
 }
 
 // ── ROOM DETAIL PANEL ─────────────────────────────────────────
@@ -144,7 +141,10 @@ function RoomDetailPanel({
   const balance = grandTotal - advance;
 
   const nights = booking
-    ? daysBetween(booking.checkInDate, booking.checkOutDate)
+    ? calculateRoomDays(
+      `${booking.checkInDate}T${booking.checkInTime || "12:00"}`,
+      `${booking.checkOutDate}T${booking.checkOutTime || "12:00"}`,
+    )
     : 0;
 
   return (
@@ -267,7 +267,7 @@ function RoomDetailPanel({
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5" style={{ color: T.gold }} />
                   <span className="text-sm" style={{ color: T.sub }}>
-                    {booking.checkInDate} {booking.checkInTime ? `(${booking.checkInTime})` : ""} → {booking.checkOutDate} {booking.checkOutTime ? `(${booking.checkOutTime})` : ""}
+                    {formatActualCheckInDateTime(booking as any, (booking as any)?.reservation, booking.checkInDate)} → {booking.checkOutDate} {booking.checkOutTime ? `(${booking.checkOutTime})` : ""}
                     <br />
                     <span className="text-[10px] italic">({nights} nights)</span>
                   </span>
@@ -545,7 +545,10 @@ function CheckOutModal({
       o.status === "billed",
   );
 
-  const nights = daysBetween(booking.checkInDate, booking.checkOutDate);
+  const nights = calculateRoomDays(
+    `${booking.checkInDate}T${booking.checkInTime || "12:00"}`,
+    `${booking.checkOutDate}T${booking.checkOutTime || "12:00"}`,
+  );
   // Use the stored bill total if a bill exists, otherwise fall back to booking.totalAmount
   const existingBill = roomBills[0];
   const roomCharge = existingBill
@@ -830,7 +833,10 @@ function RoomCard({
         : cfg.bg;
   const cardBorder = cardBg;
   const nights = booking
-    ? daysBetween(booking.checkInDate, booking.checkOutDate)
+    ? calculateRoomDays(
+      `${booking.checkInDate}T${booking.checkInTime || "12:00"}`,
+      `${booking.checkOutDate}T${booking.checkOutTime || "12:00"}`,
+    )
     : 0;
 
   return (
@@ -891,7 +897,7 @@ function RoomCard({
               {(booking.companyName || (booking as any).company?.name) && ` • ${booking.companyName || (booking as any).company?.name}`}
             </div>
             <div className="text-xs" style={{ color: "#d1fae5" }}>
-              {booking.checkInDate} {booking.checkInTime ? `(${booking.checkInTime})` : ""} → {booking.checkOutDate}
+              {formatActualCheckInDateTime(booking as any, (booking as any)?.reservation, booking.checkInDate)} → {booking.checkOutDate}
             </div>
             <div className="text-xs font-medium" style={{ color: T.gold }}>
               ({nights}N) · Bal:{" "}
@@ -1626,7 +1632,7 @@ export function HotelDashboard() {
                           className="px-4 py-3 text-xs"
                           style={{ color: T.sub }}
                         >
-                          {b.checkInDate} {b.checkInTime ? `(${b.checkInTime})` : ""}
+                          {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)}
                         </td>
                         <td
                           className="px-4 py-3 text-xs"

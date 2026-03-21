@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { formatCurrency } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import {
   Search,
   Plus,
@@ -95,7 +95,7 @@ export function CheckInRecordsPage() {
           b.guestName,
           b.guestPhone,
           b.roomNumber,
-          b.checkInDate,
+          formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
           b.checkOutDate,
           b.totalAmount,
           b.advanceAmount,
@@ -303,13 +303,9 @@ export function CheckInRecordsPage() {
                   </tr>
                 ) : (
                   filtered.map((b) => {
-                    const nights = Math.max(
-                      1,
-                      Math.ceil(
-                        (new Date(b.checkOutDate).getTime() -
-                          new Date(b.checkInDate).getTime()) /
-                        86400000,
-                      ),
+                    const nights = calculateRoomDays(
+                      `${b.checkInDate}T${(b as any)?.checkInTime || "12:00"}`,
+                      `${b.checkOutDate}T${(b as any)?.checkOutTime || "12:00"}`,
                     );
                     const hotelName =
                       hotels.find((h) => h.id === b.hotelId)?.name || "—";
@@ -354,7 +350,9 @@ export function CheckInRecordsPage() {
                             {hotelName}
                           </td>
                         )}
-                        <td className="px-4 py-3 text-sm">{b.checkInDate}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)}
+                        </td>
                         <td className="px-4 py-3 text-sm">{b.checkOutDate}</td>
                         <td className="px-4 py-3 text-sm text-center">
                           {nights}N

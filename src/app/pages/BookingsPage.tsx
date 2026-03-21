@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { formatCurrency } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import {
   Search,
   Calendar,
@@ -92,7 +92,7 @@ export function BookingsPage() {
           b.guestPhone,
           b.roomNumber,
           hotel?.name || "",
-          b.checkInDate,
+          formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
           b.checkOutDate,
           b.totalAmount,
           b.status,
@@ -490,13 +490,9 @@ export function BookingsPage() {
                 bg: "#f3f4f6",
                 text: "#6B7280",
               };
-              const nights = Math.max(
-                1,
-                Math.ceil(
-                  (new Date(b.checkOutDate).getTime() -
-                    new Date(b.checkInDate).getTime()) /
-                  86400000,
-                ),
+              const nights = calculateRoomDays(
+                `${b.checkInDate}T${(b as any)?.checkInTime || "12:00"}`,
+                `${b.checkOutDate}T${(b as any)?.checkOutTime || "12:00"}`,
               );
               return (
                 <div
@@ -544,7 +540,7 @@ export function BookingsPage() {
                   </div>
                   <div className="px-4 py-3 space-y-1">
                     <div className="text-xs" style={{ color: "#6B7280" }}>
-                      {b.checkInDate} → {b.checkOutDate}
+                      {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)} → {b.checkOutDate}
                     </div>
                     <div className="text-xs" style={{ color: "#6B7280" }}>
                       {nights} nights · {b.adults + b.children} guests
@@ -697,13 +693,9 @@ export function BookingsPage() {
                   </tr>
                 ) : (
                   filtered.map((b) => {
-                    const nights = Math.max(
-                      1,
-                      Math.ceil(
-                        (new Date(b.checkOutDate).getTime() -
-                          new Date(b.checkInDate).getTime()) /
-                        86400000,
-                      ),
+                    const nights = calculateRoomDays(
+                      `${b.checkInDate}T${(b as any)?.checkInTime || "12:00"}`,
+                      `${b.checkOutDate}T${(b as any)?.checkOutTime || "12:00"}`,
                     );
                     const hotel = hotels.find((h) => h.id === b.hotelId);
                     const { bg, text } = STATUS_COLORS[b.status] || {
@@ -753,7 +745,9 @@ export function BookingsPage() {
                         >
                           {b.source || "direct"}
                         </td>
-                        <td className="px-4 py-3 text-sm">{b.checkInDate}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)}
+                        </td>
                         <td className="px-4 py-3 text-sm">{b.checkOutDate}</td>
                         <td className="px-4 py-3 text-sm text-center">
                           {nights}N

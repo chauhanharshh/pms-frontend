@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { AppLayout } from "../layouts/AppLayout";
@@ -78,26 +78,31 @@ export function AdminDashboard() {
   const { hotels, rooms, bookings, bills, invoices, expenses, restaurantOrders, isLoading, dashboardStats } = usePMS();
   const navigate = useNavigate();
 
-  // ── Compute stats from real data ─────────────────────────────
-  const totalRooms = dashboardStats?.totalRooms || 0;
-  const occupied = dashboardStats?.occupiedRooms || 0;
-  const vacant = dashboardStats?.vacantRooms || 0;
+  const selectedHotelId = useMemo(() => {
+    if (currentHotelId && hotels.some((h) => h.id === currentHotelId)) return currentHotelId;
+    return hotels[0]?.id || null;
+  }, [currentHotelId, hotels]);
+
+  // Keep admin dashboard pinned to one active hotel so data is never consolidated.
+  useEffect(() => {
+    if (selectedHotelId && selectedHotelId !== currentHotelId) {
+      setCurrentHotelId(selectedHotelId);
+    }
+  }, [selectedHotelId, currentHotelId, setCurrentHotelId]);
 
   // Keep these for now as items needing complex logic might still benefit from client filter 
   // until we have full report APIs for them
-  const filteredBookings = currentHotelId
-    ? bookings.filter((b) => b.hotelId === currentHotelId)
-    : bookings;
+  const filteredBookings = selectedHotelId
+    ? bookings.filter((b) => b.hotelId === selectedHotelId)
+    : [];
 
-  const filteredExpenses = currentHotelId
-    ? expenses.filter((e) => e.hotelId === currentHotelId)
-    : expenses;
+  const filteredExpenses = selectedHotelId
+    ? expenses.filter((e) => e.hotelId === selectedHotelId)
+    : [];
 
-  const filteredOrders = currentHotelId
-    ? restaurantOrders.filter((o) => o.hotelId === currentHotelId)
-    : restaurantOrders;
-
-  const checkedIn = filteredBookings.filter((b) => b.status === "checked_in").length;
+  const filteredOrders = selectedHotelId
+    ? restaurantOrders.filter((o) => o.hotelId === selectedHotelId)
+    : [];
 
   const today = new Date().toISOString().slice(0, 10);
   const todayCheckIns = filteredBookings.filter(
@@ -151,9 +156,17 @@ export function AdminDashboard() {
     };
   });
 
-  const displayHotel = currentHotelId
-    ? hotels.find((h) => h.id === currentHotelId)
+  const displayHotel = selectedHotelId
+    ? hotels.find((h) => h.id === selectedHotelId)
     : null;
+
+  const selectedHotelStats = selectedHotelId
+    ? hotelRows.find((h) => h.id === selectedHotelId)
+    : null;
+
+  const totalRooms = selectedHotelStats?.totalRooms ?? dashboardStats?.totalRooms ?? 0;
+  const occupied = selectedHotelStats?.occupied ?? dashboardStats?.occupiedRooms ?? 0;
+  const vacant = selectedHotelStats?.vacant ?? dashboardStats?.vacantRooms ?? 0;
 
   if (isLoading && hotels.length === 0) {
     return (
@@ -185,17 +198,13 @@ export function AdminDashboard() {
                 fontSize: "1.3rem",
               }}
             >
-              {displayHotel
-                ? displayHotel.name
-                : "All Hotels — Consolidated View"}
+              {displayHotel ? displayHotel.name : "Select Hotel"}
             </h2>
             <p
               className="text-sm mt-0.5"
               style={{ color: "#D1D5DB" }}
             >
-              {displayHotel
-                ? displayHotel.address ?? displayHotel.city
-                : `${hotels.length} properties under management`}
+              {displayHotel ? displayHotel.address ?? displayHotel.city : "Choose a hotel to view dashboard data"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -206,11 +215,9 @@ export function AdminDashboard() {
               CONTEXT:
             </label>
             <select
-              value={currentHotelId || "all"}
+              value={selectedHotelId || ""}
               onChange={(e) =>
-                setCurrentHotelId(
-                  e.target.value === "all" ? null : e.target.value,
-                )
+                setCurrentHotelId(e.target.value || null)
               }
               className="px-4 py-2 rounded-xl text-sm outline-none cursor-pointer appearance-none transition-all hover:bg-gray-800"
               style={{
@@ -220,7 +227,6 @@ export function AdminDashboard() {
                 boxShadow: `0 0 10px ${GOLD}20`
               }}
             >
-              <option value="all">Consolidated View</option>
               {hotels.map((h: any) => (
                 <option key={h.id} value={h.id}>
                   {h.name}
@@ -232,14 +238,12 @@ export function AdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-4 gap-4">
-          {!currentHotelId && (
-            <StatCard
-              label="Total Hotels"
-              value={hotels.length}
-              icon={<Building2 className="w-5 h-5" />}
-              color={GOLD}
-            />
-          )}
+          <StatCard
+            label="Total Hotels"
+            value={hotels.length}
+            icon={<Building2 className="w-5 h-5" />}
+            color={GOLD}
+          />
           <StatCard
             label="Total Rooms"
             value={totalRooms}
@@ -396,7 +400,7 @@ export function AdminDashboard() {
               className="text-base font-semibold"
               style={{ fontFamily: "Times New Roman, serif", color: DARKGOLD }}
             >
-              {currentHotelId ? "Hotel Summary" : "Hotels Performance Overview"}
+              Hotel Summary
             </h2>
           </div>
           <div className="overflow-x-auto">
@@ -437,12 +441,12 @@ export function AdminDashboard() {
                   </tr>
                 ) : (
                   hotelRows
-                    .filter(h => !currentHotelId || h.id === currentHotelId)
+                    .filter(h => !selectedHotelId || h.id === selectedHotelId)
                     .map((hotel) => {
                       const occ = hotel.totalRooms > 0
                         ? ((hotel.occupied / hotel.totalRooms) * 100).toFixed(0)
                         : "0";
-                      const isSelected = hotel.id === currentHotelId;
+                      const isSelected = hotel.id === selectedHotelId;
                       return (
                         <tr
                           key={hotel.id}
@@ -451,7 +455,7 @@ export function AdminDashboard() {
                             borderBottom: "1px solid rgba(229,225,218,0.5)",
                             backgroundColor: isSelected ? `${GOLD}10` : "transparent"
                           }}
-                          onClick={() => setCurrentHotelId(isSelected ? null : hotel.id)}
+                          onClick={() => setCurrentHotelId(hotel.id)}
                           onMouseEnter={(e) =>
                             !isSelected && (e.currentTarget.style.background = "#FAFAF8")
                           }

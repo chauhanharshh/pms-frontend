@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room, Booking } from "../contexts/PMSContext";
-import { formatCurrency, generateId } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency, generateId } from "../utils/format";
 import {
   UserPlus,
   Check,
@@ -40,6 +40,7 @@ const EMPTY_GUEST = {
   guestName: "",
   guestPhone: "",
   guestEmail: "",
+  plan: "EP",
   addressLine: "",
   idProof: "",
   adults: 1,
@@ -64,10 +65,7 @@ const EMPTY_GUEST = {
 };
 
 function daysBetween(a: string, b: string) {
-  return Math.max(
-    1,
-    Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000),
-  );
+  return calculateRoomDays(a, b);
 }
 
 function today() {
@@ -194,7 +192,6 @@ export function CheckIn() {
   const [checkOutTime, setCheckOutTime] = useState("");
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [reservationId, setReservationId] = useState("");
 
   const hotelRooms = rooms.filter((r) => r.hotelId === hotelId);
@@ -222,7 +219,10 @@ export function CheckIn() {
 
   const nights =
     form.checkInDate && form.checkOutDate
-      ? daysBetween(form.checkInDate, form.checkOutDate)
+      ? calculateRoomDays(
+        `${form.checkInDate}T${form.checkInTime || "12:00"}`,
+        `${form.checkOutDate}T${form.checkOutTime || "12:00"}`,
+      )
       : 1;
   const roomRate = customRoomRate > 0 ? customRoomRate : (selectedRoom ? Number(selectedRoom.basePrice) : 0);
   const roomCharge = roomRate * nights;
@@ -243,17 +243,22 @@ export function CheckIn() {
   const handleCheckInReservation = async (bookingId: string) => {
     const booking = bookings.find((b) => b.id === bookingId);
     if (!booking) return;
-    setIsSubmitting(true);
+    const now = new Date();
+    const actualCheckInTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     try {
-      await updateBooking(bookingId, { status: "checked_in" });
+      await updateBooking(bookingId, {
+        status: "checked_in",
+        checkInDate: booking.checkInDate,
+        checkOutDate: booking.checkOutDate,
+        checkInTime: actualCheckInTime,
+        checkOutTime: booking.checkOutTime || hotel?.checkOutTime || "11:00",
+      });
       showSuccess(
         `✓ ${booking.guestName} checked in to Room ${booking.room?.roomNumber || ""}`,
       );
     } catch (e: any) {
       setErrorMsg(e?.response?.data?.message || "Check-in failed");
       setTimeout(() => setErrorMsg(""), 4000);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -264,11 +269,11 @@ export function CheckIn() {
       setErrorMsg("Advance cannot exceed Grand Total");
       return;
     }
-    setIsSubmitting(true);
     setErrorMsg("");
     try {
       const result = await walkInCheckIn({
         roomId: selectedRoomId,
+        plan: form.plan || "EP",
         guestName: form.guestName,
         guestPhone: form.guestPhone,
         guestEmail: form.guestEmail || undefined,
@@ -278,6 +283,8 @@ export function CheckIn() {
         children: form.children,
         checkInDate: form.checkInDate,
         checkOutDate: form.checkOutDate,
+        checkInTime: form.checkInTime || undefined,
+        checkOutTime: form.checkOutTime || undefined,
         advanceAmount: form.advanceAmount,
         paymentMode: form.paymentMode,
         specialRequests: form.specialRequests || undefined,
@@ -303,8 +310,6 @@ export function CheckIn() {
       setSelectedRoomId("");
     } catch (e: any) {
       setErrorMsg(e?.response?.data?.message || "Walk-in check-in failed. Please try again.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -512,7 +517,7 @@ export function CheckIn() {
                                 className="text-xs"
                                 style={{ color: "#6B7280" }}
                               >
-                                Room {b.room?.roomNumber || b.roomId?.slice(-4)} · {b.checkInDate} →{" "}
+                                Room {b.room?.roomNumber || b.roomId?.slice(-4)} · {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)} →{" "}
                                 {b.checkOutDate}
                               </div>
                             </div>
@@ -716,6 +721,25 @@ export function CheckIn() {
                       value={form.checkInTime}
                       onChange={(e) => f("checkInTime", e.target.value)}
                     />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-xs font-bold mb-1 uppercase tracking-wide"
+                      style={{ color: DARKGOLD }}
+                    >
+                      Plan
+                    </label>
+                    <select
+                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      style={{ border: `2px solid ${BORDER}` }}
+                      value={form.plan || "EP"}
+                      onChange={(e) => f("plan", e.target.value)}
+                    >
+                      <option value="EP">EP - European Plan (Room Only)</option>
+                      <option value="CP">CP - Continental Plan (Room + Breakfast)</option>
+                      <option value="AP">AP - American Plan (All Meals)</option>
+                      <option value="MAP">MAP - Modified American Plan (Breakfast + Dinner)</option>
+                    </select>
                   </div>
                   <div>
                     <label
@@ -1165,7 +1189,7 @@ export function CheckIn() {
                   </div>
                   <button
                     onClick={handleWalkIn}
-                    className="w-full py-4 rounded-xl font-bold text-white text-base flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-xl font-bold text-white text-base flex items-center justify-center gap-2 cursor-pointer"
                     style={{
                       background: `linear-gradient(135deg, #16a34a, #15803d)`,
                       boxShadow: "0 4px 12px rgba(22,163,74,0.3)",
@@ -1349,7 +1373,10 @@ export function CheckIn() {
               style={{ borderColor: "rgba(229,225,218,0.5)" }}
             >
               {confirmedBookings.map((b) => {
-                const nights = daysBetween(b.checkInDate, b.checkOutDate);
+                const nights = calculateRoomDays(
+                  `${b.checkInDate}T${(b as any)?.checkInTime || "12:00"}`,
+                  `${b.checkOutDate}T${(b as any)?.checkOutTime || "12:00"}`,
+                );
                 return (
                   <div
                     key={b.id}
@@ -1383,7 +1410,7 @@ export function CheckIn() {
                         <span>📞 {b.guestPhone}</span>
                         <span>🏨 Room {b.room?.roomNumber || b.roomId.slice(-4)}</span>
                         <span>
-                          📅 {b.checkInDate} → {b.checkOutDate} ({nights}N)
+                          📅 {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)} → {b.checkOutDate} ({nights}N)
                         </span>
                         <span>
                           👥 {b.adults}A/{b.children}C
@@ -1495,7 +1522,7 @@ export function CheckIn() {
                     >
                       Room {b.room?.roomNumber || b.roomId.slice(-4)}
                     </td>
-                    <td className="px-4 py-3 text-sm">{b.checkInDate}</td>
+                    <td className="px-4 py-3 text-sm">{formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)}</td>
                     <td className="px-4 py-3 text-sm">{b.checkOutDate}</td>
                     <td className="px-4 py-3 text-sm text-green-600">
                       {formatCurrency(b.advanceAmount)}

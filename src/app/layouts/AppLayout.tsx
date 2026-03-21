@@ -12,10 +12,30 @@ interface AppLayoutProps {
   requiredRole?: "admin" | "hotel" | "superadmin" | "any";
 }
 
-// Backend returns: admin | hotel_manager | hotel_user
-// Frontend treats hotel_manager and hotel_user both as "hotel" role
+// Backend returns: admin | hotel_manager | hotel_user | restaurant_staff
+// Frontend treats these as hotel-shell roles, with restaurant_staff restricted to restaurant routes only.
 function isHotelRole(role: string) {
-  return role === "hotel_manager" || role === "hotel_user" || role === "hotel";
+  return role === "hotel_manager" || role === "hotel_user" || role === "restaurant_staff" || role === "hotel";
+}
+
+function isRestaurantOnlyRole(role: string) {
+  return role === "restaurant_staff";
+}
+
+function isRestaurantRoute(pathname: string) {
+  const allowedPrefixes = [
+    "/hotel/restaurant/rooms",
+    "/hotel/restaurant/menu",
+    "/hotel/restaurant/stewards",
+    "/hotel/restaurant/service-charge-report",
+    "/hotel/restaurant/pos",
+    "/hotel/restaurant/kots",
+    "/hotel/restaurant/kot-wall",
+    "/hotel/restaurant/invoices",
+    "/hotel/restaurant/day-closing",
+  ];
+
+  return allowedPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 function isSuperAdminRole(role: string) {
@@ -44,6 +64,11 @@ export function AppLayout({
     const isAdminRoute = location.pathname.startsWith("/admin");
     const isHotelRoute = location.pathname.startsWith("/hotel");
     const isSuperAdminRoute = location.pathname.startsWith("/superadmin");
+
+    if (isRestaurantOnlyRole(user.role) && !isRestaurantRoute(location.pathname)) {
+      navigate("/hotel/restaurant/rooms", { replace: true });
+      return;
+    }
 
     if (isSuperAdminRole(user.role) && !isSuperAdminRoute) {
       navigate("/superadmin", { replace: true });
@@ -85,6 +110,8 @@ export function AppLayout({
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isHotelRoute = location.pathname.startsWith("/hotel");
   const isSuperAdminRoute = location.pathname.startsWith("/superadmin");
+
+  if (isRestaurantOnlyRole(user.role) && !isRestaurantRoute(location.pathname)) return null;
 
   if (isSuperAdminRole(user.role) && !isSuperAdminRoute) return null;
   if (isSuperAdminRoute && !isSuperAdminRole(user.role)) return null;

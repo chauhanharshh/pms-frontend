@@ -154,6 +154,11 @@ const HOTEL_SECTIONS: NavSection[] = [
         path: "/hotel/restaurant/expenses",
         icon: <Wallet className="w-4 h-4" />,
       },
+      {
+        label: "Day Closing",
+        path: "/hotel/restaurant/day-closing",
+        icon: <ClipboardList className="w-4 h-4" />,
+      },
     ],
   },
   {
@@ -215,23 +220,120 @@ const HOTEL_SECTIONS: NavSection[] = [
   },
 ];
 
+const RESTAURANT_STAFF_SECTIONS: NavSection[] = [
+  {
+    title: "Restaurant",
+    icon: <UtensilsCrossed className="w-4 h-4" />,
+    items: [
+      {
+        label: "Rooms",
+        path: "/hotel/restaurant/rooms",
+        icon: <BedDouble className="w-4 h-4" />,
+      },
+      {
+        label: "Edit Menu",
+        path: "/hotel/restaurant/menu",
+        icon: <ChefHat className="w-4 h-4" />,
+      },
+      {
+        label: "Stewards",
+        path: "/hotel/restaurant/stewards",
+        icon: <Users className="w-4 h-4" />,
+      },
+      {
+        label: "Service Charge Report",
+        path: "/hotel/restaurant/service-charge-report",
+        icon: <IndianRupee className="w-4 h-4" />,
+      },
+      {
+        label: "POS / Billing",
+        path: "/hotel/restaurant/pos",
+        icon: <IndianRupee className="w-4 h-4" />,
+      },
+      {
+        label: "KOTs",
+        path: "/hotel/restaurant/kots",
+        icon: <ClipboardList className="w-4 h-4" />,
+      },
+      {
+        label: "Restaurant Invoices",
+        path: "/hotel/restaurant/invoices",
+        icon: <Receipt className="w-4 h-4" />,
+      },
+      {
+        label: "Day Closing",
+        path: "/hotel/restaurant/day-closing",
+        icon: <ClipboardList className="w-4 h-4" />,
+      },
+    ],
+  },
+];
+
+const SIDEBAR_STATE_KEY = "sidebarState";
+
+const SECTION_STORAGE_KEY_BY_TITLE: Record<string, keyof SidebarStoredState> = {
+  "Hotel Management": "hotelManagement",
+  Restaurant: "restaurant",
+  "Reports & Control": "reportsAndControl",
+  "GST Reports": "gstReports",
+};
+
+type SidebarStoredState = {
+  hotelManagement?: boolean;
+  restaurant?: boolean;
+  reportsAndControl?: boolean;
+  gstReports?: boolean;
+};
+
+function readSidebarState(): SidebarStoredState {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_STATE_KEY) || "{}";
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSidebarState(next: SidebarStoredState) {
+  localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(next));
+}
+
 export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, logout, currentHotelId } = useAuth();
   const { hotels } = usePMS();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const sections = HOTEL_SECTIONS;
-  const defaultOpen: Record<string, boolean> = {};
-  sections.forEach((s) => {
-    defaultOpen[s.title] = s.title === "Hotel Management";
+  const isRestaurantOnlyUser = user?.role === "restaurant_staff";
+  const sections = isRestaurantOnlyUser ? RESTAURANT_STAFF_SECTIONS : HOTEL_SECTIONS;
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const saved = readSidebarState();
+    if (isRestaurantOnlyUser) {
+      return {
+        Restaurant: true,
+      };
+    }
+    return {
+      "Hotel Management": saved.hotelManagement ?? true,
+      Restaurant: saved.restaurant ?? false,
+      "Reports & Control": saved.reportsAndControl ?? false,
+      "GST Reports": saved.gstReports ?? false,
+    };
   });
 
-  const [openSections, setOpenSections] =
-    useState<Record<string, boolean>>(defaultOpen);
-
   const toggleSection = (title: string) => {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+    setOpenSections((prev) => {
+      const nextIsOpen = !prev[title];
+      const next = { ...prev, [title]: nextIsOpen };
+      const state = readSidebarState();
+      const storageKey = SECTION_STORAGE_KEY_BY_TITLE[title];
+      if (storageKey) {
+        state[storageKey] = nextIsOpen;
+        writeSidebarState(state);
+      }
+      return next;
+    });
   };
 
   const handleLogout = () => {

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { formatCurrency } from "../utils/format";
+import { formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import {
   UserCheck,
   LogOut,
@@ -237,7 +237,7 @@ export function TodaysView() {
         [
           b.guestName,
           b.room?.roomNumber || "—",
-          (b.checkInDate as string)?.split("T")[0],
+          formatActualCheckInDateTime(b, b?.reservation, b?.checkInDate),
           (b.checkOutDate as string)?.split("T")[0],
           b.totalAmount,
           b.status,
@@ -480,7 +480,7 @@ export function TodaysView() {
                           >
                             Room {b.room?.roomNumber || "—"}
                           </td>
-                          <td className="px-4 py-3 text-sm">{(b.checkInDate as string)?.split("T")[0]}</td>
+                          <td className="px-4 py-3 text-sm">{formatActualCheckInDateTime(b, b?.reservation, b?.checkInDate)}</td>
                           <td className="px-4 py-3 text-sm">{(b.checkOutDate as string)?.split("T")[0]}</td>
                           <td className="px-4 py-3 text-sm text-center">
                             {b.adults + (b.children || 0)}
@@ -592,7 +592,7 @@ export function TodaysView() {
                         >
                           Room {inv.bill?.booking?.room?.roomNumber || "—"}
                         </td>
-                        <td className="px-4 py-3 text-sm">{inv.bill?.booking?.checkInDate?.split("T")[0] || "—"}</td>
+                        <td className="px-4 py-3 text-sm">{formatActualCheckInDateTime(inv.bill?.booking, inv.bill?.booking?.reservation, inv.bill?.booking?.checkInDate)}</td>
                         <td className="px-4 py-3 text-sm">
                           {inv.bill?.booking?.checkOutDate?.split("T")[0] || "—"}
                         </td>

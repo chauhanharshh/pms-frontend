@@ -44,6 +44,8 @@ export function LoginPage() {
         navigate("/superadmin");
       } else if (user.role === "admin") {
         navigate("/admin");
+      } else if (user.role === "restaurant_staff") {
+        navigate("/hotel/restaurant/rooms");
       } else {
         // hotel_manager, hotel_user → hotel dashboard
         navigate("/hotel");

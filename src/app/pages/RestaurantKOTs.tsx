@@ -23,7 +23,6 @@ import { printHtml } from "../utils/print";
 import { resolveBrandName } from "../utils/branding";
 
 export default function RestaurantKOTs() {
-    const [kots, setKots] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -33,15 +32,16 @@ export default function RestaurantKOTs() {
     const [isPrinting, setIsPrinting] = useState(false);
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { getKOTs, deleteKOT, convertKOTToInvoice, hotels } = usePMS();
+    const roleBase = user?.role === "admin" ? "/admin" : "/hotel";
+    const { restaurantKOTs, refreshRestaurantKOTs, deleteKOT, convertKOTToInvoice, hotels } = usePMS();
+    const kots = restaurantKOTs;
     const GOLD = "#C6A75E";
     const DARKGOLD = "#A8832D";
 
     const fetchKOTs = async () => {
         try {
             setLoading(true);
-            const data = await getKOTs(statusFilter === "all" ? undefined : statusFilter);
-            setKots(data);
+            await refreshRestaurantKOTs();
         } catch (err) {
             console.error("Failed to fetch KOTs:", err);
         } finally {
@@ -53,12 +53,24 @@ export default function RestaurantKOTs() {
         fetchKOTs();
     }, [statusFilter]);
 
+    useEffect(() => {
+        const handleKotsUpdated = () => {
+            fetchKOTs();
+        };
+
+        window.addEventListener("restaurant:kots-updated", handleKotsUpdated as EventListener);
+        return () => {
+            window.removeEventListener("restaurant:kots-updated", handleKotsUpdated as EventListener);
+        };
+    }, []);
+
     const filteredKOTs = kots.filter((kot) => {
         const matchesSearch =
             kot.kotNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (kot.order?.stewardName || kot.order?.guestName || "").toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === "all" || String(kot.status || "").toUpperCase() === statusFilter.toUpperCase();
         const matchesDate = !dateFilter || format(new Date(kot.printedAt), 'yyyy-MM-dd') === dateFilter;
-        return matchesSearch && matchesDate;
+        return matchesSearch && matchesStatus && matchesDate;
     });
 
     const getStatusStyle = (status: string) => {
@@ -75,13 +87,21 @@ export default function RestaurantKOTs() {
     };
 
     const handleConvert = async (kot: any) => {
+        if (kot.status === 'CONVERTED') {
+            alert('This KOT is already converted to a bill.');
+            return;
+        }
         if (!confirm("Are you sure you want to convert this KOT to a Bill?")) return;
         try {
             await convertKOTToInvoice(kot.id, kot.hotelId);
-            fetchKOTs();
-        } catch (err) {
-            console.error(err);
-            alert("Failed to convert KOT to Bill");
+            await refreshRestaurantKOTs();
+            window.dispatchEvent(new CustomEvent("restaurant:kots-updated"));
+        } catch (error: any) {
+            if (error.response?.status === 409) {
+                alert('This KOT has already been converted to a bill.');
+            } else {
+                alert('Failed to convert KOT: ' + error.message);
+            }
         }
     };
 
@@ -89,7 +109,8 @@ export default function RestaurantKOTs() {
         if (!confirm("Are you sure you want to delete/cancel this KOT?")) return;
         try {
             await deleteKOT(kotId);
-            fetchKOTs();
+            await refreshRestaurantKOTs();
+            window.dispatchEvent(new CustomEvent("restaurant:kots-updated"));
         } catch (err) {
             console.error(err);
             alert("Failed to delete KOT");
@@ -350,7 +371,7 @@ export default function RestaurantKOTs() {
                                                                     BILL
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => navigate(`/hotel/restaurant/kots/${kot.id}/edit`)}
+                                                                    onClick={() => navigate(`${roleBase}/restaurant/kots/${kot.id}/edit`)}
                                                                     className="p-2 text-gray-400 hover:text-amber-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
                                                                     title="Edit KOT"
                                                                 >
@@ -364,6 +385,16 @@ export default function RestaurantKOTs() {
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </button>
                                                             </>
+                                                        )}
+                                                        {kot.status === 'CONVERTED' && (
+                                                            <button
+                                                                disabled={kot.status === 'CONVERTED'}
+                                                                onClick={() => handleConvert(kot)}
+                                                                className="px-3 py-1.5 text-gray-500 bg-gray-100 border border-gray-200 rounded text-xs font-bold cursor-not-allowed"
+                                                                title="This KOT is already converted"
+                                                            >
+                                                                BILL
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </td>

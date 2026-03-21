@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
@@ -115,6 +115,7 @@ export function RestaurantPOS() {
   const [searchQuery, setSearchQuery] = useState("");
   const [addItemSearch, setAddItemSearch] = useState("");
   const [addItemQty, setAddItemQty] = useState(1);
+  const quantityInputRef = useRef<HTMLInputElement | null>(null);
   const [showItemSuggestions, setShowItemSuggestions] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [cart, setCart] = useState<any[]>([]);
@@ -140,6 +141,17 @@ export function RestaurantPOS() {
   const [kotToPreview, setKotToPreview] = useState<any>(null);
   const [showBillPreview, setShowBillPreview] = useState(false);
   const [billToPreview, setBillToPreview] = useState<any>(null);
+
+  const clearDraftForCleanedRoom = () => {
+    setCart([]);
+    setActiveOrderId(null);
+    setKotNote("");
+    setDiscount(0);
+    setShowKOTPreview(false);
+    setKotToPreview(null);
+    setShowBillPreview(false);
+    setBillToPreview(null);
+  };
 
   // Fetch active rooms on mount or hotel change
   useEffect(() => {
@@ -192,7 +204,26 @@ export function RestaurantPOS() {
   // Room detection via search query parameters (redirected from RoomSelector page)
   useEffect(() => {
     const passedRoomId = searchParams.get('roomId');
+    const passedTableId = String(searchParams.get('tableId') || '').trim();
     const availableRooms = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
+
+    if (passedTableId) {
+      setTableNumber(passedTableId);
+      setRoomId(null as any);
+      setRoomNumber('');
+      setBookingId(null as any);
+      setGuestName('');
+
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev);
+          newParams.delete('tableId');
+          return newParams;
+        },
+        { replace: true }
+      );
+      return;
+    }
     
     if (passedRoomId && availableRooms.length > 0) {
       const selectedRoom = availableRooms.find(r => r.id === passedRoomId);
@@ -209,6 +240,20 @@ export function RestaurantPOS() {
         } else {
           setBookingId("");
           setGuestName(""); // Will default to "Walk-in" when saving order
+        }
+
+        const cleanedRaw = localStorage.getItem("restaurant_cleaned_rooms") || "[]";
+        let cleanedRooms: string[] = [];
+        try {
+          const parsed = JSON.parse(cleanedRaw);
+          cleanedRooms = Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+        } catch {
+          cleanedRooms = [];
+        }
+        if (cleanedRooms.includes(selectedRoom.id)) {
+          clearDraftForCleanedRoom();
+          const updatedCleanedRooms = cleanedRooms.filter((id) => id !== selectedRoom.id);
+          localStorage.setItem("restaurant_cleaned_rooms", JSON.stringify(updatedCleanedRooms));
         }
 
         // Remove roomId but keep hotelId so hotel remains selected
@@ -251,16 +296,51 @@ export function RestaurantPOS() {
     return sourceItems.filter(i => i.categoryId === activeCat);
   }, [isBossAdmin, bossMenuLoaded, localItems, restaurantItems, selectedHotelId, activeCat]);
 
-  const toAddItemLabel = (item: any) => `${String(item.id).slice(-6).toUpperCase()} - ${item.itemName}`;
+  const itemCodeMap = useMemo(() => {
+    const sourceItems = (isBossAdmin && bossMenuLoaded)
+      ? localItems
+      : restaurantItems.filter(i => i.hotelId === selectedHotelId && i.isAvailable);
+
+    const map: Record<string, number> = {};
+    sourceItems.forEach((item, index) => {
+      map[item.id] = 101 + index;
+    });
+    return map;
+  }, [isBossAdmin, bossMenuLoaded, localItems, restaurantItems, selectedHotelId]);
+
+  const getItemCode = (itemId: string) => itemCodeMap[itemId] ?? null;
+  const toAddItemLabel = (item: any) => `${getItemCode(item.id) ?? ""} - ${item.itemName}`;
   const toAddItemName = (item: any) => item.itemName;
 
   const filteredAddItemOptions = useMemo(() => {
     const q = addItemSearch.trim().toLowerCase();
     if (!q) return addItemOptions.slice(0, 25);
     return addItemOptions
-      .filter((item) => toAddItemLabel(item).toLowerCase().includes(q))
+      .filter((item) => {
+        const code = String(getItemCode(item.id) ?? "");
+        const name = toAddItemName(item).toLowerCase();
+        const label = toAddItemLabel(item).toLowerCase();
+        return code.includes(q) || name.includes(q) || label.includes(q);
+      })
       .slice(0, 25);
-  }, [addItemOptions, addItemSearch]);
+  }, [addItemOptions, addItemSearch, itemCodeMap]);
+
+  const resolveAddItemFromQuery = (query: string) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+
+    return addItemOptions.find((i) => {
+      const code = String(getItemCode(i.id) ?? "").toLowerCase();
+      const name = toAddItemName(i).toLowerCase();
+      const label = toAddItemLabel(i).toLowerCase();
+      return code === q || name === q || label === q;
+    }) || addItemOptions.find((i) => {
+      const code = String(getItemCode(i.id) ?? "").toLowerCase();
+      const name = toAddItemName(i).toLowerCase();
+      const label = toAddItemLabel(i).toLowerCase();
+      return code.includes(q) || name.includes(q) || label.includes(q);
+    }) || null;
+  };
 
   const addToCart = (item: any) => {
     setCart((prev) => {
@@ -292,12 +372,7 @@ export function RestaurantPOS() {
   };
 
   const handleAddFromSearch = () => {
-    const q = addItemSearch.trim().toLowerCase();
-    const selected = addItemOptions.find((i) => {
-      const byName = toAddItemName(i).toLowerCase() === q;
-      const byLegacyLabel = toAddItemLabel(i).toLowerCase() === q;
-      return byName || byLegacyLabel;
-    });
+    const selected = resolveAddItemFromQuery(addItemSearch);
     if (!selected) {
       toast.error("Select a valid item from the dropdown");
       return;
@@ -351,6 +426,17 @@ export function RestaurantPOS() {
     const min = String(dt.getMinutes()).padStart(2, "0");
     const ss = String(dt.getSeconds()).padStart(2, "0");
     return `${dd}-${mm}-${yy} ${hh}:${min}:${ss}`;
+  };
+
+  const formatKotDateTime = (value?: string) => {
+    const dt = value ? new Date(value) : new Date();
+    if (Number.isNaN(dt.getTime())) return "-";
+    const dd = String(dt.getDate()).padStart(2, "0");
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const yy = String(dt.getFullYear()).slice(-2);
+    const hh = String(dt.getHours()).padStart(2, "0");
+    const min = String(dt.getMinutes()).padStart(2, "0");
+    return `${dd}-${mm}-${yy} ${hh}:${min}`;
   };
 
   const splitAddressLines = (address?: string) => {
@@ -528,7 +614,6 @@ export function RestaurantPOS() {
           roomId: roomId || undefined,
           bookingId: bookingId || undefined,
           paymentMethod,
-          status: "billed"
         };
 
         let currentId = activeOrderId;
@@ -539,6 +624,7 @@ export function RestaurantPOS() {
           currentId = newlyCreatedOrder.id;
           setActiveOrderId(currentId);
         } else {
+          // Keep order editable/open; backend will mark it billed after invoice generation.
           await updateOrder(currentId, orderData);
         }
 
@@ -581,8 +667,7 @@ export function RestaurantPOS() {
         const printSteward = invoice?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
         const addressLines = splitAddressLines(activeHotel?.address);
         const items = getReceiptItems(invoice);
-        const contactNo = activeHotel?.phone || activeHotel?.mobile || activeHotel?.contactNumber || "-";
-        const gstNo = activeHotel?.gstNumber || activeHotel?.gstNo || "-";
+        const contactNo = activeHotel?.phone || (activeHotel as any)?.mobile || (activeHotel as any)?.contactNumber || "-";
 
         const getThermalHtml = () => `
         <html><head><title>Print Receipt</title>
@@ -611,7 +696,6 @@ export function RestaurantPOS() {
           ${addressLines.line2 ? `<div class="center">${addressLines.line2}</div>` : ""}
           ${addressLines.cityState ? `<div class="center">${addressLines.cityState}</div>` : ""}
           <div class="center">Contact No: ${contactNo}</div>
-          <div class="center">GST No: ${gstNo}</div>
           <div class="center">${RECEIPT_DASH}</div>
           <div class="center bold">TAX INVOICE</div>
           <div class="center">${RECEIPT_DASH}</div>
@@ -627,7 +711,7 @@ export function RestaurantPOS() {
           <div class="center">${RECEIPT_DASH}</div>
           <div class="row"><span></span><span>Total Amount : ${thermalSubtotal.toFixed(2)}</span></div>
           <div class="row"><span></span><span>Gross Amount : ${thermalSubtotal.toFixed(2)}</span></div>
-          ${thermalService > 0 ? `<div class="row"><span></span><span>Service(10%) : ${thermalService.toFixed(2)}</span></div>` : ""}
+          ${thermalService > 0 ? `<div class="row"><span></span><span>S.C(10%) : ${thermalService.toFixed(2)}</span></div>` : ""}
           <div class="center">${RECEIPT_DASH}</div>
           <div class="row bold big"><span></span><span>NET AMOUNT : ${thermalNet.toFixed(2)}</span></div>
           <div class="center">${RECEIPT_DASH}</div>
@@ -645,6 +729,13 @@ export function RestaurantPOS() {
   const printThermalKOT = async (kot: any) => {
     try {
       setIsProcessing(true); // Use isProcessing for saving/printing
+      const isElectronPrint = Boolean((window as any).electronAPI?.printHtml);
+      const reservedPrintWindow = !isElectronPrint ? window.open("about:blank", "_blank") : null;
+      if (!isElectronPrint && !reservedPrintWindow) {
+        toast.error("Popup blocked. Please allow popups to print KOT.");
+        return;
+      }
+
       let finalKot = kot;
       const selectedRoom = checkedInRooms.find(r => r.id === roomId);
 
@@ -681,7 +772,7 @@ export function RestaurantPOS() {
         const res = await generateKOTAndInvoice(orderIdToUse as string, selectedHotelId);
         const generatedKot = (res as any)?.kot || res;
 
-        if (generatedKot?.id && Array.isArray(generatedKot?.items)) {
+        if (generatedKot?.id) {
           finalKot = generatedKot;
           toast.success(`KOT ${finalKot.kotNumber} generated!`);
         } else {
@@ -691,58 +782,171 @@ export function RestaurantPOS() {
         toast.success(`KOT ${finalKot.kotNumber} printed!`);
       }
 
-      const kotDate = formatReceiptDateTime(finalKot.printedAt || finalKot.createdAt);
-      const kotTable = finalKot.order?.tableNumber || tableNumber || "N/A";
+      const normalizedItems = (() => {
+        if (Array.isArray(finalKot?.items)) {
+          return finalKot.items.map((item: any) => ({
+            itemName: item?.itemName || item?.menuItem?.itemName || item?.name || "-",
+            quantity: Number(item?.quantity || 0),
+            specialNote: item?.specialNote || "",
+          }));
+        }
+
+        if (Array.isArray(finalKot?.order?.orderItems)) {
+          return finalKot.order.orderItems.map((item: any) => ({
+            itemName: item?.itemName || item?.menuItem?.itemName || item?.name || "-",
+            quantity: Number(item?.quantity || 0),
+            specialNote: item?.specialNote || "",
+          }));
+        }
+
+        return cart.map((item: any) => ({
+          itemName: item?.itemName || "-",
+          quantity: Number(item?.quantity || 0),
+          specialNote: "",
+        }));
+      })();
+
+      if (normalizedItems.length === 0) {
+        throw new Error("No KOT items found to print.");
+      }
+
+      const kotDate = formatKotDateTime(finalKot.printedAt || finalKot.createdAt);
+      const kotTable = finalKot.order?.tableNumber || tableNumber || "-";
+      const kotRoom = finalKot.order?.room?.roomNumber || roomNumber || "";
+      const kotTableOrRoom = String(kotRoom || kotTable || "-");
       const kotSteward = finalKot.order?.stewardName || stewardName || user?.fullName || "Staff";
-      const totalItems = Array.isArray(finalKot.items) ? finalKot.items.length : 0;
+      const kotHotelName = activeHotel?.name || "HOTEL RESTAURANT";
       const html = `
         <html>
           <head>
-            <title>KOT - ${finalKot.kotNumber}</title>
+            <title>KOT Slip</title>
             <style>
-              @page { margin: 0; }
-              body { 
-                font-family: monospace; 
-                width: 80mm; 
+              @page { size: 80mm auto; margin: 2mm; }
+              html, body {
                 margin: 0;
-                padding: 10px;
-                font-size: 11px;
-                color: black;
+                padding: 0;
                 background: white;
               }
-              .center { text-align: center; }
-              .bold { font-weight: bold; }
-              .divider { border-bottom: 1px dashed black; margin: 5px 0; }
-              .item-line { margin: 2px 0; white-space: pre-wrap; }
+              body {
+                font-family: 'Calibri', sans-serif;
+                width: 76mm;
+                margin: 0 auto;
+                padding: 0;
+                font-size: 12px;
+                line-height: 1.25;
+                color: black;
+              }
+              * {
+                font-family: 'Calibri', sans-serif;
+              }
+              .kot-slip { width: 76mm; margin: 0 auto; }
+              .kot-title {
+                text-align: center;
+                font-weight: 700;
+                font-size: 16px;
+                margin: 2px 0;
+              }
+              .table-room {
+                text-align: center;
+                font-weight: 700;
+                font-size: 22px;
+                line-height: 1.1;
+                margin: 2px 0;
+              }
+              .meta-row {
+                display: flex;
+                align-items: baseline;
+                gap: 0;
+                margin: 1px 0;
+              }
+              .meta-label { width: 58px; }
+              .meta-colon { width: 10px; }
+              .meta-value {
+                flex: 1;
+                min-width: 0;
+                word-break: break-word;
+              }
+              .dash {
+                border: none;
+                border-top: 1px dashed #000;
+                width: 100%;
+                margin: 3px 0;
+              }
+              .item-row {
+                padding-left: 4px;
+                margin: 1px 0;
+                word-break: break-word;
+              }
+              .item-prefix { font-weight: 400; }
+              .item-name { font-weight: 700; }
               @media print {
-                body { width: 80mm; margin: 0; padding: 0; }
-                .page-break { page-break-after: always; }
+                body * { visibility: hidden; }
+                .kot-slip, .kot-slip * { visibility: visible; }
+                .kot-slip { position: absolute; left: 0; top: 0; width: 76mm; }
               }
             </style>
           </head>
           <body>
-            <div class="center">- - - - - - - - - - - - - - - -</div>
-            <div class="center bold" style="font-size: 13px;">GUEST KOT</div>
-            <div class="center">- - - - - - - - - - - - - - - -</div>
-            <div><strong>KOT No :</strong> ${finalKot.kotNumber || "-"}</div>
-            <div><strong>Date   :</strong> ${kotDate}</div>
-            <div><strong>Table  :</strong> ${kotTable}</div>
-            <div><strong>Steward:</strong> ${kotSteward}</div>
-            <div class="divider"></div>
-            ${finalKot.items.map((item: any) => `
-              <div class="item-line">${Number(item.quantity || 0)} - ${item.itemName || "-"}</div>
-              ${item.specialNote ? `<div class="item-line">   * ${item.specialNote}</div>` : ""}
-            `).join("")}
-            <div class="divider"></div>
-            <div><strong>Total Items :</strong> ${totalItems}</div>
-            <div class="divider"></div>
-            <div class="center">Thank You</div>
-            <div class="page-break"></div>
+            <div class="kot-slip">
+              <hr class="dash" />
+              <div class="kot-title">${kotHotelName}</div>
+              <hr class="dash" />
+              <div class="kot-title">New GUEST KOT</div>
+              <hr class="dash" />
+              <div class="table-room">${kotTableOrRoom}</div>
+              <hr class="dash" />
+              <div class="meta-row"><span class="meta-label">KOT Date</span><span class="meta-colon">:</span><span class="meta-value">${kotDate}</span></div>
+              <div class="meta-row"><span class="meta-label">Steward</span><span class="meta-colon">:</span><span class="meta-value">${kotSteward}</span></div>
+              <hr class="dash" />
+              ${normalizedItems.map((item: any) => `
+                <div class="item-row"><span class="item-prefix">${Number(item.quantity || 0)}  -</span><span class="item-name">${item.itemName || "-"}</span></div>
+              `).join("")}
+              <hr class="dash" />
+            </div>
           </body>
         </html>
       `;
 
-      printHtml(html);
+      if (reservedPrintWindow) {
+        reservedPrintWindow.document.write(html);
+        reservedPrintWindow.document.close();
+        const triggerPrint = () => {
+          try {
+            reservedPrintWindow.focus();
+            reservedPrintWindow.print();
+          } catch {
+            // Best-effort print trigger for browser popup fallback.
+          }
+        };
+
+        reservedPrintWindow.onload = () => {
+          triggerPrint();
+        };
+
+        reservedPrintWindow.onafterprint = () => {
+          try {
+            reservedPrintWindow.close();
+          } catch {
+            // Ignore close errors for stricter popup policies.
+          }
+        };
+
+        // Fallback for browsers where onload/onafterprint may not fire reliably.
+        setTimeout(() => {
+          triggerPrint();
+        }, 400);
+        setTimeout(() => {
+          try {
+            if (!reservedPrintWindow.closed) {
+              reservedPrintWindow.close();
+            }
+          } catch {
+            // Ignore close errors for stricter popup policies.
+          }
+        }, 3000);
+      } else {
+        printHtml(html);
+      }
 
       setShowKOTPreview(false);
       resetPOS();
@@ -808,7 +1012,7 @@ export function RestaurantPOS() {
     <hr />
     <div class="totals">
         <div class="row"><span>Subtotal</span><span>${formatCurrency(a4Subtotal)}</span></div>
-        <div class="row"><span>Service Charge (10%)</span><span>${formatCurrency(a4Service)}</span></div>
+        <div class="row"><span>S.C(10%)</span><span>${formatCurrency(a4Service)}</span></div>
         <div class="row net"><span>Net Payable</span><span>${formatCurrency(a4Net)}</span></div>
     </div>
     <div class="footer">Thank you for dining with us.</div>
@@ -973,6 +1177,14 @@ export function RestaurantPOS() {
                       setSearchQuery(e.target.value);
                       setShowItemSuggestions(true);
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (resolveAddItemFromQuery(addItemSearch)) {
+                          handleAddFromSearch();
+                        }
+                      }
+                    }}
                     className="w-full h-8 px-2 border border-[#8f8f8f] bg-[#ffffff] text-[12px] text-[#1a1a1a]"
                   />
                   {showItemSuggestions && filteredAddItemOptions.length > 0 && (
@@ -982,13 +1194,13 @@ export function RestaurantPOS() {
                           key={item.id}
                           type="button"
                           onMouseDown={() => {
-                            setAddItemSearch(toAddItemName(item));
+                            setAddItemSearch(toAddItemLabel(item));
                             setSearchQuery(item.itemName);
                             setShowItemSuggestions(false);
                           }}
                           className="w-full text-left px-2.5 py-1.5 text-[12px] hover:bg-[#e8e4d4]"
                         >
-                          {toAddItemName(item)}
+                          {toAddItemLabel(item)}
                         </button>
                       ))}
                     </div>
@@ -999,10 +1211,20 @@ export function RestaurantPOS() {
               <div>
                 <label className="block text-[11px] mb-1">Quantity</label>
                 <input
+                  ref={quantityInputRef}
                   type="number"
                   min={1}
                   value={addItemQty}
+                  onFocus={() => quantityInputRef.current?.select()}
                   onChange={(e) => setAddItemQty(Math.max(1, Number(e.target.value) || 1))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (resolveAddItemFromQuery(addItemSearch)) {
+                        handleAddFromSearch();
+                      }
+                    }
+                  }}
                   className="w-full h-8 px-2 border border-[#8f8f8f] bg-white text-[12px]"
                 />
               </div>
@@ -1041,7 +1263,7 @@ export function RestaurantPOS() {
                   <tbody>
                     {cart.map((item) => (
                       <tr key={item.menuItemId}>
-                        <td className="border border-[#d0d0d0] px-2 py-1">{String(item.menuItemId).slice(-6).toUpperCase()}</td>
+                        <td className="border border-[#d0d0d0] px-2 py-1">{getItemCode(item.menuItemId) ?? String(item.menuItemId).slice(-6).toUpperCase()}</td>
                         <td className="border border-[#d0d0d0] px-2 py-1">{item.itemName}</td>
                         <td className="border border-[#d0d0d0] px-2 py-1 text-center">
                           <div className="inline-flex items-center gap-1">
@@ -1189,17 +1411,12 @@ export function RestaurantPOS() {
               <button
                 onClick={() => printThermalKOT(kotToPreview)}
                 disabled={isProcessing}
-                className="flex-1 py-3 rounded-xl text-sm font-medium text-white transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2"
                 style={{
                   background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})`, // Replaced T.gold, T.darkGold
-                  opacity: isProcessing ? 0.7 : 1,
                 }}
               >
-                {isProcessing ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Printer className="w-4 h-4" />
-                )}
+                <Printer className="w-4 h-4" />
                 Print & Confirm
               </button>
             </div>
@@ -1233,8 +1450,7 @@ export function RestaurantPOS() {
                 const roomNo = billToPreview?.restaurantOrder?.room?.roomNumber || roomNumber || "";
                 const steward = billToPreview?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
                 const lines = splitAddressLines(activeHotel?.address);
-                const contactNo = activeHotel?.phone || activeHotel?.mobile || activeHotel?.contactNumber || "-";
-                const gstNo = activeHotel?.gstNumber || activeHotel?.gstNo || "-";
+                const contactNo = activeHotel?.phone || (activeHotel as any)?.mobile || (activeHotel as any)?.contactNumber || "-";
 
                 return (
                   <div
@@ -1246,7 +1462,6 @@ export function RestaurantPOS() {
                     {lines.line2 && <div className="text-center">{lines.line2}</div>}
                     {lines.cityState && <div className="text-center">{lines.cityState}</div>}
                     <div className="text-center">Contact No: {contactNo}</div>
-                    <div className="text-center">GST No: {gstNo}</div>
                     <div className="text-center">{RECEIPT_DASH}</div>
                     <div className="text-center font-bold">TAX INVOICE</div>
                     <div className="text-center">{RECEIPT_DASH}</div>
@@ -1262,7 +1477,7 @@ export function RestaurantPOS() {
                     <div className="text-center">{RECEIPT_DASH}</div>
                     <div className="flex justify-between"><span></span><span>Total Amount : {billSubtotal.toFixed(2)}</span></div>
                     <div className="flex justify-between"><span></span><span>Gross Amount : {billSubtotal.toFixed(2)}</span></div>
-                    {billService > 0 && <div className="flex justify-between"><span></span><span>Service(10%) : {billService.toFixed(2)}</span></div>}
+                    {billService > 0 && <div className="flex justify-between"><span></span><span>S.C.(10%) : {billService.toFixed(2)}</span></div>}
                     <div className="text-center">{RECEIPT_DASH}</div>
                     <div className="flex justify-between font-bold text-[14px]"><span></span><span>NET AMOUNT : {billNet.toFixed(2)}</span></div>
                     <div className="text-center">{RECEIPT_DASH}</div>

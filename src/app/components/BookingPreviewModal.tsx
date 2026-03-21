@@ -1,5 +1,5 @@
 import { Booking, Room, usePMS } from "../contexts/PMSContext";
-import { formatCurrency } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car } from "lucide-react";
 import { resolveBrandName } from "../utils/branding";
 
@@ -15,10 +15,30 @@ const T = {
 };
 
 function daysBetween(a: string, b: string) {
-    return Math.max(
-        1,
-        Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000),
-    );
+    return calculateRoomDays(a, b);
+}
+
+function formatDateWithTime(dateStr?: string, timeStr?: string) {
+    if (!dateStr) return "-";
+
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const year = d.getUTCFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+
+    if (!timeStr) return formattedDate;
+
+    const [rawHours, rawMinutes] = String(timeStr).split(":");
+    const hours = Number(rawHours);
+    const minutes = Number(rawMinutes);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return formattedDate;
+
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const h = hours % 12 || 12;
+    return `${formattedDate}, ${h}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
 export function BookingPreviewModal({
@@ -30,7 +50,10 @@ export function BookingPreviewModal({
     room?: Room | null;
     onClose: () => void;
 }) {
-    const nights = daysBetween(booking.checkInDate, booking.checkOutDate);
+    const nights = calculateRoomDays(
+        `${booking.checkInDate}T${booking.checkInTime || "12:00"}`,
+        `${booking.checkOutDate}T${booking.checkOutTime || "12:00"}`,
+    );
     const { hotels, companies } = usePMS();
     const hotel = hotels.find((h) => h.id === booking.hotelId);
     const linkedCompany = booking.companyId
@@ -38,6 +61,8 @@ export function BookingPreviewModal({
         : undefined;
     const displayCompanyName = booking.companyName || booking.company?.name || linkedCompany?.name;
     const displayCompanyGst = booking.companyGst || booking.company?.gstNumber || linkedCompany?.gstNumber;
+    const checkInDisplay = formatDateWithTime(booking.checkInDate, booking.checkInTime);
+    const checkOutDisplay = formatDateWithTime(booking.checkOutDate, booking.checkOutTime);
 
     const handlePrint = () => {
         // Basic print setup for this modal content
@@ -185,13 +210,13 @@ export function BookingPreviewModal({
                                 <div className="flex">
                                     <span className="w-1/3 text-gray-500">Check-In:</span>
                                     <span className="w-2/3 font-semibold">
-                                        {booking.checkInDate} {booking.checkInTime ? `at ${booking.checkInTime}` : ""}
+                                        {checkInDisplay}
                                     </span>
                                 </div>
                                 <div className="flex">
                                     <span className="w-1/3 text-gray-500">Check-Out:</span>
                                     <span className="w-2/3 font-semibold">
-                                        {booking.checkOutDate} {booking.checkOutTime ? `at ${booking.checkOutTime}` : ""}
+                                        {checkOutDisplay}
                                     </span>
                                 </div>
                                 <div className="flex">
@@ -201,6 +226,10 @@ export function BookingPreviewModal({
                                 <div className="flex">
                                     <span className="w-1/3 text-gray-500">Source:</span>
                                     <span className="w-2/3 font-semibold capitalize">{booking.source || "Direct Walk-in"}</span>
+                                </div>
+                                <div className="flex">
+                                    <span className="w-1/3 text-gray-500">Plan:</span>
+                                    <span className="w-2/3 font-semibold">{booking?.plan || "EP"}</span>
                                 </div>
                             </div>
                         </div>

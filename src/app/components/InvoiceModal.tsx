@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { resolveBrandName } from "../utils/branding";
+import { DEFAULT_LOGO_URL, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 import { printHtml } from "../utils/print";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -15,11 +15,17 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const { hotels, bookings, activeHotel } = usePMS() as any;
   const { user } = useAuth();
 
-  const bk = bookings.find(
+  const contextBooking = bookings.find(
     (b: any) =>
       b.id === invoice.bill?.bookingId ||
-      b.id === invoice.bill?.booking?.id
+      b.id === invoice.bill?.booking?.id ||
+      b.id === invoice.bookingId ||
+      b.id === invoice.booking?.id
   );
+  const bill = invoice?.bill || null;
+  const booking = invoice?.booking || bill?.booking || contextBooking || null;
+  const checkin = booking || invoice?.checkin || invoice?.checkIn || null;
+  const bk = booking;
 
   const invoiceHotelId =
     invoice.hotelId ||
@@ -45,6 +51,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   console.log("hotel resolved:", hotel);
   console.log("activeHotel:", activeHotel);
   console.log("hotels in context:", hotels);
+  console.log('=== INVOICE MODAL DATA ===');
+  console.log('booking:', JSON.stringify(booking, null, 2));
+  console.log('checkin:', JSON.stringify(checkin, null, 2));
+  console.log('bill:', JSON.stringify(bill, null, 2));
+  console.log('invoice:', JSON.stringify(invoice, null, 2));
 
   const hotelFields = useMemo(() => {
     const name =
@@ -104,7 +115,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const beforeRound = subtotal + totalGst;
   const roundOff = Math.round(beforeRound) - beforeRound;
   const totalAmountWithoutFood = Math.round(beforeRound);
-  const advanceAmount = Number(invoice.bill?.booking?.advanceAmount || bk?.advanceAmount || 0);
+  const advanceAmount = Number(bill?.booking?.advanceAmount || booking?.advanceAmount || bk?.advanceAmount || 0);
 
   // Date formatting functions
   const formatDateOnly = (d: Date | null) => {
@@ -115,14 +126,352 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
   const formatDateForBill = (d: Date | null) => d ? `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}` : '-';
   const formatDateTime = (d: Date | null) => d ? `${d.getDate().toString().padStart(2, '0')} ${(d.getMonth() + 1).toString().padStart(2, '0')} ${d.getFullYear()}/${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}` : '-';
+  const isTimeOnly = (value: string) => /^\d{1,2}:\d{2}(:\d{2})?$/.test(value.trim());
+  const formatDateDirect = (dateValue: Date | null) => {
+    if (!dateValue || Number.isNaN(dateValue.getTime())) return '-';
+    const day = String(dateValue.getDate()).padStart(2, '0');
+    const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+    const year = dateValue.getFullYear();
+    let hours = dateValue.getHours();
+    const minutes = String(dateValue.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
+  };
+
+  const formatEnteredDateTime = (rawValue: any, fallbackDate?: string) => {
+    if (rawValue === null || rawValue === undefined) return '-';
+    const normalized = String(rawValue).trim();
+    if (!normalized) return '-';
+
+    let candidate: Date | null = null;
+
+    if (isTimeOnly(normalized) && fallbackDate) {
+      const maybe = new Date(`${fallbackDate}T${normalized}`);
+      if (!Number.isNaN(maybe.getTime())) candidate = maybe;
+    }
+
+    if (!candidate) {
+      const maybe = new Date(normalized);
+      if (!Number.isNaN(maybe.getTime())) candidate = maybe;
+    }
+
+    if (!candidate && fallbackDate) {
+      const maybe = new Date(fallbackDate);
+      if (!Number.isNaN(maybe.getTime())) candidate = maybe;
+    }
+
+    return candidate ? formatDateDirect(candidate) : normalized;
+  };
+
+  const formatStoredDateOnly = (rawDateValue: any) => {
+    if (rawDateValue === null || rawDateValue === undefined) return '-';
+    const raw = String(rawDateValue).trim();
+    if (!raw) return '-';
+
+    const isoDateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoDateOnlyMatch) {
+      return `${isoDateOnlyMatch[3]}/${isoDateOnlyMatch[2]}/${isoDateOnlyMatch[1]}`;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return raw;
+
+    const day = String(parsed.getUTCDate()).padStart(2, '0');
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const year = parsed.getUTCFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const calculateStayDays = (checkInDate: any, checkInTime: any, checkOutDate: any, checkOutTime: any) => {
+    if (!checkInDate || !checkOutDate) return 1;
+
+    const checkInStr = `${String(checkInDate).split('T')[0]}T${checkInTime || '12:00'}:00`;
+    const checkOutStr = `${String(checkOutDate).split('T')[0]}T${checkOutTime || '12:00'}:00`;
+
+    const checkIn = new Date(checkInStr);
+    const checkOut = new Date(checkOutStr);
+
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) return 1;
+
+    const checkInNoon = new Date(checkIn);
+    checkInNoon.setHours(12, 0, 0, 0);
+
+    const checkOutNoon = new Date(checkOut);
+    checkOutNoon.setHours(12, 0, 0, 0);
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    let days = Math.round((checkOutNoon.getTime() - checkInNoon.getTime()) / msPerDay);
+
+    const checkOutHour = checkOut.getHours();
+    const checkOutMinutes = checkOut.getMinutes();
+    if (checkOutHour > 12 || (checkOutHour === 12 && checkOutMinutes > 0)) {
+      days += 1;
+    }
+
+    return Math.max(days, 1);
+  };
+
+  const getCurrentInvoiceDate = () =>
+    new Date()
+      .toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata',
+      })
+      .replace(/\//g, '-');
 
   const billDateStr = invoice.createdAt ? formatDateForBill(new Date(invoice.createdAt)) : '-';
-  const arrivalDateStr = bk?.checkInDate ? formatDateTime(new Date(bk.checkInDate)) : '-';
-  const departureDateStr = bk?.checkOutDate ? formatDateTime(new Date(bk.checkOutDate)) : '-';
+  const invoiceBooking = booking || bill?.booking || null;
+  const guestData = booking?.guest || bk?.guest || invoiceBooking?.guest || booking || bk || null;
+  const checkinData = checkin || booking || bk || invoiceBooking || null;
+  const reservationData =
+    invoice.bill?.booking?.reservation ||
+    invoice.reservation ||
+    null;
 
-  // Calculate GST percentage from actual invoice tax amounts.
+  const checkinOrRes = checkinData || reservationData || {};
+
+  const firstNonEmpty = (...values: any[]) => {
+    for (const value of values) {
+      if (value === null || value === undefined) continue;
+      const normalized = String(value).trim();
+      if (normalized) return normalized;
+    }
+    return '';
+  };
+
+  const checkInDateValue = firstNonEmpty(
+    checkinData?.checkInDate,
+    invoiceBooking?.checkInDate,
+    bk?.checkInDate
+  );
+
+  const checkOutDateValue = firstNonEmpty(
+    checkinData?.checkOutDate,
+    invoiceBooking?.checkOutDate,
+    bk?.checkOutDate
+  );
+
+  const checkInTimeValue = firstNonEmpty(
+    checkinData?.checkInTime,
+    invoiceBooking?.checkInTime,
+    bk?.checkInTime
+  );
+
+  const checkOutTimeValue = firstNonEmpty(
+    checkinData?.checkOutTime,
+    invoiceBooking?.checkOutTime,
+    bk?.checkOutTime
+  );
+
+  const parseDateParts = (rawDateValue: any) => {
+    if (rawDateValue === null || rawDateValue === undefined) return null;
+    const raw = String(rawDateValue).trim();
+    if (!raw) return null;
+
+    const isoDateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoDateOnlyMatch) {
+      return {
+        year: isoDateOnlyMatch[1],
+        month: isoDateOnlyMatch[2],
+        day: isoDateOnlyMatch[3],
+      };
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    return {
+      year: String(parsed.getUTCFullYear()),
+      month: String(parsed.getUTCMonth() + 1).padStart(2, '0'),
+      day: String(parsed.getUTCDate()).padStart(2, '0'),
+    };
+  };
+
+  const formatDateTimeFromBookingFields = (dateValue: any, timeValue: any) => {
+    const dateParts = parseDateParts(dateValue);
+    if (!dateParts) return '-';
+
+    const formattedDate = `${dateParts.day}/${dateParts.month}/${dateParts.year}`;
+    const rawTime = String(timeValue || '').trim();
+    if (!rawTime) return formattedDate;
+
+    const timeMatch = rawTime.match(/^(\d{1,2}):(\d{2})/);
+    if (!timeMatch) return formattedDate;
+
+    const rawHours = Number(timeMatch[1]);
+    const minutes = timeMatch[2];
+    if (Number.isNaN(rawHours) || rawHours < 0 || rawHours > 23) return formattedDate;
+
+    const ampm = rawHours >= 12 ? 'PM' : 'AM';
+    const hours12 = rawHours % 12 || 12;
+    return `${formattedDate}, ${hours12}:${minutes} ${ampm}`;
+  };
+
+  const arrivalDateStr = formatDateTimeFromBookingFields(checkInDateValue, checkInTimeValue);
+  const departureDateStr = formatDateTimeFromBookingFields(checkOutDateValue, checkOutTimeValue);
+  const isLateCheckout = () => {
+    if (!checkOutTimeValue) return false;
+    const [hoursRaw, minutesRaw] = String(checkOutTimeValue).split(':');
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return false;
+    return hours > 12 || (hours === 12 && minutes > 0);
+  };
+  const stayDays = calculateStayDays(
+    checkInDateValue,
+    checkInTimeValue,
+    checkOutDateValue,
+    checkOutTimeValue
+  );
+
+  console.log('Guest data:', guestData);
+  console.log('Full checkin object:', checkinData);
+  console.log('checkin full object:', JSON.stringify(checkinData, null, 2));
+  console.log('checkin datetime candidates:', {
+    checkInDate: checkinData?.checkInDate,
+    checkInTime: checkinData?.checkInTime,
+    checkInDateTime: checkinData?.checkInDateTime,
+    actualCheckIn: checkinData?.actualCheckIn,
+    arrivalDate: checkinData?.arrivalDate,
+    checkOutDate: checkinData?.checkOutDate,
+    checkOutTime: checkinData?.checkOutTime,
+    checkOutDateTime: checkinData?.checkOutDateTime,
+    actualCheckOut: checkinData?.actualCheckOut,
+    departureDate: checkinData?.departureDate,
+    checkInDateValue,
+    checkInTimeValue,
+    checkOutDateValue,
+    checkOutTimeValue,
+  });
+  console.log('reservation datetime candidates:', {
+    checkInDate: reservationData?.checkInDate,
+    checkInTime: reservationData?.checkInTime,
+    checkInDateTime: reservationData?.checkInDateTime,
+    actualCheckIn: reservationData?.actualCheckIn,
+    arrivalDate: reservationData?.arrivalDate,
+    checkOutDate: reservationData?.checkOutDate,
+    checkOutTime: reservationData?.checkOutTime,
+    checkOutDateTime: reservationData?.checkOutDateTime,
+    actualCheckOut: reservationData?.actualCheckOut,
+    departureDate: reservationData?.departureDate,
+  });
+  console.log('Full reservation object:', reservationData);
+
+  const guestName =
+    booking?.guestName ||
+    booking?.guest?.name ||
+    [booking?.firstName, booking?.lastName].filter(Boolean).join(' ').trim() ||
+    checkin?.guestName ||
+    invoice?.guestName ||
+    bill?.booking?.guestName ||
+    '—';
+
+  const contactNo =
+    booking?.phone ||
+    booking?.contact ||
+    booking?.phoneNumber ||
+    booking?.mobile ||
+    booking?.guestPhone ||
+    booking?.guest?.phone ||
+    checkin?.phone ||
+    checkin?.guestPhone ||
+    invoice?.phone ||
+    '—';
+
+  const address =
+    booking?.address ||
+    booking?.homeAddress ||
+    booking?.permanentAddress ||
+    booking?.addressLine ||
+    booking?.guest?.address ||
+    checkin?.address ||
+    '';
+
+  const roomNumber =
+    booking?.roomNumber ||
+    booking?.room?.number ||
+    booking?.room?.roomNumber ||
+    booking?.roomNo ||
+    checkin?.roomNumber ||
+    invoice?.roomNumber ||
+    bill?.booking?.roomNumber ||
+    bill?.booking?.room?.number ||
+    bill?.booking?.room?.roomNumber ||
+    '—';
+
+  const regNo =
+    booking?.registrationNumber ||
+    booking?.regNo ||
+    booking?.bookingRef ||
+    booking?.reservationNo ||
+    booking?.id?.slice(-5) ||
+    '—';
+
+  const adults = booking?.adults || booking?.pax?.adults || 0;
+  const children = booking?.children || booking?.pax?.children || 0;
+
+  const companyName =
+    booking?.corporateClient?.name ||
+    booking?.billingCompanyName ||
+    checkin?.billingCompanyName ||
+    booking?.companyName ||
+    booking?.company?.name ||
+    bill?.booking?.companyName ||
+    bill?.booking?.company?.name ||
+    "";
+  const companyGst =
+    booking?.corporateClient?.gstNumber ||
+    booking?.companyGst ||
+    checkin?.companyGst ||
+    booking?.company?.gstNumber ||
+    bill?.booking?.companyGst ||
+    bill?.booking?.company?.gstNumber ||
+    "";
+  const plan =
+    booking?.plan ||
+    checkinData?.plan ||
+    bill?.booking?.plan ||
+    "EP";
+  const guestAddress =
+    invoice.guestAddress ||
+    invoice.bill?.guestAddress ||
+    guestData?.address ||
+    guestData?.addressLine ||
+    guestData?.address_line ||
+    guestData?.permanentAddress ||
+    guestData?.homeAddress ||
+    checkinData?.address ||
+    checkinData?.addressLine ||
+    checkinData?.address_line ||
+    checkinData?.guestAddress ||
+    reservationData?.address ||
+    reservationData?.addressLine ||
+    reservationData?.address_line ||
+    bk?.address ||
+    bk?.addressLine ||
+    bk?.address_line ||
+    bk?.guestAddress ||
+    invoice.bill?.booking?.address ||
+    invoice.bill?.booking?.addressLine ||
+    invoice.bill?.booking?.address_line ||
+    invoice.bill?.booking?.guestAddress ||
+    "";
+  const guestAddressText = String(address || guestAddress || "").trim();
+
+  // Use the effective GST rate for description text (room invoice should show full GST rate, e.g. 5%).
   const taxRate = subtotal > 0 ? (totalGst / subtotal) * 100 : 0;
-  const gstPercentage = (taxRate / 2).toFixed(2); // CGST + SGST each half of total rate
+  const effectiveGstRate = Number(
+    invoice.gstRate ??
+      invoice.bill?.gstRate ??
+      invoice.bill?.booking?.gstRate ??
+      taxRate
+  );
+  const gstPercentage = Number.isFinite(effectiveGstRate)
+    ? effectiveGstRate.toFixed(2).replace(/\.00$/, "")
+    : "0";
 
   const items: any[] = [];
 
@@ -133,7 +482,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     items.push({
       date: billDateStr,
       type: "Room\nCharges",
-      desc: `Room Charges for the Day ${chargeDate} for Room Number ${bk?.room?.roomNumber || 'NA'}, GST (${gstPercentage}%)`,
+      desc: `Room Charges for ${stayDays} Day${stayDays > 1 ? 's' : ''} (${chargeDate}) for Room Number ${roomNumber}, GST (${gstPercentage}%)`,
       charges: base,
       discount: 0,
       gst: gstPart,
@@ -169,6 +518,29 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   }
 
   const getInvoiceHtml = () => {
+    const invoiceDateStr = getCurrentInvoiceDate();
+    const rawLogoUrl =
+      (activeHotel as any)?.logoUrl ||
+      (hotel as any)?.logoUrl ||
+      (hotel as any)?.branding?.logoUrl ||
+      (hotel as any)?.logo ||
+      "";
+    const resolvedLogoUrl = resolveLogoUrl(rawLogoUrl ? String(rawLogoUrl) : DEFAULT_LOGO_URL);
+    const safeLogoAttr = String(resolvedLogoUrl)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const hasLogoWatermark = safeLogoAttr.trim().length > 0;
+
+    const watermarkHtml = hasLogoWatermark
+      ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${safeLogoAttr}" alt="watermark" /></div>`
+      : "";
+
+    const lateCheckoutNoteHtml = isLateCheckout()
+      ? `<div class="late-checkout-note">* Late Check-Out Charge Applied: Guest checked out at ${checkOutTimeValue} (after 12:00 PM noon). Extra day charge has been added as per hotel policy.</div>`
+      : "";
+
     let itemsHtml = items.map(item => `
       <tr>
         <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.date}</td>
@@ -186,7 +558,25 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       <style>
         * { box-sizing: border-box; }
         body { font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; margin: 0; padding: 0; }
-        .invoice-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; background: #fff; position: relative; }
+        .invoice-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; background: #fff; position: relative; min-height: 100%; }
+        .invoice-container { position: relative; }
+        .invoice-watermark {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 50%;
+          max-width: 400px;
+          opacity: 0.70;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .invoice-watermark-image {
+          width: 100%;
+          height: auto;
+          object-fit: contain;
+        }
+        .invoice-content { position: relative; z-index: 1; }
         .text-center { text-align: center; }
         .text-left { text-align: left; }
         .text-right { text-align: right; }
@@ -196,9 +586,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         .border-l { border-left: 1px solid #C6A75E; }
         .border-r { border-right: 1px solid #C6A75E; }
         
-        .hotel-name { font-size: 22px; font-weight: bold; margin: 0; text-transform: lowercase; color: #555; }
+        .hotel-name { font-size: 22px; font-weight: bold; margin: 0; text-transform: uppercase; color: #c30909; font-family: 'Courier New', Courier, monospace; }
+        .hotel-subline-top { font-size: 16px; font-weight: bold; margin: 2px 0 0; text-transform: uppercase; color:#c30909; font-family: 'Courier New', Courier, monospace; }
+        .hotel-subline-brand { font-size: 22px; font-weight: bold; margin: 0 0 2px;color:#c30909; font-family: 'Courier New', Courier, monospace; text-transform: uppercase; line-height: 1.1; }
         .hotel-info { font-size: 14px; margin: 2px 0; font-family: 'Courier New', Courier, monospace; }
-        .proforma-title { font-size: 48px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; }
+        .proforma-title { font-size: 16px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; }
         
         .info-box { border: 1.5px solid #C6A75E; display: flex; margin-bottom: 15px; }
         .info-col { width: 50%; padding: 8px 12px; }
@@ -219,38 +611,53 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         .signature-section { margin-top: 80px; display: flex; justify-content: space-between; padding: 0 40px; }
         .sig-box { text-align: center; width: 250px; }
         .sig-line { border-top: 1.5px solid #000; margin-bottom: 8px; }
+        .late-checkout-note { font-size: 11px; font-style: italic; color: #555; margin-top: 10px; margin-bottom: 10px; border-top: 1px solid #ccc; padding-top: 6px; }
         
         @media print { 
           body { padding: 0; }
           .invoice-wrapper { width: 100%; max-width: none; border: none; }
+          .invoice-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            opacity: 0.07;
+          }
           @page { size: portrait; margin: 10mm; }
         }
       </style></head>
       <body>
-        <div class="invoice-wrapper" style="border: 1px solid #C6A75E; min-height: 100vh;">
+        <div class="invoice-wrapper invoice-container" style="border: 1px solid #C6A75E; min-height: 100vh;">
+          ${watermarkHtml}
+          <div class="invoice-content">
           <div class="text-center" style="margin-bottom: 10px;">
             <div class="hotel-name">${hotelFields.name}</div>
+            <div class="hotel-subline-top">A UNIT OF</div>
+            <div class="hotel-subline-brand">UTTARAKHAND HOTELS4U</div>
             <div class="hotel-info">${hotelFields.addressLine1}</div>
             ${hotelFields.addressLine2 ? `<div class="hotel-info">${hotelFields.addressLine2}</div>` : ""}
             <div class="hotel-info">Contact No:- ${hotelFields.phone}</div>
             <div class="hotel-info">GST Number: ${hotelFields.gst}</div>
-            <div class="proforma-title">PROFORMA TAX INVOICE</div>
+            <div class="proforma-title">TAX INVOICE</div>
           </div>
 
           <div class="info-box">
             <div class="info-col" style="border-right: 1.5px solid #C6A75E;">
-              <div class="info-row"><div class="info-label">Guest Name</div><div class="info-val">- ${bk?.guestName || "-"}</div></div>
-              <div class="info-row"><div class="info-label">Address</div><div class="info-val">- ${bk?.addressLine || "-"}</div></div>
-              <div class="info-row"><div class="info-label">Contact No</div><div class="info-val">- ${bk?.guestPhone || "-"}</div></div>
-              <div class="info-row"><div class="info-label">Room Nos</div><div class="info-val">- ${bk?.room?.roomNumber || "-"}</div></div>
-              <div class="info-row"><div class="info-label">State</div><div class="info-val">- ${hotel?.state || "NA"}</div></div>
+              ${companyName ? `<div class="info-row"><div class="info-label">Company</div><div class="info-val">- ${companyName}</div></div>` : ""}
+              ${companyGst ? `<div class="info-row"><div class="info-label">GST No.</div><div class="info-val">- ${companyGst}</div></div>` : ""}
+              <div class="info-row"><div class="info-label">Guest Name</div><div class="info-val">- ${guestName || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Contact No</div><div class="info-val">- ${contactNo || "-"}</div></div>
+              ${guestAddressText && guestAddressText !== '-' ? `<div class="info-row"><div class="info-label">Address</div><div class="info-val">- ${guestAddressText}</div></div>` : ''}
+              <div class="info-row"><div class="info-label">Room Nos</div><div class="info-val">- ${roomNumber || "-"}</div></div>
             </div>
             <div class="info-col">
-              <div class="info-row"><div class="info-label">Bill Date</div><div class="info-val">- ${billDateStr}</div></div>
+              <div class="info-row"><div class="info-label">Invoice Date</div><div class="info-val">- ${invoiceDateStr}</div></div>
               <div class="info-row"><div class="info-label">Bill No.</div><div class="info-val">- ${invoice.invoiceNumber || "-"}</div></div>
-              <div class="info-row"><div class="info-label">Reg. No.</div><div class="info-val">- ${bk?.id?.slice(-5) || "-"}</div></div>
-              <div class="info-row"><div class="info-label">Plan</div><div class="info-val">- NA</div></div>
-              <div class="info-row"><div class="info-label">PAX</div><div class="info-val">- Adults ${bk?.adults || 0},Child ${bk?.children || 0}</div></div>
+              <div class="info-row"><div class="info-label">Reg. No.</div><div class="info-val">- ${regNo || "-"}</div></div>
+              <div class="info-row"><div class="info-label">Plan</div><div class="info-val">- ${plan}</div></div>
+              <div class="info-row"><div class="info-label">PAX</div><div class="info-val">- Adults ${adults},Child ${children}</div></div>
               <div class="info-row"><div class="info-label">Arrival Date</div><div class="info-val">- ${arrivalDateStr}</div></div>
               <div class="info-row"><div class="info-label">Departure Date</div><div class="info-val">- ${departureDateStr}</div></div>
             </div>
@@ -299,6 +706,8 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
             RUPEES ${numberToWords(totalAmountWithoutFood - advanceAmount)} ONLY
           </div>
 
+          ${lateCheckoutNoteHtml}
+
           <div class="signature-section">
             <div class="sig-box">
               <div class="sig-line"></div>
@@ -309,6 +718,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
               <div>Cash/Signature</div>
               <div>Cashier</div>
             </div>
+          </div>
           </div>
         </div>
       </body></html>

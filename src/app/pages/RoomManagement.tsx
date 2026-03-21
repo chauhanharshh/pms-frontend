@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room } from "../contexts/PMSContext";
-import { formatCurrency } from "../utils/format";
+import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import { useRoomStatusColors } from "../utils/roomStatusColors";
 import {
   BedDouble,
@@ -81,9 +81,7 @@ const TYPE_OCC_MAP: Record<string, number> = {
 
 // Helper to get days stayed
 function daysBetween(from: string, to: string) {
-  const d1 = new Date(from);
-  const d2 = new Date(to);
-  return Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / 86400000));
+  return calculateRoomDays(from, to);
 }
 
 // ── ROOM CARD ─────────────────────────────────────────────────
@@ -120,8 +118,12 @@ function RoomCard({
   const roomBill = bills.find((b) => b.roomNumber === room.roomNumber);
   const runningBill = roomBill ? roomBill.totalAmount - roomBill.paidAmount : 0;
   const nights =
+    room.status === "occupied" &&
     (room as any).checkInDate && (room as any).checkOutDate
-      ? daysBetween((room as any).checkInDate, (room as any).checkOutDate)
+      ? calculateRoomDays(
+        `${(room as any).checkInDate}T${(room as any).checkInTime || "12:00"}`,
+        `${(room as any).checkOutDate}T${(room as any).checkOutTime || "12:00"}`,
+      )
       : 0;
 
   return (
@@ -196,7 +198,7 @@ function RoomCard({
               style={{ color: "#d1fae5" }}
             >
               <Calendar className="w-3 h-3" />
-              {(room as any).checkInDate} → {(room as any).checkOutDate}
+              {formatActualCheckInDateTime(room as any, (room as any)?.reservation, (room as any)?.checkInDate)} → {(room as any).checkOutDate}
               <span className="font-medium">({nights}N)</span>
             </div>
             {runningBill > 0 && (

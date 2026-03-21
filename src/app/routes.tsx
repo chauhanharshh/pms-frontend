@@ -59,6 +59,7 @@ import { Settings } from "./pages/Settings";
 import { DayClosingPage } from "./pages/DayClosingPage";
 import { StewardManagement } from "./pages/StewardManagement";
 import { ServiceChargeReport } from "./pages/ServiceChargeReport";
+import { RestaurantDayClosingPage } from "./pages/RestaurantDayClosingPage";
 
 // ── GST REPORT PAGES ───────────────────────────────────────────────────────
 import { GstSummaryReport } from "./pages/gst/GstSummaryReport";
@@ -160,6 +161,7 @@ const routes = [
   { path: "/admin/restaurant/service-charge-report", Component: ServiceChargeReport, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/reports", Component: Reports, errorElement: <ErrorBoundary /> },
   { path: "/admin/restaurant/expenses", Component: Expenses, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/day-closing", Component: RestaurantDayClosingPage, errorElement: <ErrorBoundary /> },
 
   // GST Reports (Admin)
   { path: "/admin/gst/summary", Component: GstSummaryReport },
@@ -231,6 +233,7 @@ const routes = [
   { path: "/hotel/restaurant/service-charge-report", Component: ServiceChargeReport, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/reports", Component: Reports, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/expenses", Component: Expenses, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/day-closing", Component: RestaurantDayClosingPage, errorElement: <ErrorBoundary /> },
   { path: "/hotel/rooms", Component: SuspendedRoomManagement },
   { path: "/hotel/reports", Component: Reports },
   { path: "/hotel/settings", Component: Settings },

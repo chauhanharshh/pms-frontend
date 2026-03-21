@@ -354,6 +354,11 @@ const ADMIN_SECTIONS: NavSection[] = [
         path: "/admin/restaurant/expenses",
         icon: <Wallet className="w-4 h-4" />,
       },
+      {
+        label: "Day Closing",
+        path: "/admin/restaurant/day-closing",
+        icon: <Lock className="w-4 h-4" />,
+      },
     ],
   },
   {

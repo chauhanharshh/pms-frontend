@@ -60,7 +60,13 @@ export function TopNavbar({ title }: TopNavbarProps) {
               {user?.username}
             </p>
             <p className="text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--accent-color, #A8832D)" }}>
-              {user?.role === "super_admin" ? "Super Administrator" : user?.role === "admin" ? "Administrator" : "Hotel Staff"}
+              {user?.role === "super_admin"
+                ? "Super Administrator"
+                : user?.role === "admin"
+                  ? "Administrator"
+                  : user?.role === "restaurant_staff"
+                    ? "Restaurant Staff"
+                    : "Hotel Staff"}
             </p>
           </div>
           {/* Avatar */}

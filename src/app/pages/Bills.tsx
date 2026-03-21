@@ -35,14 +35,53 @@ function EditBillModal({
   const [items, setItems] = useState<BillItem[]>(b.items || []);
   const [discount, setDiscount] = useState(b.discount || 0);
 
+  const calculateStayDays = (checkInDate: any, checkInTime: any, checkOutDate: any, checkOutTime: any) => {
+    if (!checkInDate || !checkOutDate) return 1;
+
+    const checkInStr = `${String(checkInDate).split("T")[0]}T${checkInTime || "12:00"}:00`;
+    const checkOutStr = `${String(checkOutDate).split("T")[0]}T${checkOutTime || "12:00"}:00`;
+
+    const checkIn = new Date(checkInStr);
+    const checkOut = new Date(checkOutStr);
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) return 1;
+
+    const checkInNoon = new Date(checkIn);
+    checkInNoon.setHours(12, 0, 0, 0);
+
+    const checkOutNoon = new Date(checkOut);
+    checkOutNoon.setHours(12, 0, 0, 0);
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    let days = Math.round((checkOutNoon.getTime() - checkInNoon.getTime()) / msPerDay);
+
+    const checkOutHour = checkOut.getHours();
+    const checkOutMinutes = checkOut.getMinutes();
+    if (checkOutHour > 12 || (checkOutHour === 12 && checkOutMinutes > 0)) {
+      days += 1;
+    }
+
+    return Math.max(days, 1);
+  };
+
   const roomSubtotal = items.filter(i => i.type === "room").reduce((s, i) => s + i.amount, 0);
   const otherSubtotal = items.filter(i => i.type !== "room").reduce((s, i) => s + i.amount, 0);
 
-  const checkIn = b?.booking?.checkInDate ? new Date(b.booking.checkInDate) : null;
-  const checkOut = b?.booking?.checkOutDate ? new Date(b.booking.checkOutDate) : null;
-  const nights = checkIn && checkOut
-    ? Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)))
+  const nights = b?.booking?.checkInDate && b?.booking?.checkOutDate
+    ? calculateStayDays(
+      b.booking.checkInDate,
+      b.booking?.checkInTime,
+      b.booking.checkOutDate,
+      b.booking?.checkOutTime,
+    )
     : 1;
+  const isLateCheckout = () => {
+    if (!b?.booking?.checkOutTime) return false;
+    const [hoursRaw, minutesRaw] = String(b.booking.checkOutTime).split(":");
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return false;
+    return hours > 12 || (hours === 12 && minutes > 0);
+  };
   const effectiveDailyRent = Math.max(0, roomSubtotal) / Math.max(1, nights);
   const taxRatePercent = calculateRoomTax(effectiveDailyRent, 1).rate;
   const taxAmount = Math.max(0, roomSubtotal) * (taxRatePercent / 100);
@@ -321,6 +360,15 @@ function EditBillModal({
             </div>
           </div>
 
+          {isLateCheckout() && (
+            <p
+              className="text-xs italic"
+              style={{ color: "#555", borderTop: "1px solid #ccc", paddingTop: "6px" }}
+            >
+              * Late Check-Out Charge Applied: Guest checked out at {b.booking.checkOutTime} (after 12:00 PM noon). Extra day charge has been added as per hotel policy.
+            </p>
+          )}
+
           <div className="flex justify-end gap-3">
             <button
               onClick={onClose}
@@ -354,19 +402,27 @@ export function Bills() {
   const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [adminHotelFilter, setAdminHotelFilter] = useState("all");
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
 
-  const hotelFilter = isAdmin ? (currentHotelId || "all") : (user?.hotelId || "");
+  const hotelFilter = isAdmin ? adminHotelFilter : (currentHotelId || user?.hotelId || "");
 
   const filtered = bills.filter((bill) => {
     const b = bill as any;
     const booking = bookings.find(bk => bk.id === b.bookingId);
     const guestName = booking?.guestName || b.guestName || "Unknown Guest";
     const roomNumber = booking?.room?.roomNumber || booking?.roomId?.slice(-4) || b.roomNumber || "N/A";
+    const statusValues = [b.status, b.paymentStatus, b.billStatus]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean);
 
     const matchHotel = hotelFilter === "all" || b.hotelId === hotelFilter;
-    const matchStatus = filterStatus === "all" || b.status === filterStatus;
+    const matchStatus =
+      filterStatus === "all" ||
+      statusValues.includes(String(filterStatus || "").trim().toLowerCase()) ||
+      (["unpaid", "pending"].includes(String(filterStatus || "").trim().toLowerCase()) &&
+        statusValues.some((value) => ["pending", "unpaid"].includes(value)));
     const matchSearch =
       guestName.toLowerCase().includes(search.toLowerCase()) ||
       String(roomNumber).includes(search);
@@ -440,10 +496,10 @@ export function Bills() {
                 background: "white",
                 color: DARKGOLD,
               }}
-              value={currentHotelId || "all"}
+              value={adminHotelFilter}
               onChange={(e) => {
                 const val = e.target.value;
-                setCurrentHotelId(val === "all" ? null : val);
+                setAdminHotelFilter(val);
               }}
             >
               <option value="all">All Hotels</option>
@@ -532,6 +588,7 @@ export function Bills() {
                   const booking = bookings.find(bk => bk.id === b.bookingId);
                   const guestName = booking?.guestName || b.guestName || "Unknown Guest";
                   const roomNumber = booking?.room?.roomNumber || booking?.roomId?.slice(-4) || b.roomNumber || "N/A";
+                  const plan = booking?.plan || b.booking?.plan || "EP";
 
                   const hotelName = hotels.find(
                     (h) => h.id === b.hotelId,
@@ -574,6 +631,9 @@ export function Bills() {
                         </div>
                         <div className="text-xs" style={{ color: "#9CA3AF" }}>
                           {utilFormatDate(b.createdAt)}
+                        </div>
+                        <div className="text-xs" style={{ color: "#9CA3AF" }}>
+                          Plan: {plan}
                         </div>
                       </td>
                       <td

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
+import { calculateRoomDays, formatActualCheckInDateTime } from "../utils/format";
 import {
   ArrowLeft,
   Search,
@@ -102,12 +103,12 @@ export function CheckOut() {
     }
   };
 
-  const calculateDays = (checkIn: string, checkOut: string) => {
+  const calculateDays = (checkIn: string, checkOut: string, checkInTime?: string, checkOutTime?: string) => {
     if (!checkIn || !checkOut) return 1;
-    const days = Math.ceil(
-      (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)
+    return calculateRoomDays(
+      `${checkIn}T${checkInTime || "12:00"}`,
+      `${checkOut}T${checkOutTime || "12:00"}`,
     );
-    return Math.max(1, days);
   };
 
   const getFilteredBookings = () => {
@@ -215,14 +216,14 @@ export function CheckOut() {
                             <div className="flex flex-col gap-1 text-sm">
                               <div className="flex items-center gap-2 text-gray-700">
                                 <Calendar className="w-4 h-4 text-gray-400" />
-                                Check In: <span className="font-medium text-gray-900">{new Date(booking.checkInDate).toLocaleDateString('en-IN')}</span>
+                                Check In: <span className="font-medium text-gray-900">{formatActualCheckInDateTime(booking, booking?.reservation, booking?.checkInDate)}</span>
                               </div>
                               <div className="flex items-center gap-2 text-gray-700">
                                 <LogOut className="w-4 h-4 text-gray-400" />
                                 Expected: <span className="font-medium text-gray-900">{new Date(booking.checkOutDate).toLocaleDateString('en-IN')}</span>
                               </div>
                               <div className="text-xs text-gray-500 mt-1">
-                                Stay Duration: {calculateDays(booking.checkInDate, booking.checkOutDate)} Night(s)
+                                Stay Duration: {calculateDays(booking.checkInDate, booking.checkOutDate, booking.checkInTime, booking.checkOutTime)} Night(s)
                               </div>
                             </div>
                           </td>

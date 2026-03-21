@@ -25,14 +25,28 @@ function formatDateTime(value: string | undefined) {
   return `${dd}-${mm}-${yy} ${hh}:${min}:${ss}`;
 }
 
+function formatKotDateTime(value: string | undefined) {
+  if (!value) return "-";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "-";
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const yy = String(dt.getFullYear()).slice(-2);
+  const hh = String(dt.getHours()).padStart(2, "0");
+  const min = String(dt.getMinutes()).padStart(2, "0");
+  return `${dd}-${mm}-${yy} ${hh}:${min}`;
+}
+
 export function RoomKOTWall() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { getKOTs, deleteKOT, generateOrderInvoice, hotels } = usePMS();
+  const { refreshRestaurantKOTs, deleteKOT, generateOrderInvoice, hotels } = usePMS();
 
   const queryRoomNumber = (searchParams.get("roomNumber") || "").trim();
+  const querySourceType = (searchParams.get("sourceType") || "").trim().toLowerCase();
+  const isTableSource = querySourceType === "table";
   const queryTableNumber = (searchParams.get("tableNumber") || queryRoomNumber).trim();
   const queryHotelId = (searchParams.get("hotelId") || user?.hotelId || "").trim();
   const queryReturnTo = searchParams.get("returnTo") || "";
@@ -56,16 +70,88 @@ export function RoomKOTWall() {
 
   const roleBase = user?.role === "admin" ? "/admin" : "/hotel";
   const isKotOpen = (kot: any) => String(kot?.status || "").toUpperCase() === "OPEN";
-  const kotWallColors = useMemo(() => getKotWallColors(), []);
+  const [kotWallColors, setKotWallColors] = useState(() => getKotWallColors());
+
+  const markRoomAsBilled = (roomId?: string, roomNumber?: string, tableNumber?: string) => {
+    if (!roomId && !roomNumber && !tableNumber) return;
+    const raw = localStorage.getItem("billedRooms") || "[]";
+    const rawItems = localStorage.getItem("billedItems") || "{}";
+    let billedRooms: string[] = [];
+    let billedItems: Record<string, boolean> = {};
+    try {
+      const parsed = JSON.parse(raw);
+      billedRooms = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      billedRooms = [];
+    }
+    try {
+      billedItems = JSON.parse(rawItems) || {};
+    } catch {
+      billedItems = {};
+    }
+
+    const roomToken = roomNumber ? `room:${String(roomNumber).trim()}` : "";
+    const tableKey = tableNumber ? String(tableNumber).trim() : "";
+    const tableToken = tableKey ? `table:${tableKey}` : "";
+    let changed = false;
+    let itemsChanged = false;
+
+    if (roomId && !billedRooms.includes(roomId)) {
+      billedRooms.push(roomId);
+      changed = true;
+    }
+    if (roomToken && !billedRooms.includes(roomToken)) {
+      billedRooms.push(roomToken);
+      changed = true;
+    }
+    if (tableToken && !billedRooms.includes(tableToken)) {
+      billedRooms.push(tableToken);
+      changed = true;
+    }
+
+    if (roomId && !billedItems[roomId]) {
+      billedItems[roomId] = true;
+      itemsChanged = true;
+    }
+    if (roomToken && !billedItems[roomToken]) {
+      billedItems[roomToken] = true;
+      itemsChanged = true;
+    }
+    if (tableKey && !billedItems[tableKey]) {
+      billedItems[tableKey] = true;
+      itemsChanged = true;
+    }
+    if (tableToken && !billedItems[tableToken]) {
+      billedItems[tableToken] = true;
+      itemsChanged = true;
+    }
+
+    if (changed) {
+      localStorage.setItem("billedRooms", JSON.stringify(billedRooms));
+    }
+    if (itemsChanged) {
+      localStorage.setItem("billedItems", JSON.stringify(billedItems));
+    }
+    if (changed || itemsChanged) {
+      window.dispatchEvent(new CustomEvent("restaurant:billed-rooms-updated", {
+        detail: {
+          roomId,
+          roomNumber: roomNumber ? String(roomNumber).trim() : "",
+          tableNumber: tableKey,
+        }
+      }));
+    }
+  };
 
   const loadKOTs = async () => {
     try {
       setLoading(true);
-      const all = await getKOTs();
+      const all = await refreshRestaurantKOTs("OPEN");
       const normalizedSerialOrTable = tableNumberFilter.trim().toLowerCase();
       const normalizedRoom = roomNumberFilter.trim().toLowerCase();
 
       const filtered = (all || []).filter((kot: any) => {
+        if (String(kot?.status || "").toUpperCase() !== "OPEN") return false;
         if (queryHotelId && kot.hotelId && kot.hotelId !== queryHotelId) return false;
 
         const kotNo = String(kot.kotNumber || "").toLowerCase();
@@ -77,7 +163,9 @@ export function RoomKOTWall() {
         }
 
         const tableOrRoomMatch = normalizedSerialOrTable
-          ? tableNo.includes(normalizedSerialOrTable) || roomNo.includes(normalizedSerialOrTable)
+          ? isTableSource
+            ? tableNo.includes(normalizedSerialOrTable)
+            : tableNo.includes(normalizedSerialOrTable) || roomNo.includes(normalizedSerialOrTable)
           : false;
         const roomFieldMatch = normalizedRoom ? roomNo.includes(normalizedRoom) : false;
 
@@ -121,7 +209,52 @@ export function RoomKOTWall() {
     return () => window.removeEventListener("afterprint", handleAfterPrint);
   }, []);
 
+  useEffect(() => {
+    setKotWallColors(getKotWallColors());
+  }, []);
+
+  useEffect(() => {
+    const handleKotsUpdated = (event: Event) => {
+      const custom = event as CustomEvent;
+      if (custom?.detail?.source === "kot-wall-bill-generated") {
+        return;
+      }
+      const roomId = custom?.detail?.roomId;
+      const roomNumber = String(custom?.detail?.roomNumber || "").trim();
+      const tableNumber = String(custom?.detail?.tableNumber || "").trim();
+      const targetRoom = String(queryRoomNumber || "").trim();
+      const targetTable = String(queryTableNumber || "").trim();
+
+      if ((roomId || roomNumber) && targetRoom && (String(roomId) === targetRoom || roomNumber === targetRoom)) {
+        setKots([]);
+        setSelectedKotIds(new Set());
+        setActiveKotId(null);
+        return;
+      }
+
+      if (isTableSource && tableNumber && targetTable && tableNumber === targetTable) {
+        setKots([]);
+        setSelectedKotIds(new Set());
+        setActiveKotId(null);
+        return;
+      }
+
+      loadKOTs();
+    };
+    window.addEventListener("restaurant:kots-updated", handleKotsUpdated as EventListener);
+    return () => {
+      window.removeEventListener("restaurant:kots-updated", handleKotsUpdated as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const toggleKotSelection = (kotId: string, force?: boolean) => {
+    const kot = kots.find((item) => item.id === kotId);
+    if (!kot || !isKotOpen(kot)) {
+      toast.error("Only OPEN KOTs can be selected for billing");
+      return;
+    }
+
     setSelectedKotIds((prev) => {
       const next = new Set(prev);
       const shouldSelect = typeof force === "boolean" ? force : !next.has(kotId);
@@ -131,37 +264,113 @@ export function RoomKOTWall() {
     });
   };
 
+  const handleSelectAllOpen = () => {
+    if (kots.length === 0) {
+      toast.error("No KOTs available to select");
+      return;
+    }
+    setSelectedKotIds(new Set(kots.map((kot) => kot.id)));
+  };
+
+  const triggerPrintWhenReady = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.print();
+      });
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedKotIds(new Set());
+  };
+
   const handleGenerateBill = async () => {
-    const selectedKots = kots.filter((kot) => selectedKotIds.has(kot.id));
+    const selectedKots = kots.filter((kot) => selectedKotIds.has(kot.id) && isKotOpen(kot));
+    const baseKot = selectedKots[0];
+    const hotelIdForInvoice = baseKot?.hotelId || queryHotelId || user?.hotelId;
 
     if (selectedKots.length === 0) {
-      window.alert("Please select at least one KOT to generate bill");
+      toast.error("Please select at least one OPEN KOT to generate bill");
       return;
     }
 
-    const orderIds = Array.from(new Set(selectedKots.map((kot) => kot.orderId).filter(Boolean)));
-    if (orderIds.length !== 1) {
+    const normalize = (value: any) => String(value || "").trim().toLowerCase();
+    const baseTable = normalize(baseKot?.order?.tableNumber);
+    const baseRoom = normalize(baseKot?.order?.room?.roomNumber);
+    const sameContext = selectedKots.every((kot) => {
+      const tableNo = normalize(kot?.order?.tableNumber);
+      const roomNo = normalize(kot?.order?.room?.roomNumber);
+      if (baseTable) return tableNo === baseTable;
+      if (baseRoom) return roomNo === baseRoom;
+      return tableNo === baseTable && roomNo === baseRoom;
+    });
+    if (!sameContext) {
       toast.error("Please select KOTs from the same room/table to generate a single bill");
       return;
     }
 
+    const allItems = selectedKots.flatMap((kot) => (Array.isArray(kot.items) ? kot.items : []));
+    const mergedItems = allItems.reduce((acc: any[], item: any) => {
+      const itemId = item?.menuItemId || item?.itemId || item?.id || item?.itemName;
+      const price = Number(item?.price || 0);
+      const existing = acc.find((i) => {
+        const existingId = i?.menuItemId || i?.itemId || i?.id || i?.itemName;
+        return String(existingId) === String(itemId) && Number(i?.price || 0) === price;
+      });
+
+      const quantity = Number(item?.quantity || 0);
+      const amount = Number(item?.itemTotal || item?.amount || quantity * price);
+
+      if (existing) {
+        existing.quantity += quantity;
+        existing.itemTotal += amount;
+      } else {
+        acc.push({
+          menuItemId: item?.menuItemId || item?.itemId || null,
+          itemName: item?.itemName || item?.name || "Item",
+          quantity,
+          price,
+          itemTotal: amount,
+        });
+      }
+
+      return acc;
+    }, []);
+
+    const subtotal = mergedItems.reduce((sum, item) => sum + Number(item.itemTotal || 0), 0);
+    const serviceCharge = subtotal * 0.10;
+    const netPayable = subtotal + serviceCharge;
+
     try {
       setIsGeneratingBill(true);
-      const baseKot = selectedKots[0];
-      const hotelIdForInvoice = baseKot?.hotelId || queryHotelId || user?.hotelId;
-      const generatedInvoice = await generateOrderInvoice(orderIds[0] as string, hotelIdForInvoice);
+      const roomIdForBilledState = baseKot?.order?.roomId || baseKot?.order?.room?.id;
+      const roomNumberForBilledState = baseKot?.order?.room?.roomNumber || queryRoomNumber;
+      const tableNumberForBilledState = baseKot?.order?.tableNumber || queryTableNumber || tableNumberFilter;
+      const generatedInvoice = await generateOrderInvoice({
+        hotelId: hotelIdForInvoice,
+        roomId: baseKot?.order?.roomId || baseKot?.order?.room?.id || undefined,
+        tableNumber: baseKot?.order?.tableNumber || "",
+        roomNumber: baseKot?.order?.room?.roomNumber || "",
+        steward: baseKot?.order?.stewardName || "Staff",
+        items: mergedItems,
+        subtotal,
+        serviceCharge,
+        netPayable,
+        kotIds: selectedKots.map((kot) => kot.id),
+      }, hotelIdForInvoice);
 
       const previewInvoice = {
         ...generatedInvoice,
         hotelId: generatedInvoice?.hotelId || hotelIdForInvoice,
-        subtotal: combinedBill.subtotal,
-        totalAmount: combinedBill.netPayable,
+        subtotal,
+        totalAmount: netPayable,
+        serviceCharge,
         restaurantOrder: {
           ...(generatedInvoice as any)?.restaurantOrder,
           tableNumber: (generatedInvoice as any)?.restaurantOrder?.tableNumber || baseKot?.order?.tableNumber || "-",
           stewardName: (generatedInvoice as any)?.restaurantOrder?.stewardName || baseKot?.order?.stewardName || "Staff",
           room: (generatedInvoice as any)?.restaurantOrder?.room || baseKot?.order?.room,
-          orderItems: combinedBill.items.map((item: any) => ({
+          orderItems: mergedItems.map((item: any) => ({
             quantity: Number(item.quantity || 0),
             price: Number(item.price || 0),
             itemTotal: Number(item.itemTotal || 0),
@@ -174,11 +383,28 @@ export function RoomKOTWall() {
 
       setInvoiceToPreview(previewInvoice);
       setShowBillPreview(true);
-      await loadKOTs();
+      setKots([]);
+      setSelectedKotIds(new Set());
+      setActiveKotId(null);
+      window.dispatchEvent(new CustomEvent("restaurant:kots-updated", { detail: { source: "kot-wall-bill-generated" } }));
+      window.dispatchEvent(new CustomEvent("restaurant:invoice-generated"));
+      markRoomAsBilled(roomIdForBilledState, roomNumberForBilledState, tableNumberForBilledState);
       toast.success("Bill generated successfully");
     } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || error?.message || "Failed to generate bill");
+      const status = error?.response?.status;
+      const apiMessage = error?.response?.data?.message;
+      console.error("Generate bill failed", {
+        status,
+        data: error?.response?.data,
+        selectedKotIds: selectedKots.map((kot) => kot.id),
+        hotelIdForInvoice,
+      });
+
+      if (status === 400) {
+        toast.error(apiMessage || "Invalid bill request. Please verify selected KOTs are OPEN and from one table/room.");
+      } else {
+        toast.error(apiMessage || error?.message || "Failed to generate bill");
+      }
     } finally {
       setIsGeneratingBill(false);
     }
@@ -210,14 +436,12 @@ export function RoomKOTWall() {
   const handlePrintKot = (kot: any) => {
     setPrintingKotId(kot.id);
     setPrintMode("kot");
-    window.setTimeout(() => {
-      window.print();
-    }, 50);
+    triggerPrintWhenReady();
   };
 
   const handlePreviewPrint = () => {
     setIsPrinting(true);
-    window.print();
+    triggerPrintWhenReady();
   };
 
   const handleModifyKot = (kotId: string) => {
@@ -234,6 +458,11 @@ export function RoomKOTWall() {
   const selectedKots = useMemo(
     () => kots.filter((kot) => selectedKotIds.has(kot.id)),
     [kots, selectedKotIds],
+  );
+
+  const selectedOpenKotCount = useMemo(
+    () => selectedKots.filter((kot) => isKotOpen(kot)).length,
+    [selectedKots],
   );
 
   const combinedBill = useMemo(() => {
@@ -281,6 +510,11 @@ export function RoomKOTWall() {
     () => kots.find((kot) => kot.id === printingKotId) || null,
     [kots, printingKotId],
   );
+
+  const printingKotHotelName = useMemo(() => {
+    const hotelId = printingKot?.hotelId || queryHotelId || user?.hotelId || "";
+    return hotels.find((hotel) => hotel.id === hotelId)?.name || "HOTEL RESTAURANT";
+  }, [hotels, printingKot, queryHotelId, user?.hotelId]);
 
   const getNonEmptyValue = (...values: any[]) => {
     for (const value of values) {
@@ -351,7 +585,6 @@ export function RoomKOTWall() {
     const steward = inv.restaurantOrder?.stewardName || "Staff";
     const lines = splitAddressLines(selectedHotel?.address);
     const contactNo = (selectedHotel as any)?.phone || (selectedHotel as any)?.mobile || (selectedHotel as any)?.contactNumber || "-";
-    const gstNo = (selectedHotel as any)?.gstNumber || (selectedHotel as any)?.gstNo || "-";
     const items = (inv.restaurantOrder?.orderItems || []).map((item: any) => {
       const qty = Number(item.quantity || 0);
       const price = Number(item.price || 0);
@@ -374,7 +607,6 @@ export function RoomKOTWall() {
         {lines.line2 && <div className="text-center leading-tight">{lines.line2}</div>}
         {lines.cityState && <div className="text-center leading-tight">{lines.cityState}</div>}
         <div className="text-center leading-tight">Contact No: {contactNo}</div>
-        <div className="text-center leading-tight">GST No: {gstNo}</div>
         <div className="text-center leading-tight">{RECEIPT_DASH}</div>
         <div className="text-center font-bold leading-tight">TAX INVOICE</div>
         <div className="text-center leading-tight">{RECEIPT_DASH}</div>
@@ -393,7 +625,7 @@ export function RoomKOTWall() {
         <pre className="m-0 whitespace-pre leading-tight">
 {formatReceiptTotalLine("Total Amount", subtotal)}
 {"\n"}{formatReceiptTotalLine("Gross Amount", subtotal)}
-{serviceCharge > 0 ? `\n${formatReceiptTotalLine("Service(10%)", serviceCharge)}` : ""}
+{serviceCharge > 0 ? `\n${formatReceiptTotalLine("S.C.(10%)", serviceCharge)}` : ""}
         </pre>
         <div className="text-center leading-tight">{RECEIPT_DASH}</div>
         <div className="text-center font-bold text-[14px] leading-tight">NET AMOUNT : {netPayable.toFixed(2)}</div>
@@ -420,6 +652,52 @@ export function RoomKOTWall() {
       <style>{`
         .kot-print-only { display: none; }
         .thermal-print-area { display: none; }
+        .kot-print-receipt {
+          font-family: 'Calibri', sans-serif;
+          width: 76mm;
+          margin: 0 auto;
+          padding: 0;
+          font-size: 12px;
+          line-height: 1.25;
+          color: #000;
+          background: #fff;
+        }
+        .kot-section-line {
+          white-space: nowrap;
+          margin: 2px 0;
+        }
+        .kot-title {
+          text-align: center;
+          font-weight: 700;
+          font-size: 16px;
+          margin: 2px 0;
+        }
+        .kot-table-room {
+          text-align: center;
+          font-weight: 700;
+          font-size: 22px;
+          line-height: 1.1;
+          margin: 2px 0;
+        }
+        .kot-meta-row {
+          display: flex;
+          align-items: baseline;
+          margin: 1px 0;
+        }
+        .kot-meta-label { width: 58px; }
+        .kot-meta-colon { width: 10px; }
+        .kot-meta-value {
+          flex: 1;
+          min-width: 0;
+          word-break: break-word;
+        }
+        .kot-item-row {
+          padding-left: 4px;
+          margin: 1px 0;
+          word-break: break-word;
+        }
+        .kot-item-prefix { font-weight: 400; }
+        .kot-item-name { font-weight: 700; }
         @media print {
           @page { size: 80mm auto; margin: 2mm; }
           body * { visibility: hidden !important; }
@@ -452,24 +730,24 @@ export function RoomKOTWall() {
 
       <div id="kot-print-area" className={`kot-print-only ${printMode === "kot" && printingKot ? "kot-print-active" : ""}`}>
         {printingKot && (
-          <div style={{ fontFamily: "'Courier New', monospace", margin: "18px", maxWidth: "80mm" }}>
-            <div style={{ textAlign: "center" }}>{KOT_DASH}</div>
-            <div style={{ textAlign: "center", fontWeight: 700 }}>GUEST KOT</div>
-            <div style={{ textAlign: "center" }}>{KOT_DASH}</div>
-            <div>KOT No : {printingKot.kotNumber || "-"}</div>
-            <div>Date   : {formatDateTime(printingKot.printedAt || printingKot.createdAt)}</div>
-            <div>Table  : {printingKot.order?.tableNumber || "-"}</div>
-            <div>Steward: {printingKot.order?.stewardName || "-"}</div>
-            <div style={{ textAlign: "center" }}>{KOT_DASH}</div>
+          <div className="kot-print-receipt">
+            <hr style={{ border: "none", borderTop: "1px dashed #000", width: "100%", margin: "3px 0" }} />
+            <div className="kot-title">{printingKotHotelName}</div>
+            <hr style={{ border: "none", borderTop: "1px dashed #000", width: "100%", margin: "3px 0" }} />
+            <div className="kot-title">New GUEST KOT</div>
+            <hr style={{ border: "none", borderTop: "1px dashed #000", width: "100%", margin: "3px 0" }} />
+            <div className="kot-table-room">{printingKot.order?.room?.roomNumber || printingKot.order?.tableNumber || "-"}</div>
+            <hr style={{ border: "none", borderTop: "1px dashed #000", width: "100%", margin: "3px 0" }} />
+            <div className="kot-meta-row"><span className="kot-meta-label">KOT Date</span><span className="kot-meta-colon">:</span><span className="kot-meta-value">{formatKotDateTime(printingKot.printedAt || printingKot.createdAt)}</span></div>
+            <div className="kot-meta-row"><span className="kot-meta-label">Steward</span><span className="kot-meta-colon">:</span><span className="kot-meta-value">{printingKot.order?.stewardName || "-"}</span></div>
+            <hr style={{ border: "none", borderTop: "1px dashed #000", width: "100%", margin: "3px 0" }} />
             {(Array.isArray(printingKot.items) ? printingKot.items : []).map((item: any, index: number) => (
-              <div key={`print-kot-${index}`} style={{ whiteSpace: "pre-wrap" }}>
-                {`${Number(item.quantity || 0)} - ${item.itemName || "-"}`}
+              <div key={`print-kot-${index}`} className="kot-item-row">
+                <span className="kot-item-prefix">{`${Number(item.quantity || 0)}  -`}</span>
+                <span className="kot-item-name">{item.itemName || "-"}</span>
               </div>
             ))}
-            <div style={{ textAlign: "center" }}>{KOT_DASH}</div>
-            <div>Total Items : {Array.isArray(printingKot.items) ? printingKot.items.length : 0}</div>
-            <div style={{ textAlign: "center" }}>{KOT_DASH}</div>
-            <div style={{ textAlign: "center" }}>Thank You</div>
+            <hr style={{ border: "none", borderTop: "1px dashed #000", width: "100%", margin: "3px 0" }} />
           </div>
         )}
       </div>
@@ -578,14 +856,20 @@ export function RoomKOTWall() {
                     }}
                   >
                     <div className="p-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2 justify-end">
+                      {!isOpen && (
+                        <span className="h-7 px-2 inline-flex items-center border border-emerald-300 bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
+                          CONVERTED
+                        </span>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleKotSelection(kot.id);
                         }}
+                        disabled={!isOpen}
                         className="h-7 px-2 border border-slate-300 text-[11px] font-semibold hover:bg-slate-100"
                       >
-                        De-Select
+                        {isSelected ? "De-Select" : "Select"}
                       </button>
                       <button
                         onClick={(e) => {
@@ -630,6 +914,7 @@ export function RoomKOTWall() {
                         <h3 className="text-center text-[15px] font-bold">GUEST KOT</h3>
                         <div className="text-center">{KOT_DASH}</div>
                         <div>KOT No : {kot.kotNumber || "-"}</div>
+                        <div>Status : {String(kot.status || "-").toUpperCase()}</div>
                         <div>Date   : {formatDateTime(kot.printedAt || kot.createdAt)}</div>
                         <div>Table  : {kot.order?.tableNumber || "-"}</div>
                         <div>Steward: {kot.order?.stewardName || "-"}</div>
@@ -660,13 +945,25 @@ export function RoomKOTWall() {
           )}
         </div>
 
-        <div
-          className="px-4 py-3 border-t border-slate-700 flex items-center justify-end gap-3"
-          style={{ backgroundColor: kotWallColors.wallBackgroundColor }}
-        >
+        <div className="px-4 py-3 border-t border-slate-700 bg-[#050505] flex items-center justify-end gap-3">
           <div className="flex items-center gap-2">
             <button
+              onClick={handleSelectAllOpen}
+              disabled={loading || kots.length === 0}
+              className="h-9 px-4 border border-slate-500 bg-slate-700 hover:bg-slate-600 text-[13px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Select All
+            </button>
+            <button
+              onClick={handleClearSelection}
+              disabled={selectedKotIds.size === 0}
+              className="h-9 px-4 border border-slate-500 bg-slate-800 hover:bg-slate-700 text-[13px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Clear
+            </button>
+            <button
               onClick={handleGenerateBill}
+              disabled={isGeneratingBill || selectedOpenKotCount === 0}
               className="h-9 px-4 bg-[#d9c58f] hover:bg-[#ceb97f] text-black text-[13px] font-bold"
             >
               {isGeneratingBill ? "Generating..." : "Generate Bill"}

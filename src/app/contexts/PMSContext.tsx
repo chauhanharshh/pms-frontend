@@ -104,6 +104,7 @@ export interface Booking {
   id: string;
   hotelId: string;
   roomId: string;
+  plan?: string;
   roomNumber?: string;
   guestName: string;
   guestPhone: string;
@@ -448,12 +449,26 @@ interface PMSContextType {
   restaurantOrders: RestaurantOrder[];
   addOrder: (order: any) => Promise<any>;
   updateOrder: (id: string, updates: any) => Promise<void>;
-  generateOrderInvoice: (id: string, hotelId?: string) => Promise<Invoice>;
+  generateOrderInvoice: (id: string | {
+    hotelId?: string;
+    roomId?: string;
+    tableNumber?: string;
+    roomNumber?: string;
+    steward?: string;
+    items: any[];
+    subtotal: number;
+    serviceCharge: number;
+    netPayable: number;
+    kotIds: string[];
+  }, hotelId?: string) => Promise<Invoice>;
   generateKOTAndInvoice: (id: string, hotelId?: string) => Promise<{ kot: any; invoice: Invoice }>;
   payRestaurantInvoice: (id: string, paymentMethod: string) => Promise<Invoice>;
   getCheckedInRooms: (hotelId?: string) => Promise<Array<{ id: string; guestName: string; room: { roomNumber: string } }>>;
 
   // KOT Management
+  restaurantKOTs: any[];
+  refreshRestaurantKOTs: (status?: string) => Promise<any[]>;
+  clearRestaurantKOTsForRoom: (roomId: string) => void;
   getKOTs: (status?: string) => Promise<any[]>;
   updateKOT: (id: string, updates: any) => Promise<void>;
   deleteKOT: (id: string) => Promise<void>;
@@ -516,6 +531,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const [restaurantCategories, setRestaurantCategories] = useState<RestaurantCategory[]>([]);
   const [restaurantItems, setRestaurantItems] = useState<RestaurantItem[]>([]);
   const [restaurantOrders, setRestaurantOrders] = useState<RestaurantOrder[]>([]);
+  const [restaurantKOTs, setRestaurantKOTs] = useState<any[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
 
@@ -917,7 +933,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   const updateBooking = async (id: string, updates: Partial<Booking>) => {
     if (updates.status === "checked_in") {
-      const res = await api.put(`/bookings/${id}/check-in`);
+      const res = await api.put(`/bookings/${id}/check-in`, updates);
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.data } : b)));
       await fetchAll(); // refresh rooms and bills
     } else if (updates.status === "checked_out") {
@@ -1090,11 +1106,132 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     setRestaurantOrders((prev) => prev.map((o) => (o.id === id ? res.data.data : o)));
   };
 
-  const generateOrderInvoice = async (id: string, hotelId?: string) => {
-    const config = hotelId ? { headers: { 'X-Hotel-ID': hotelId } } : {};
-    const res = await api.post(`/restaurant/orders/${id}/invoice`, {}, config);
-    await fetchAll(true);
-    return res.data.data;
+  const generateOrderInvoice = async (id: string | {
+    hotelId?: string;
+    roomId?: string;
+    tableNumber?: string;
+    roomNumber?: string;
+    steward?: string;
+    items: any[];
+    subtotal: number;
+    serviceCharge: number;
+    netPayable: number;
+    kotIds: string[];
+  }, hotelId?: string) => {
+    if (typeof id !== "string") {
+      const resolvedHotelId = id.hotelId || hotelId || currentHotelId || user?.hotelId || localStorage.getItem("pms_hotel_ctx") || undefined;
+      const config = resolvedHotelId ? { headers: { 'X-Hotel-ID': resolvedHotelId } } : {};
+      const payload = {
+        ...id,
+        hotelId: resolvedHotelId,
+      };
+
+      try {
+        const res = await api.post(`/restaurant/kots/invoice/combined`, payload, config);
+
+        const convertedKotIds = Array.isArray(id.kotIds) ? id.kotIds : [];
+        if (convertedKotIds.length > 0) {
+          setRestaurantKOTs((prev) =>
+            prev.map((k: any) =>
+              convertedKotIds.includes(k.id)
+                ? { ...k, status: "CONVERTED", linkedInvoiceId: res.data?.data?.id || k.linkedInvoiceId }
+                : k
+            )
+          );
+        }
+
+        await refreshRestaurantKOTs();
+        await fetchAll(true);
+        return res.data.data;
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status !== 404) {
+          throw error;
+        }
+
+        const mergedItems = Array.isArray(id.items) ? id.items : [];
+        const orderPayload = {
+          hotelId: resolvedHotelId,
+          roomId: id.roomId || undefined,
+          tableNumber: id.tableNumber || undefined,
+          stewardName: id.steward || undefined,
+          items: mergedItems.map((item: any) => ({
+            menuItemId: item.menuItemId,
+            quantity: Number(item.quantity || 0),
+            price: Number(item.price || 0),
+            specialNote: item.specialNote,
+          })),
+        };
+
+        const createdOrder = await api.post(`/restaurant/orders`, orderPayload, config);
+        const orderId = createdOrder?.data?.data?.id;
+        if (!orderId) {
+          throw new Error("Failed to create merged restaurant order for billing");
+        }
+
+        const invoicePayload = resolvedHotelId ? { hotelId: resolvedHotelId } : {};
+        const invoiceRes = await api.post(`/restaurant/orders/${orderId}/invoice`, invoicePayload, config);
+
+        const convertedKotIds = Array.isArray(id.kotIds) ? id.kotIds : [];
+        if (convertedKotIds.length > 0) {
+          await Promise.all(
+            convertedKotIds.map((kotId) =>
+              api.put(`/restaurant/kots/${kotId}`, { status: "CONVERTED", hotelId: resolvedHotelId }, config)
+            )
+          );
+
+          setRestaurantKOTs((prev) =>
+            prev.map((k: any) =>
+              convertedKotIds.includes(k.id)
+                ? { ...k, status: "CONVERTED", linkedInvoiceId: invoiceRes.data?.data?.id || k.linkedInvoiceId }
+                : k
+            )
+          );
+        }
+
+        await refreshRestaurantKOTs();
+        await fetchAll(true);
+        return invoiceRes.data.data;
+      }
+    }
+
+    const existingInvoice = invoices.find((inv: any) =>
+      inv?.orderId === id ||
+      inv?.restaurantOrderId === id ||
+      inv?.restaurantOrder?.id === id
+    );
+    if (existingInvoice) {
+      return existingInvoice as Invoice;
+    }
+
+    const existingOrder = restaurantOrders.find((order) => order.id === id);
+    if (existingOrder && (existingOrder.invoicedAt || String(existingOrder.status || "").toLowerCase() === "billed")) {
+      throw new Error("This KOT has already been converted to a bill.");
+    }
+
+    const resolvedHotelId = hotelId || currentHotelId || user?.hotelId || localStorage.getItem("pms_hotel_ctx") || undefined;
+    const config = resolvedHotelId ? { headers: { 'X-Hotel-ID': resolvedHotelId } } : {};
+    const payload = resolvedHotelId ? { hotelId: resolvedHotelId } : {};
+
+    try {
+      const res = await api.post(`/restaurant/orders/${id}/invoice`, payload, config);
+
+      // Keep local KOT list in sync immediately for KOT Wall/KOTs views.
+      setRestaurantKOTs((prev) =>
+        prev.map((k: any) => {
+          const kotOrderId = k?.orderId || k?.order?.id;
+          return kotOrderId === id ? { ...k, status: "CONVERTED" } : k;
+        })
+      );
+
+      // Confirm final state from backend after conversion.
+      await refreshRestaurantKOTs();
+      await fetchAll(true);
+      return res.data.data;
+    } catch (error: any) {
+      console.error('Invoice API error:', error.response?.data);
+      throw error;
+    }
   };
 
   const generateKOTAndInvoice = async (id: string, hotelId?: string) => {
@@ -1120,19 +1257,45 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     return response.data.data;
   };
 
+  const refreshRestaurantKOTs = async (status?: string) => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    const res = await api.get(`/restaurant/kots${query}`);
+    const next = res.data?.data || [];
+    setRestaurantKOTs(next);
+    return next;
+  };
+
+  const clearRestaurantKOTsForRoom = (roomId: string) => {
+    if (!roomId) return;
+    setRestaurantKOTs((prev) =>
+      prev.filter((kot: any) => {
+        const kotRoomId = kot?.order?.roomId || kot?.order?.room?.id || kot?.roomId;
+        return kotRoomId !== roomId;
+      })
+    );
+  };
+
   const getKOTs = async (status?: string) => {
-    const qp = status ? `?status=${status}` : "";
-    const res = await api.get(`/restaurant/kots${qp}`);
-    return res.data.data;
+    const allKOTs = await refreshRestaurantKOTs(status);
+    if (!status) return allKOTs;
+    const normalized = String(status).toUpperCase();
+    return allKOTs.filter((kot: any) => String(kot?.status || "").toUpperCase() === normalized);
   };
 
   const updateKOT = async (id: string, updates: any) => {
-    await api.put(`/restaurant/kots/${id}`, updates);
+    const res = await api.put(`/restaurant/kots/${id}`, updates);
+    const updatedKOT = res.data?.data;
+    setRestaurantKOTs((prev) => {
+      const exists = prev.some((k) => k.id === id);
+      if (!exists) return updatedKOT ? [...prev, updatedKOT] : prev;
+      return prev.map((k) => (k.id === id ? { ...k, ...updates, ...(updatedKOT || {}) } : k));
+    });
     await fetchAll(true);
   };
 
   const deleteKOT = async (id: string) => {
     await api.delete(`/restaurant/kots/${id}`);
+    setRestaurantKOTs((prev) => prev.filter((k) => k.id !== id));
     await fetchAll(true);
   };
 
@@ -1140,9 +1303,16 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       const headers: any = {};
-      if (hotelId) headers["X-Hotel-ID"] = hotelId;
+      const resolvedHotelId = hotelId || currentHotelId || user?.hotelId || localStorage.getItem("pms_hotel_ctx") || undefined;
+      if (resolvedHotelId) headers["X-Hotel-ID"] = resolvedHotelId;
 
       const res = await api.post(`/restaurant/kots/${kotId}/convert`, {}, { headers });
+      setRestaurantKOTs((prev) =>
+        prev.map((k) => (k.id === kotId ? { ...k, status: "CONVERTED" } : k))
+      );
+
+      // Confirm final state from backend after conversion.
+      await refreshRestaurantKOTs();
       await fetchAll(true);
       return res.data.data;
     } catch (err: any) {
@@ -1302,6 +1472,9 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         generateKOTAndInvoice,
         payRestaurantInvoice,
         getCheckedInRooms,
+        restaurantKOTs,
+        refreshRestaurantKOTs,
+        clearRestaurantKOTsForRoom,
         getKOTs,
         updateKOT,
         deleteKOT,
