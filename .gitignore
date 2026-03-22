@@ -1,5 +1,11 @@
 node_modules/
 
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+
 dist/
 release/
 node-v18.20.4-win-x64/
