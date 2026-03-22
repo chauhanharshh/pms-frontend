@@ -1,5 +1,6 @@
-import { createBrowserRouter, createHashRouter, useRouteError, isRouteErrorResponse } from "react-router";
+import { createBrowserRouter, createHashRouter, useRouteError, isRouteErrorResponse, Navigate } from "react-router";
 import { lazy, Suspense } from "react";
+import { useAuth } from "./contexts/AuthContext";
 
 // ── ERROR BOUNDARY ─────────────────────────────────────────────────────────
 function ErrorBoundary() {
@@ -39,6 +40,8 @@ function ErrorBoundary() {
   );
 }
 import { LoginPage } from "./pages/LoginPage";
+// HIDDEN - Next patch update
+// import { RegisterPage } from "./pages/RegisterPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { HotelDashboard } from "./pages/HotelDashboard";
 import { CheckIn } from "./pages/CheckIn";
@@ -82,6 +85,8 @@ import { PettyCashPage } from "./pages/PettyCashPage";
 import { SystemPage } from "./pages/SystemPage";
 import { AppearanceSettings } from "./pages/AppearanceSettings";
 import { BrandingSettingsPage } from "./pages/BrandingSettingsPage";
+import { LicenseManagement } from "./pages/LicenseManagement";
+import { LicenseActivation } from "./pages/LicenseActivation";
 
 const RestaurantMenu = lazy(() => import("./pages/RestaurantMenu").then(m => ({ default: m.RestaurantMenu })));
 const RestaurantInvoices = lazy(() => import("./pages/RestaurantInvoices"));
@@ -106,6 +111,48 @@ const SuspendedEditRestaurantKOT = withSuspense(EditRestaurantKOT);
 const SuspendedRoomKOTWall = withSuspense(RoomKOTWall);
 const SuspendedRoomManagement = withSuspense(RoomManagement);
 
+const LICENSE_GATE_FLAG = "pms_license_gate_ready";
+
+function getDefaultRouteForRole(role: string) {
+  if (role === "super_admin") return "/superadmin";
+  if (role === "admin") return "/admin";
+  if (role === "restaurant_staff") return "/hotel/restaurant/rooms";
+  return "/hotel";
+}
+
+function ProtectedLicenseRoute({ children }: { children: JSX.Element }) {
+  const { user, token, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#C6A75E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!token || !user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const isLicenseGatedRole = user.role === "admin" || user.role === "hotel_manager";
+  if (!isLicenseGatedRole) {
+    return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
+  }
+
+  const licenseAlreadySaved = localStorage.getItem(`license_${user.id}`);
+  if (licenseAlreadySaved) {
+    return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
+  }
+
+  const canOpenLicenseGate = sessionStorage.getItem(LICENSE_GATE_FLAG) === "1";
+  if (!canOpenLicenseGate) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
 const routes = [
   {
     path: "/",
@@ -113,8 +160,33 @@ const routes = [
     errorElement: <ErrorBoundary />,
   },
   {
+    path: "/register",
+    element: <Navigate to="/" replace />,
+    errorElement: <ErrorBoundary />,
+  },
+  // HIDDEN - Next patch update
+  // {
+  //   path: "/register",
+  //   Component: RegisterPage,
+  //   errorElement: <ErrorBoundary />,
+  // },
+  {
     path: "/superadmin",
     Component: SuperAdminPanel,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/superadmin/licenses",
+    Component: LicenseManagement,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/activate-license",
+    element: (
+      <ProtectedLicenseRoute>
+        <LicenseActivation />
+      </ProtectedLicenseRoute>
+    ),
     errorElement: <ErrorBoundary />,
   },
 

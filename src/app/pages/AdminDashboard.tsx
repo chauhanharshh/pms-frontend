@@ -79,30 +79,24 @@ export function AdminDashboard() {
   const navigate = useNavigate();
 
   const selectedHotelId = useMemo(() => {
-    if (currentHotelId && hotels.some((h) => h.id === currentHotelId)) return currentHotelId;
-    return hotels[0]?.id || null;
+    if (!currentHotelId) return null;
+    if (hotels.some((h) => h.id === currentHotelId)) return currentHotelId;
+    return null;
   }, [currentHotelId, hotels]);
-
-  // Keep admin dashboard pinned to one active hotel so data is never consolidated.
-  useEffect(() => {
-    if (selectedHotelId && selectedHotelId !== currentHotelId) {
-      setCurrentHotelId(selectedHotelId);
-    }
-  }, [selectedHotelId, currentHotelId, setCurrentHotelId]);
 
   // Keep these for now as items needing complex logic might still benefit from client filter 
   // until we have full report APIs for them
   const filteredBookings = selectedHotelId
     ? bookings.filter((b) => b.hotelId === selectedHotelId)
-    : [];
+    : bookings;
 
   const filteredExpenses = selectedHotelId
     ? expenses.filter((e) => e.hotelId === selectedHotelId)
-    : [];
+    : expenses;
 
   const filteredOrders = selectedHotelId
     ? restaurantOrders.filter((o) => o.hotelId === selectedHotelId)
-    : [];
+    : restaurantOrders;
 
   const today = new Date().toISOString().slice(0, 10);
   const todayCheckIns = filteredBookings.filter(
@@ -198,13 +192,15 @@ export function AdminDashboard() {
                 fontSize: "1.3rem",
               }}
             >
-              {displayHotel ? displayHotel.name : "Select Hotel"}
+              {displayHotel ? displayHotel.name : "ALL HOTELS"}
             </h2>
             <p
               className="text-sm mt-0.5"
               style={{ color: "#D1D5DB" }}
             >
-              {displayHotel ? displayHotel.address ?? displayHotel.city : "Choose a hotel to view dashboard data"}
+              {displayHotel
+                ? (displayHotel.address ?? displayHotel.city)
+                : "Combined data across all properties"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -215,9 +211,9 @@ export function AdminDashboard() {
               CONTEXT:
             </label>
             <select
-              value={selectedHotelId || ""}
+              value={selectedHotelId || "all"}
               onChange={(e) =>
-                setCurrentHotelId(e.target.value || null)
+                setCurrentHotelId(e.target.value === "all" ? null : e.target.value)
               }
               className="px-4 py-2 rounded-xl text-sm outline-none cursor-pointer appearance-none transition-all hover:bg-gray-800"
               style={{
@@ -227,6 +223,7 @@ export function AdminDashboard() {
                 boxShadow: `0 0 10px ${GOLD}20`
               }}
             >
+              <option value="all">All Hotels</option>
               {hotels.map((h: any) => (
                 <option key={h.id} value={h.id}>
                   {h.name}

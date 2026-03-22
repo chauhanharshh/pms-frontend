@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { ArrowLeft, Settings as SettingsIcon, Save } from "lucide-react";
+import { ArrowLeft, Save, Building2, Clock3, SlidersHorizontal } from "lucide-react";
 
 export function Settings() {
   const { currentHotelId } = useAuth();
@@ -19,14 +19,47 @@ export function Settings() {
     checkInTime: "14:00",
     checkOutTime: "11:00",
   });
+  const [showFinancialSummary, setShowFinancialSummary] = useState<boolean>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("showFinancialSummary") ?? "true");
+    } catch {
+      return true;
+    }
+  });
 
   const handleSave = () => {
+    localStorage.setItem("showFinancialSummary", JSON.stringify(showFinancialSummary));
     alert("Settings saved successfully!");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen" style={{ background: "#F7F4EE" }}>
+      <style>{`
+        .settings-container {
+          height: calc(100vh - 80px);
+          overflow-y: auto;
+          scroll-behavior: smooth;
+        }
+
+        .settings-container::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .settings-container::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+
+        .settings-container::-webkit-scrollbar-thumb {
+          background: #B8860B;
+          border-radius: 10px;
+        }
+
+        .settings-container::-webkit-scrollbar-thumb:hover {
+          background: #9A7209;
+        }
+      `}</style>
+      <div className="bg-white border-b shadow-sm" style={{ borderColor: "#E8DCC8" }}>
         <div className="px-6 py-4 flex items-center gap-4">
           <button
             onClick={() => navigate("/hotel")}
@@ -35,30 +68,35 @@ export function Settings() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Hotel Settings</h1>
-            <p className="text-sm text-gray-500">{currentHotel?.name}</p>
+            <h1 className="text-2xl font-bold" style={{ color: "#B8860B", fontFamily: "Times New Roman, serif" }}>
+              {currentHotel?.name || "Hotel Settings"}
+            </h1>
+            <p className="text-sm text-gray-500">Manage your hotel configuration</p>
           </div>
+        </div>
+        <div className="mx-6 pb-4">
+          <div className="h-px" style={{ background: "linear-gradient(90deg, #B8860B 0%, #E8DCC8 55%, transparent 100%)" }} />
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 settings-container">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-xl shadow-md p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <SettingsIcon className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Hotel Configuration
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Manage your hotel settings
-                </p>
-              </div>
-            </div>
+          <div className="space-y-5">
+            <div
+              className="rounded-xl p-6"
+              style={{
+                background: "#ffffff",
+                border: "1px solid #E8DCC8",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              <h2
+                className="text-[15px] font-semibold mb-4 pb-2.5 flex items-center gap-2"
+                style={{ color: "#B8860B", borderBottom: "1px solid #F0E6D3" }}
+              >
+                <Building2 className="w-4 h-4" /> Basic Information
+              </h2>
 
-            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -70,7 +108,16 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, hotelName: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
 
@@ -84,7 +131,16 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, address: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
 
@@ -98,7 +154,16 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, phone: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
 
@@ -112,7 +177,16 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, email: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
 
@@ -126,10 +200,37 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, gstNumber: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
+              </div>
+            </div>
 
+            <div
+              className="rounded-xl p-6"
+              style={{
+                background: "#ffffff",
+                border: "1px solid #E8DCC8",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              <h2
+                className="text-[15px] font-semibold mb-4 pb-2.5 flex items-center gap-2"
+                style={{ color: "#B8860B", borderBottom: "1px solid #F0E6D3" }}
+              >
+                <Clock3 className="w-4 h-4" /> Check-In / Check-Out Times
+              </h2>
+
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Standard Check-In Time
@@ -140,7 +241,16 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, checkInTime: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
 
@@ -154,27 +264,74 @@ export function Settings() {
                     onChange={(e) =>
                       setSettings({ ...settings, checkOutTime: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                    style={{ borderColor: "#D4B896", background: "#FAFAFA" }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "#B8860B";
+                      e.currentTarget.style.boxShadow = "0 0 0 2px rgba(184,134,11,0.15)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#D4B896";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-3 pt-4">
+            <div
+              className="rounded-xl p-6"
+              style={{
+                background: "#ffffff",
+                border: "1px solid #E8DCC8",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              <h2
+                className="text-[15px] font-semibold mb-4 pb-2.5 flex items-center gap-2"
+                style={{ color: "#B8860B", borderBottom: "1px solid #F0E6D3" }}
+              >
+                <SlidersHorizontal className="w-4 h-4" /> Display Preferences
+              </h2>
+
+              <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#E8DCC8]">
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">Show Financial Summary</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Display financial details in Check-In Details modal
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => navigate("/hotel")}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition"
+                  className={`relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${showFinancialSummary ? "bg-[#B8860B]" : "bg-gray-300"}`}
+                  onClick={() => setShowFinancialSummary((prev) => !prev)}
+                  aria-label="Toggle show financial summary"
+                  style={{ boxShadow: showFinancialSummary ? "0 0 8px rgba(184, 134, 11, 0.5)" : "none" }}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                >
-                  <Save className="w-5 h-5" />
-                  Save Settings
+                  <div
+                    className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${showFinancialSummary ? "translate-x-7" : "translate-x-1"}`}
+                  />
                 </button>
               </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => navigate("/hotel")}
+                className="flex-1 px-6 py-3 border rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition"
+                style={{ borderColor: "#D1D5DB" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 px-6 py-3 rounded-lg font-medium transition shadow-sm hover:shadow-md flex items-center justify-center gap-2 text-white"
+                style={{ background: "#B8860B" }}
+              >
+                <Save className="w-5 h-5" />
+                Save Settings
+              </button>
             </div>
           </div>
         </div>

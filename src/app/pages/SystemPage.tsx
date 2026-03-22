@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
+import api from "../services/api";
 import {
   Key,
   HardDrive,
@@ -24,6 +25,24 @@ function formatFileSize(bytes: number) {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / 1024 / 1024).toFixed(2) + " MB";
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "-";
+  return dt.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function formatLicenseStatus(status?: string | null) {
+  const value = String(status || "").toLowerCase();
+  if (value === "active") return "🟢 Active";
+  if (value === "grace_period" || value === "expiring_soon" || value === "read_only") return "🟡 Grace";
+  return "🔴 Expired";
 }
 
 // Simulated backup history
@@ -48,6 +67,12 @@ export function SystemPage() {
   const location = useLocation();
   const segment = location.pathname.split("/").pop() || "password";
 
+  const [licenseInfo, setLicenseInfo] = useState<{
+    startDate?: string | null;
+    expiryDate?: string | null;
+    status?: string | null;
+  } | null>(null);
+
   const [oldPwd, setOldPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
@@ -55,6 +80,34 @@ export function SystemPage() {
   const [pwdOk, setPwdOk] = useState(false);
   const [backing, setBacking] = useState(false);
   const [backupDone, setBackupDone] = useState("");
+
+  useEffect(() => {
+    if (segment !== "about" || !user?.id) return;
+
+    let mounted = true;
+    const loadLicense = async () => {
+      try {
+        const res = await api.get(`/license/admin/${user.id}`);
+        const data = res.data?.data || res.data || null;
+        if (mounted) {
+          setLicenseInfo({
+            startDate: data?.startDate ?? null,
+            expiryDate: data?.expiryDate ?? null,
+            status: data?.status ?? null,
+          });
+        }
+      } catch {
+        if (mounted) {
+          setLicenseInfo(null);
+        }
+      }
+    };
+
+    loadLicense();
+    return () => {
+      mounted = false;
+    };
+  }, [segment, user?.id]);
 
   const handleChangePassword = () => {
     if (!oldPwd || !newPwd) {
@@ -521,12 +574,13 @@ export function SystemPage() {
                 ["System Version", "Hotels4U PMS v2.0.0"],
                 ["Build Date", "February 2026"],
                 ["Architecture", "Multi-hotel, Role-based, Real-time"],
-                ["Framework", "React + TypeScript + Vite"],
-                ["Database", "In-memory (extendable to PostgreSQL/MySQL)"],
                 ["Hotels Registered", hotels.length.toString()],
                 ["Total Rooms", rooms.length.toString()],
                 ["Total Bookings", bookings.length.toString()],
                 ["Active Since", "2025"],
+                ["Activation Date", formatDate(licenseInfo?.startDate)],
+                ["Expiry Date", formatDate(licenseInfo?.expiryDate)],
+                ["License Status", formatLicenseStatus(licenseInfo?.status)],
                 ["Support", "admin@hotels4u.com"],
               ].map(([label, value]) => (
                 <div

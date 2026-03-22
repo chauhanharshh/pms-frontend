@@ -10,6 +10,8 @@ interface AdminAccount {
   fullName: string;
   email?: string | null;
   phone?: string | null;
+  hotelsCount?: number;
+  maxHotels?: number;
   role: string;
   isActive: boolean;
 }
@@ -20,6 +22,7 @@ interface AdminFormState {
   password: string;
   phone: string;
   email: string;
+  maxHotels: number;
   isActive: boolean;
 }
 
@@ -29,8 +32,13 @@ const DEFAULT_FORM: AdminFormState = {
   password: "",
   phone: "",
   email: "",
+  maxHotels: 1,
   isActive: true,
 };
+
+function isSuperAdminRole(role?: string) {
+  return role === "super_admin" || role === "superadmin";
+}
 
 export function SuperAdminPanel() {
   const navigate = useNavigate();
@@ -55,7 +63,7 @@ export function SuperAdminPanel() {
       return;
     }
 
-    if (user.role !== "super_admin") {
+    if (!isSuperAdminRole(user.role)) {
       navigate(user.role === "admin" ? "/admin" : "/hotel", { replace: true });
       return;
     }
@@ -91,6 +99,7 @@ export function SuperAdminPanel() {
       password: "",
       phone: admin.phone || "",
       email: admin.email || "",
+      maxHotels: Math.max(1, Number(admin.maxHotels || 1)),
       isActive: admin.isActive,
     });
     setShowForm(true);
@@ -113,8 +122,10 @@ export function SuperAdminPanel() {
         const res = await api.put(`/users/admins/${editingId}`, {
           fullName: form.fullName,
           username: form.username,
+          ...(form.password.trim() ? { password: form.password } : {}),
           phone: form.phone || null,
           email: form.email || null,
+          maxHotels: Math.max(1, Number(form.maxHotels || 1)),
           isActive: form.isActive,
         });
         setAdmins((prev) => prev.map((a) => (a.id === editingId ? res.data.data : a)));
@@ -125,6 +136,7 @@ export function SuperAdminPanel() {
           password: form.password,
           phone: form.phone || null,
           email: form.email || null,
+          maxHotels: Math.max(1, Number(form.maxHotels || 1)),
           isActive: form.isActive,
         });
         setAdmins((prev) => [res.data.data, ...prev]);
@@ -201,13 +213,31 @@ export function SuperAdminPanel() {
     );
   }
 
-  if (!user || user.role !== "super_admin") {
+  if (!user || !isSuperAdminRole(user.role)) {
     return null;
   }
 
   return (
     <div className="h-full overflow-y-auto" style={{ background: "#FAF7F2" }}>
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6">
+        <aside className="bg-white border border-[#E5E1DA] rounded-2xl p-3 h-fit">
+          <p className="text-xs uppercase tracking-wider text-gray-500 px-2 py-1">Super Admin</p>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-[#f8f1e3] text-[#7a5c00] font-medium"
+          >
+            <UserCog className="w-4 h-4 text-[#A8832D]" />
+            Admin Management
+          </button>
+          <button
+            onClick={() => navigate('/superadmin/licenses')}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-[#f9f7f3]"
+          >
+            <KeyRound className="w-4 h-4 text-[#A8832D]" />
+            License Management
+          </button>
+        </aside>
+
+        <div className="space-y-6">
         <div className="bg-[#1F2937] rounded-2xl p-5 border border-[#E5E1DA] text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -274,7 +304,8 @@ export function SuperAdminPanel() {
                 <tr className="bg-[#f9f7f3] text-left text-xs uppercase tracking-wider text-[#7a5c00]">
                   <th className="px-4 py-3">Admin Name</th>
                   <th className="px-4 py-3">Username</th>
-                  <th className="px-4 py-3">Contact Number</th>
+                  <th className="px-4 py-3">Hotels</th>
+                  <th className="px-4 py-3">Max Allowed</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -282,7 +313,7 @@ export function SuperAdminPanel() {
               <tbody>
                 {isFetching ? (
                   <tr>
-                    <td className="px-4 py-6" colSpan={5}>
+                    <td className="px-4 py-6" colSpan={6}>
                       <div className="flex items-center justify-center text-sm text-gray-500 gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> Loading admin accounts...
                       </div>
@@ -290,7 +321,7 @@ export function SuperAdminPanel() {
                   </tr>
                 ) : admins.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={5}>
+                    <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={6}>
                       No admin accounts found.
                     </td>
                   </tr>
@@ -299,7 +330,8 @@ export function SuperAdminPanel() {
                     <tr key={admin.id} className="border-t border-[#EFE8DC]">
                       <td className="px-4 py-3 text-sm text-gray-800">{admin.fullName || "-"}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{admin.username}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{admin.phone || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{Number(admin.hotelsCount || 0)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{Math.max(1, Number(admin.maxHotels || 1))}</td>
                       <td className="px-4 py-3 text-sm">
                         <span
                           className="px-2 py-1 rounded-full text-xs font-medium"
@@ -346,6 +378,7 @@ export function SuperAdminPanel() {
             </table>
           </div>
         </div>
+        </div>
       </div>
 
       {showForm && (
@@ -353,7 +386,7 @@ export function SuperAdminPanel() {
           <div className="w-full max-w-2xl rounded-2xl bg-white border border-[#E5E1DA] shadow-xl">
             <div className="px-5 py-4 border-b border-[#E5E1DA] flex items-center justify-between">
               <h3 className="text-lg" style={{ color: "#7a5c00", fontFamily: "Times New Roman, serif" }}>
-                {editingId ? "Edit Admin Account" : "Create Admin Account"}
+                {editingId ? `Edit Admin - ${form.fullName || "Admin"}` : "Create Admin Account"}
               </h3>
               <button onClick={() => setShowForm(false)} className="p-1 rounded hover:bg-gray-100">
                 <X className="w-4 h-4" />
@@ -383,6 +416,21 @@ export function SuperAdminPanel() {
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Max Hotels</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.maxHotels}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      maxHotels: Math.max(1, Number(e.target.value || 1)),
+                    }))
+                  }
                   className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
                 />
               </div>

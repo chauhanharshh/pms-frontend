@@ -91,6 +91,16 @@ function daysBetween(a: string, b: string) {
   return calculateRoomDays(a, b);
 }
 
+function formatCheckOut(date?: string, time?: string) {
+  if (!date) return "-";
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return time ? `${date}, ${time}` : date;
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const year = d.getUTCFullYear();
+  return time ? `${day}/${month}/${year}, ${time}` : `${day}/${month}/${year}`;
+}
+
 // ── ROOM DETAIL PANEL ─────────────────────────────────────────
 function RoomDetailPanel({
   room,
@@ -149,12 +159,12 @@ function RoomDetailPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.5)" }}
       onClick={onClose}
     >
       <div
-        className="w-full sm:w-[420px] h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto rounded-none sm:rounded-2xl"
+        className="w-full max-w-[420px] max-h-[90vh] overflow-y-auto rounded-2xl"
         style={{ background: T.card, borderLeft: `1px solid ${T.border}` }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -267,7 +277,7 @@ function RoomDetailPanel({
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5" style={{ color: T.gold }} />
                   <span className="text-sm" style={{ color: T.sub }}>
-                    {formatActualCheckInDateTime(booking as any, (booking as any)?.reservation, booking.checkInDate)} → {booking.checkOutDate} {booking.checkOutTime ? `(${booking.checkOutTime})` : ""}
+                    {formatActualCheckInDateTime(booking as any, (booking as any)?.reservation, booking.checkInDate)} → {formatCheckOut(booking.checkOutDate, booking.checkOutTime)}
                     <br />
                     <span className="text-[10px] italic">({nights} nights)</span>
                   </span>
@@ -467,11 +477,10 @@ function RoomDetailPanel({
                   onStatusChange(room.id, "vacant");
                   onClose();
                 }}
-                className="w-full py-3 rounded-xl font-medium text-sm"
+                className="w-full py-3 rounded-xl font-medium text-sm transition-colors duration-200 bg-[#B8860B] hover:bg-[#9A7209]"
                 style={{
-                  background: "#F5F4F0",
-                  color: "#CFC8BC",
-                  border: "1px solid #E5E1DA",
+                  color: "#ffffff",
+                  border: "none",
                 }}
               >
                 Mark Room Ready ✓
@@ -847,6 +856,8 @@ function RoomCard({
         background: cardBg,
         border: `1.5px solid ${cardBorder}`,
         padding: "9px",
+        fontFamily: "Calibri, 'Calibri Regular', sans-serif",
+        color: "#ffffff",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-2px)";
@@ -859,11 +870,11 @@ function RoomCard({
         <div>
           <div
             className="text-sm font-bold"
-            style={{ fontFamily: "Times New Roman, serif", color: "#f8fafc" }}
+            style={{ fontFamily: "Calibri, 'Calibri Regular', sans-serif", color: "#ffffff" }}
           >
             {room.roomNumber}
           </div>
-          <div className="text-xs" style={{ color: "#d1fae5" }}>
+          <div className="text-xs" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
             {room.roomType?.name || "Standard"} · F{room.floor}
           </div>
         </div>
@@ -881,37 +892,37 @@ function RoomCard({
       <div className="space-y-1">
         {room.status === "vacant" && (
           <>
-            <div className="text-sm font-bold" style={{ color: T.gold }}>
+            <div className="text-sm font-bold" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
               {formatCurrency(Number(room.basePrice || 0))}
-              <span className="text-xs font-normal text-gray-400">/night</span>
+              <span className="text-xs font-normal" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>/night</span>
             </div>
-            <div className="text-xs" style={{ color: "#d1fae5" }}>
+            <div className="text-xs" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
               Max {room.maxOccupancy} guests
             </div>
           </>
         )}
         {room.status === "occupied" && booking && (
           <>
-            <div className="text-xs font-semibold" style={{ color: cfg.text }}>
+            <div className="text-xs font-semibold" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
               {booking.guestName}
               {(booking.companyName || (booking as any).company?.name) && ` • ${booking.companyName || (booking as any).company?.name}`}
             </div>
-            <div className="text-xs" style={{ color: "#d1fae5" }}>
-              {formatActualCheckInDateTime(booking as any, (booking as any)?.reservation, booking.checkInDate)} → {booking.checkOutDate}
+            <div className="text-xs" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
+              {formatActualCheckInDateTime(booking as any, (booking as any)?.reservation, booking.checkInDate)} → {formatCheckOut(booking.checkOutDate, booking.checkOutTime)}
             </div>
-            <div className="text-xs font-medium" style={{ color: T.gold }}>
+            <div className="text-xs font-medium" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
               ({nights}N) · Bal:{" "}
               {formatCurrency(Number(booking.totalAmount) - Number(booking.advanceAmount))}
             </div>
           </>
         )}
         {room.status === "cleaning" && (
-          <div className="text-xs" style={{ color: cfg.text }}>
+          <div className="text-xs" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
             Being serviced · Tap to mark ready
           </div>
         )}
         {room.status === "maintenance" && (
-          <div className="text-xs" style={{ color: cfg.text }}>
+          <div className="text-xs" style={{ color: "#ffffff", fontFamily: "Calibri, 'Calibri Regular', sans-serif" }}>
             {room.maintenanceNote || "Under maintenance"}
           </div>
         )}
@@ -952,6 +963,10 @@ export function HotelDashboard() {
   useEffect(() => {
     console.log("user object:", JSON.stringify(user, null, 2));
   }, [user]);
+
+  useEffect(() => {
+    console.log("Hotel ID being used:", hotelId);
+  }, [hotelId]);
 
   // Banner display mapping: read available values from common key variants.
   const hotelData = (hotel || {}) as any;
@@ -1638,7 +1653,7 @@ export function HotelDashboard() {
                           className="px-4 py-3 text-xs"
                           style={{ color: T.sub }}
                         >
-                          {b.checkOutDate} {b.checkOutTime ? `(${b.checkOutTime})` : ""}
+                          {formatCheckOut(b.checkOutDate, b.checkOutTime)}
                         </td>
                         <td
                           className="px-4 py-3 text-sm font-bold"

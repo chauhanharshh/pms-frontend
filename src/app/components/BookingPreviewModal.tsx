@@ -1,5 +1,6 @@
 import { Booking, Room, usePMS } from "../contexts/PMSContext";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
+import { calculateStayDays, isLateCheckout } from "../utils/stayCalculation";
 import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car } from "lucide-react";
 import { resolveBrandName } from "../utils/branding";
 
@@ -50,10 +51,45 @@ export function BookingPreviewModal({
     room?: Room | null;
     onClose: () => void;
 }) {
-    const nights = calculateRoomDays(
-        `${booking.checkInDate}T${booking.checkInTime || "12:00"}`,
-        `${booking.checkOutDate}T${booking.checkOutTime || "12:00"}`,
+    const nights = calculateStayDays(
+        booking.checkInDate,
+        booking.checkInTime || "12:00",
+        booking.checkOutDate,
+        booking.checkOutTime || "12:00",
     );
+    const lateCheckout = isLateCheckout(booking.checkOutTime || "");
+    const displayNights = lateCheckout ? Math.max(nights - 1, 1) : nights;
+    const durationLabel = lateCheckout
+        ? `${displayNights} Night(s) + Late Check-Out`
+        : `${displayNights} Night(s)`;
+    const firstPositiveNumber = (...values: any[]) => {
+        for (const value of values) {
+            const parsed = Number(value);
+            if (Number.isFinite(parsed) && parsed > 0) return parsed;
+        }
+        return 0;
+    };
+    const roomRate = firstPositiveNumber(
+        booking.roomRate,
+        (booking as any).ratePerNight,
+        (booking as any).customRate,
+        (booking as any).pricePerNight,
+        room?.basePrice,
+        (room as any)?.price,
+    );
+    const baseAmount = roomRate * nights;
+    const gstRate = Number((booking as any)?.room?.taxRate ?? (room as any)?.taxRate ?? 18);
+    const gstAmount = (baseAmount * gstRate) / 100;
+    const totalRoomRent = baseAmount + gstAmount;
+    const advancePaid = firstPositiveNumber((booking as any)?.bill?.paidAmount, booking.advanceAmount);
+    const currentBalance = totalRoomRent - advancePaid;
+    const showFinancialSummary = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("showFinancialSummary") ?? "true");
+        } catch {
+            return true;
+        }
+    })();
     const { hotels, companies } = usePMS();
     const hotel = hotels.find((h) => h.id === booking.hotelId);
     const linkedCompany = booking.companyId
@@ -142,7 +178,7 @@ export function BookingPreviewModal({
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
 
                         {/* Guest Info */}
                         <div className="space-y-4">
@@ -150,47 +186,47 @@ export function BookingPreviewModal({
                                 <User className="w-4 h-4" /> Guest Information
                             </h3>
                             <div className="space-y-3 text-sm">
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Name:</span>
-                                    <span className="w-2/3 font-semibold">{booking.guestName}</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Name:</span>
+                                    <span className="font-semibold break-words">{booking.guestName}</span>
                                 </div>
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Phone:</span>
-                                    <span className="w-2/3 font-semibold">{booking.guestPhone}</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Phone:</span>
+                                    <span className="font-semibold break-words">{booking.guestPhone}</span>
                                 </div>
                                 {booking.guestEmail && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">Email:</span>
-                                        <span className="w-2/3 font-semibold">{booking.guestEmail}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">Email:</span>
+                                        <span className="font-semibold break-words">{booking.guestEmail}</span>
                                     </div>
                                 )}
                                 {booking.addressLine && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">Address:</span>
-                                        <span className="w-2/3 font-semibold">{booking.addressLine}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">Address:</span>
+                                        <span className="font-semibold break-words">{booking.addressLine}</span>
                                     </div>
                                 )}
                                 {booking.idProof && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">ID Proof:</span>
-                                        <span className="w-2/3 font-semibold">{booking.idProof}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">ID Proof:</span>
+                                        <span className="font-semibold break-words">{booking.idProof}</span>
                                     </div>
                                 )}
                                 {displayCompanyName && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">Company:</span>
-                                        <span className="w-2/3 font-semibold">{displayCompanyName}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">Company:</span>
+                                        <span className="font-semibold break-words">{displayCompanyName}</span>
                                     </div>
                                 )}
                                 {displayCompanyGst && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">GST:</span>
-                                        <span className="w-2/3 font-semibold">{displayCompanyGst}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">GST:</span>
+                                        <span className="font-semibold break-words">{displayCompanyGst}</span>
                                     </div>
                                 )}
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Occupants:</span>
-                                    <span className="w-2/3 font-semibold">{booking.adults} Adults, {booking.children} Children</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Occupants:</span>
+                                    <span className="font-semibold break-words">{booking.adults} Adults, {booking.children} Children</span>
                                 </div>
                             </div>
                         </div>
@@ -201,42 +237,42 @@ export function BookingPreviewModal({
                                 <Home className="w-4 h-4" /> Stay Information
                             </h3>
                             <div className="space-y-3 text-sm">
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Room:</span>
-                                    <span className="w-2/3 font-bold text-lg" style={{ color: T.darkGold }}>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Room:</span>
+                                    <span className="font-bold text-lg break-words" style={{ color: T.darkGold }}>
                                         {room?.roomNumber || booking.roomNumber || "Unassigned"}
                                     </span>
                                 </div>
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Check-In:</span>
-                                    <span className="w-2/3 font-semibold">
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Check-In:</span>
+                                    <span className="font-semibold break-words">
                                         {checkInDisplay}
                                     </span>
                                 </div>
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Check-Out:</span>
-                                    <span className="w-2/3 font-semibold">
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Check-Out:</span>
+                                    <span className="font-semibold break-words">
                                         {checkOutDisplay}
                                     </span>
                                 </div>
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Duration:</span>
-                                    <span className="w-2/3 font-semibold">{nights} Night(s)</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Duration:</span>
+                                    <span className="font-semibold break-words">{durationLabel}</span>
                                 </div>
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Source:</span>
-                                    <span className="w-2/3 font-semibold capitalize">{booking.source || "Direct Walk-in"}</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Source:</span>
+                                    <span className="font-semibold break-words capitalize">{booking.source || "Direct Walk-in"}</span>
                                 </div>
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Plan:</span>
-                                    <span className="w-2/3 font-semibold">{booking?.plan || "EP"}</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Plan:</span>
+                                    <span className="font-semibold break-words">{booking?.plan || "EP"}</span>
                                 </div>
                             </div>
                         </div>
 
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
 
                         {/* Travel & Other Details */}
                         <div className="space-y-4">
@@ -245,54 +281,70 @@ export function BookingPreviewModal({
                             </h3>
                             <div className="space-y-3 text-sm">
                                 {booking.comingFrom && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">Coming From:</span>
-                                        <span className="w-2/3 font-semibold">{booking.comingFrom}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">Coming From:</span>
+                                        <span className="font-semibold break-words">{booking.comingFrom}</span>
                                     </div>
                                 )}
                                 {booking.goingTo && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">Going To:</span>
-                                        <span className="w-2/3 font-semibold">{booking.goingTo}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">Going To:</span>
+                                        <span className="font-semibold break-words">{booking.goingTo}</span>
                                     </div>
                                 )}
-                                <div className="flex">
-                                    <span className="w-1/3 text-gray-500">Purpose:</span>
-                                    <span className="w-2/3 font-semibold">{booking.purposeOfVisit || "Not specified"}</span>
+                                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                    <span className="text-gray-500">Purpose:</span>
+                                    <span className="font-semibold break-words">{booking.purposeOfVisit || "Not specified"}</span>
                                 </div>
                                 {booking.vehicleDetails && (
-                                    <div className="flex">
-                                        <span className="w-1/3 text-gray-500">Vehicle:</span>
-                                        <span className="w-2/3 font-semibold">{booking.vehicleDetails}</span>
+                                    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                                        <span className="text-gray-500">Vehicle:</span>
+                                        <span className="font-semibold break-words">{booking.vehicleDetails}</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Financials Summary */}
-                        <div className="space-y-4">
-                            <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider pb-2 border-b" style={{ color: T.darkGold, borderColor: T.border }}>
-                                <Calendar className="w-4 h-4" /> Financial Summary
-                            </h3>
-                            <div className="bg-gray-50 p-4 rounded-xl border print:bg-transparent print:border-none print:p-0" style={{ borderColor: T.border }}>
-                                <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Total Room Rent:</span>
-                                        <span className="font-bold text-lg">{formatCurrency(booking.totalAmount)}</span>
+                        {showFinancialSummary && (
+                            <div className="space-y-4">
+                                <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider pb-2 border-b" style={{ color: T.darkGold, borderColor: T.border }}>
+                                    <Calendar className="w-4 h-4" /> Financial Summary
+                                </h3>
+                                <div className="bg-gray-50 rounded-xl border border-[#E8DCC8] p-4 print:bg-transparent print:border-none print:p-0">
+                                    <div className="flex justify-between text-sm text-gray-600 pb-2">
+                                        <span>Room Rate</span>
+                                        <span>{formatCurrency(roomRate)}/night</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500">Advance Paid:</span>
-                                        <span className="font-bold text-green-600">{formatCurrency(booking.advanceAmount)}</span>
+                                    <div className="flex justify-between text-sm text-gray-600 pb-3 border-b border-gray-200">
+                                        <span>Number of Nights</span>
+                                        <span>{nights} Night(s)</span>
                                     </div>
-                                    <div className="pt-2 mt-2 border-t flex justify-between items-center" style={{ borderColor: T.border }}>
-                                        <span className="font-bold uppercase" style={{ color: T.darkGold }}>Current Balance:</span>
-                                        <span className="font-bold text-xl" style={{ color: Number(booking.totalAmount) - Number(booking.advanceAmount) > 0 ? "#dc2626" : "#16a34a" }}>
-                                            {formatCurrency(Number(booking.totalAmount) - Number(booking.advanceAmount))}
-                                        </span>
+
+                                    <div className="flex justify-between text-sm text-gray-700 pt-3 pb-1">
+                                        <span>Base Amount</span>
+                                        <span>{formatCurrency(baseAmount)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-gray-700 pb-3 border-b border-gray-200">
+                                        <span>GST ({gstRate}%)</span>
+                                        <span>{formatCurrency(gstAmount)}</span>
+                                    </div>
+
+                                    <div className="flex justify-between text-sm font-semibold text-gray-800 pt-3 pb-1">
+                                        <span>Total Room Rent</span>
+                                        <span>{formatCurrency(totalRoomRent)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-green-600 pb-3 border-b border-gray-200">
+                                        <span>(-) Advance Paid</span>
+                                        <span>{formatCurrency(advancePaid)}</span>
+                                    </div>
+
+                                    <div className="flex justify-between font-bold text-base pt-3">
+                                        <span className="uppercase" style={{ color: "#B8860B" }}>Current Balance</span>
+                                        <span className="text-red-600">{formatCurrency(currentBalance)}</span>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                     </div>
 

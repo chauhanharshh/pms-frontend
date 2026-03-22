@@ -3,6 +3,7 @@ import { DEFAULT_LOGO_URL, resolveBrandName, resolveLogoUrl } from "../utils/bra
 import { printHtml } from "../utils/print";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
+import { calculateStayDays, isLateCheckout } from "../utils/stayCalculation";
 import { Printer, X, Download } from "lucide-react";
 import { numberToWords } from "../utils/numberToWords";
 
@@ -183,35 +184,6 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     return `${day}/${month}/${year}`;
   };
 
-  const calculateStayDays = (checkInDate: any, checkInTime: any, checkOutDate: any, checkOutTime: any) => {
-    if (!checkInDate || !checkOutDate) return 1;
-
-    const checkInStr = `${String(checkInDate).split('T')[0]}T${checkInTime || '12:00'}:00`;
-    const checkOutStr = `${String(checkOutDate).split('T')[0]}T${checkOutTime || '12:00'}:00`;
-
-    const checkIn = new Date(checkInStr);
-    const checkOut = new Date(checkOutStr);
-
-    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) return 1;
-
-    const checkInNoon = new Date(checkIn);
-    checkInNoon.setHours(12, 0, 0, 0);
-
-    const checkOutNoon = new Date(checkOut);
-    checkOutNoon.setHours(12, 0, 0, 0);
-
-    const msPerDay = 1000 * 60 * 60 * 24;
-    let days = Math.round((checkOutNoon.getTime() - checkInNoon.getTime()) / msPerDay);
-
-    const checkOutHour = checkOut.getHours();
-    const checkOutMinutes = checkOut.getMinutes();
-    if (checkOutHour > 12 || (checkOutHour === 12 && checkOutMinutes > 0)) {
-      days += 1;
-    }
-
-    return Math.max(days, 1);
-  };
-
   const getCurrentInvoiceDate = () =>
     new Date()
       .toLocaleDateString('en-IN', {
@@ -312,20 +284,13 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
   const arrivalDateStr = formatDateTimeFromBookingFields(checkInDateValue, checkInTimeValue);
   const departureDateStr = formatDateTimeFromBookingFields(checkOutDateValue, checkOutTimeValue);
-  const isLateCheckout = () => {
-    if (!checkOutTimeValue) return false;
-    const [hoursRaw, minutesRaw] = String(checkOutTimeValue).split(':');
-    const hours = Number(hoursRaw);
-    const minutes = Number(minutesRaw);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return false;
-    return hours > 12 || (hours === 12 && minutes > 0);
-  };
   const stayDays = calculateStayDays(
     checkInDateValue,
     checkInTimeValue,
     checkOutDateValue,
     checkOutTimeValue
   );
+  const lateCheckoutApplied = isLateCheckout(checkOutTimeValue);
 
   console.log('Guest data:', guestData);
   console.log('Full checkin object:', checkinData);
@@ -473,21 +438,63 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     ? effectiveGstRate.toFixed(2).replace(/\.00$/, "")
     : "0";
 
+  const firstPositiveNumber = (...values: any[]) => {
+    for (const value of values) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return 0;
+  };
+
+  const roomRate = firstPositiveNumber(
+    booking?.roomRate,
+    booking?.ratePerNight,
+    booking?.customRate,
+    booking?.pricePerNight,
+    bill?.roomRate,
+    invoice?.roomRate,
+    booking?.room?.basePrice,
+    booking?.room?.price,
+    bill?.booking?.room?.basePrice,
+    bill?.booking?.room?.price
+  );
+
   const items: any[] = [];
 
   if (Number(invoice.bill?.roomCharges) > 0) {
     const base = Number(invoice.bill.roomCharges);
-    const gstPart = subtotal > 0 ? (base / subtotal) * totalGst : 0;
-    const chargeDate = invoice.createdAt ? formatDateOnly(new Date(invoice.createdAt)) : 'the Day';
+    const totalRoomNights = Math.max(stayDays, 1);
+    const normalNights = lateCheckoutApplied ? Math.max(totalRoomNights - 1, 1) : totalRoomNights;
+    const normalRoomCharge = roomRate > 0 ? roomRate * normalNights : (lateCheckoutApplied ? base / totalRoomNights * normalNights : base);
+    const lateCheckoutCharge = lateCheckoutApplied
+      ? (roomRate > 0 ? roomRate : Math.max(base - normalRoomCharge, 0))
+      : 0;
+    const normalRoomGst = subtotal > 0 ? (normalRoomCharge / subtotal) * totalGst : 0;
+    const lateCheckoutGst = subtotal > 0 ? (lateCheckoutCharge / subtotal) * totalGst : 0;
+    const normalChargeDate = formatStoredDateOnly(checkInDateValue) !== '-' ? formatStoredDateOnly(checkInDateValue) : billDateStr;
+    const lateChargeDate = formatStoredDateOnly(checkOutDateValue) !== '-' ? formatStoredDateOnly(checkOutDateValue) : billDateStr;
+
     items.push({
-      date: billDateStr,
+      date: normalChargeDate,
       type: "Room\nCharges",
-      desc: `Room Charges for ${stayDays} Day${stayDays > 1 ? 's' : ''} (${chargeDate}) for Room Number ${roomNumber}, GST (${gstPercentage}%)`,
-      charges: base,
+      desc: `Room Charges for ${normalNights} Night(s) for Room ${roomNumber}, GST (${gstPercentage}%)`,
+      charges: normalRoomCharge,
       discount: 0,
-      gst: gstPart,
-      total: base + gstPart
+      gst: normalRoomGst,
+      total: normalRoomCharge + normalRoomGst
     });
+
+    if (lateCheckoutApplied && lateCheckoutCharge > 0) {
+      items.push({
+        date: lateChargeDate,
+        type: "Late\nCheck-Out",
+        desc: `Late Check-Out Charge - checked out at ${checkOutTimeValue || '12:00'} (after 12:00 PM)`,
+        charges: lateCheckoutCharge,
+        discount: 0,
+        gst: lateCheckoutGst,
+        total: lateCheckoutCharge + lateCheckoutGst
+      });
+    }
   }
 
   if (Number(invoice.bill?.miscCharges) > 0) {
@@ -517,6 +524,16 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     });
   }
 
+  const itemsChargesTotal = items.reduce((sum, item) => sum + Number(item.charges || 0), 0);
+  const itemsDiscountTotal = items.reduce((sum, item) => sum + Number(item.discount || 0), 0);
+  const itemsGstTotal = items.reduce((sum, item) => sum + Number(item.gst || 0), 0);
+  const itemsBeforeRound = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const itemsRoundOff = Math.round(itemsBeforeRound) - itemsBeforeRound;
+  const itemsTotalAmount = Math.round(itemsBeforeRound);
+  const itemsNetPayable = itemsTotalAmount - advanceAmount;
+  const itemsCgst = itemsGstTotal / 2;
+  const itemsSgst = itemsGstTotal / 2;
+
   const getInvoiceHtml = () => {
     const invoiceDateStr = getCurrentInvoiceDate();
     const rawLogoUrl =
@@ -537,7 +554,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${safeLogoAttr}" alt="watermark" /></div>`
       : "";
 
-    const lateCheckoutNoteHtml = isLateCheckout()
+    const lateCheckoutNoteHtml = lateCheckoutApplied
       ? `<div class="late-checkout-note">* Late Check-Out Charge Applied: Guest checked out at ${checkOutTimeValue} (after 12:00 PM noon). Extra day charge has been added as per hotel policy.</div>`
       : "";
 
@@ -679,31 +696,31 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
               ${itemsHtml}
               <tr style="font-weight: bold; font-size: 16px;">
                 <td colspan="3" style="padding: 8px 4px; border-right: 1.5px solid #C6A75E;">Total</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${subtotal.toFixed(2)}</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">0.00</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${totalGst.toFixed(2)}</td>
-                <td style="padding: 8px 4px; text-align: right;">${beforeRound.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${itemsChargesTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${itemsDiscountTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${itemsGstTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right;">${itemsBeforeRound.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
 
           <div class="totals-section">
             <div class="totals-col-left">
-              <div class="totals-row"><div>Total GST</div><div>${totalGst.toFixed(2)}</div></div>
-              <div class="totals-row"><div>CGST</div><div>${Number(invoice.cgst || 0).toFixed(2)}</div></div>
-              <div class="totals-row"><div>SGST</div><div>${Number(invoice.sgst || 0).toFixed(2)}</div></div>
+              <div class="totals-row"><div>Total GST</div><div>${itemsGstTotal.toFixed(2)}</div></div>
+              <div class="totals-row"><div>CGST</div><div>${itemsCgst.toFixed(2)}</div></div>
+              <div class="totals-row"><div>SGST</div><div>${itemsSgst.toFixed(2)}</div></div>
             </div>
             <div class="totals-col-right">
-              <div class="totals-row"><div>Total Amount</div><div>${beforeRound.toFixed(2)}</div></div>
+              <div class="totals-row"><div>Total Amount</div><div>${itemsBeforeRound.toFixed(2)}</div></div>
               <div class="totals-row"><div>(-) Advance</div><div>${advanceAmount.toFixed(2)}</div></div>
               <div class="totals-row"><div>(-) Discount</div><div>0.00</div></div>
-              <div class="totals-row"><div>Round Off</div><div>${roundOff.toFixed(2)}</div></div>
-              <div class="totals-row" style="font-weight: bold; margin-top: 4px;"><div>Net Payable</div><div>${totalAmountWithoutFood - advanceAmount}.00</div></div>
+              <div class="totals-row"><div>Round Off</div><div>${itemsRoundOff.toFixed(2)}</div></div>
+              <div class="totals-row" style="font-weight: bold; margin-top: 4px;"><div>Net Payable</div><div>${itemsNetPayable.toFixed(2)}</div></div>
             </div>
           </div>
 
           <div class="rupees-box">
-            RUPEES ${numberToWords(totalAmountWithoutFood - advanceAmount)} ONLY
+            RUPEES ${numberToWords(Math.round(itemsNetPayable))} ONLY
           </div>
 
           ${lateCheckoutNoteHtml}

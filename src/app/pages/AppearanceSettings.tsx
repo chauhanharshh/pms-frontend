@@ -44,6 +44,13 @@ export function AppearanceSettings() {
     const [kotWallColors, setKotWallColors] = useState<KotWallColors>(() => getKotWallColors());
 
     const [message, setMessage] = useState({ text: "", type: "" });
+    const [showFinancialSummary, setShowFinancialSummary] = useState<boolean>(() => {
+        try {
+            return JSON.parse(localStorage.getItem("showFinancialSummary") ?? "true");
+        } catch {
+            return true;
+        }
+    });
 
     // Sync Global Theme when systemSettings updates
     useEffect(() => {
@@ -202,6 +209,22 @@ export function AppearanceSettings() {
                         System-Wide Global Theme
                     </h2>
                     <p className="text-sm text-gray-500">These settings act as the default fallback for all hotels unless overridden.</p>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                        <p className="text-sm font-medium">Show Financial Summary in Check-In Details</p>
+                    </div>
+                    <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={showFinancialSummary}
+                        onChange={(e) => {
+                            const enabled = e.target.checked;
+                            setShowFinancialSummary(enabled);
+                            localStorage.setItem("showFinancialSummary", JSON.stringify(enabled));
+                        }}
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

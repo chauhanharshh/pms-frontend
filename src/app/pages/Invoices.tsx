@@ -154,6 +154,10 @@ export function Invoices() {
     }
   }, [invoices]);
 
+  useEffect(() => {
+    console.log("Invoice statuses:", invoices.map((i: any) => i?.status));
+  }, [invoices]);
+
   const formatInvoiceDateValue = (dateStr: any) => {
     if (!dateStr) return 'N/A';
     const d = new Date(dateStr);
@@ -259,11 +263,16 @@ export function Invoices() {
       hotelValue.includes(query)
     );
 
+    const selectedStatus = String(statusFilter || "").trim().toLowerCase();
+    const unpaidStatuses = ["pending", "unpaid", "due", "outstanding", "partial"];
+    const paidStatuses = ["paid", "completed", "settled", "cleared"];
+
     const matchesStatus =
-      statusFilter === "all" ||
-      rawStatusValues.includes(statusFilter.toLowerCase()) ||
-      (["unpaid", "pending"].includes(statusFilter.toLowerCase()) &&
-        rawStatusValues.some((value) => ["unpaid", "pending"].includes(value)));
+      selectedStatus === "all" ||
+      (selectedStatus === "unpaid" &&
+        rawStatusValues.some((value) => unpaidStatuses.includes(value))) ||
+      (selectedStatus === "paid" &&
+        rawStatusValues.some((value) => paidStatuses.includes(value)));
     const matchesHotel = hotelNameFilter === "all" || hotelDisplayName === hotelNameFilter;
 
     return matchesSearch && matchesStatus && matchesHotel;

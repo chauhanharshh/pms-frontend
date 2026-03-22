@@ -4,6 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
 import { Hotel, Lock, User, Loader2 } from "lucide-react";
 import { DEFAULT_BRAND_NAME, handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
+// HIDDEN - Next patch update
+// import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
@@ -14,6 +16,14 @@ export function LoginPage() {
   const [displayLogoUrl, setDisplayLogoUrl] = useState(resolveLogoUrl(null));
   const { login, user, loading } = useAuth();
   const navigate = useNavigate();
+  const LICENSE_GATE_FLAG = "pms_license_gate_ready";
+
+  const getDefaultRouteForRole = (role: string) => {
+    if (role === "super_admin") return "/superadmin";
+    if (role === "admin") return "/admin";
+    if (role === "restaurant_staff") return "/hotel/restaurant/rooms";
+    return "/hotel";
+  };
 
   useEffect(() => {
     const trimmed = username.trim();
@@ -40,16 +50,16 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === "super_admin") {
-        navigate("/superadmin");
-      } else if (user.role === "admin") {
-        navigate("/admin");
-      } else if (user.role === "restaurant_staff") {
-        navigate("/hotel/restaurant/rooms");
-      } else {
-        // hotel_manager, hotel_user → hotel dashboard
-        navigate("/hotel");
+      const isLicenseGatedRole = user.role === "admin" || user.role === "hotel_manager";
+      const licenseAlreadySaved = localStorage.getItem(`license_${user.id}`);
+      const canOpenLicenseGate = sessionStorage.getItem(LICENSE_GATE_FLAG) === "1";
+
+      if (isLicenseGatedRole && !licenseAlreadySaved && canOpenLicenseGate) {
+        navigate("/activate-license");
+        return;
       }
+
+      navigate(getDefaultRouteForRole(user.role));
     }
   }, [user, loading, navigate]);
 
@@ -58,9 +68,11 @@ export function LoginPage() {
     setError("");
     setIsSubmitting(true);
     try {
+      sessionStorage.setItem(LICENSE_GATE_FLAG, "1");
       await login(username, password);
       // navigation handled by useEffect above
     } catch (err: any) {
+      sessionStorage.removeItem(LICENSE_GATE_FLAG);
       const msg =
         err?.response?.data?.message ||
         err?.message ||
@@ -89,7 +101,7 @@ export function LoginPage() {
               src={displayLogoUrl}
               alt="Hotel Logo"
               className="object-contain"
-              style={{ width: "90px", display: "block", margin: "0 auto", marginTop: 0 }}
+              style={{ width: "198px", height: "198px", borderRadius: "50%", objectFit: "contain", background: "transparent", mixBlendMode: "multiply", imageRendering: "crisp-edges", display: "block", margin: "0 auto", marginTop: 0 }}
               onError={handleLogoImageError}
             />
           </div>
@@ -137,6 +149,55 @@ export function LoginPage() {
           >
             Sign In
           </h2>
+
+          {/* HIDDEN - Next patch update
+          <div className="space-y-4 mb-5">
+            <div className="w-full">
+              {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+                <GoogleLogin
+                  onSuccess={async (credentialResponse: CredentialResponse) => {
+                    try {
+                      setError("");
+                      setIsSubmitting(true);
+                      if (credentialResponse.credential) {
+                        await loginWithGoogle(credentialResponse.credential);
+                      } else {
+                        setError("Google credential not received.");
+                      }
+                    } catch (err: any) {
+                      const msg =
+                        err?.response?.data?.message ||
+                        err?.message ||
+                        "Google login failed.";
+                      setError(msg);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                  onError={() => setError("Google login failed")}
+                  text="continue_with"
+                  shape="rectangular"
+                  width="340"
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 px-4 bg-white font-medium text-gray-700 shadow-sm opacity-70 cursor-not-allowed"
+                >
+                  <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
+                  Continue with Google
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-gray-300" />
+              <span className="text-xs tracking-wider text-gray-500">OR</span>
+              <div className="h-px flex-1 bg-gray-300" />
+            </div>
+          </div>
+          */}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username */}
@@ -237,6 +298,19 @@ export function LoginPage() {
                 "Sign In"
               )}
             </button>
+
+            {/* HIDDEN - Next patch update
+            <div className="text-center mt-4">
+              <span className="text-gray-500 text-sm">New User? </span>
+              <button
+                type="button"
+                onClick={() => navigate("/register")}
+                className="text-[#B8860B] font-semibold text-sm hover:underline cursor-pointer"
+              >
+                Register Here
+              </button>
+            </div>
+            */}
           </form>
         </div>
 

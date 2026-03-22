@@ -675,6 +675,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           .map((result) => result.value.data?.data)
           .filter(Boolean);
 
+        statsSettled.forEach((result, index) => {
+          if (result.status === "rejected") {
+            const failedHotelId = fetchedHotels[index]?.id;
+            console.error(`Dashboard stats API failed for /hotels/${failedHotelId}/stats`, result.reason);
+          }
+        });
+
         const totalRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.totalRooms || 0), 0);
         const occupiedRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.occupiedRooms || 0), 0);
         const vacantRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.vacantRooms || 0), 0);
@@ -728,9 +735,36 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           api.get(`/hotels${currentHotelId ? `/${currentHotelId}` : ""}/stats`),
         ]);
 
+        const settledCalls: Array<[string, PromiseSettledResult<any>]> = [
+          [`/users${consolidatedQp}`, usersRes],
+          [`/rooms${consolidatedQp}`, roomsRes],
+          [`/bookings${consolidatedQp}`, bookingsRes],
+          [`/bills${consolidatedQp}`, billsRes],
+          [`/invoices${consolidatedQp}`, invoicesRes],
+          [`/expenses${consolidatedQp}`, expensesRes],
+          [`/advances${consolidatedQp}`, advancesRes],
+          [`/misc-charges${consolidatedQp}`, miscRes],
+          [`/vouchers${consolidatedQp}`, vouchersRes],
+          [`/restaurant/categories${consolidatedQp}`, catsRes],
+          [`/restaurant/menu${consolidatedQp}`, menuRes],
+          [`/restaurant/orders${consolidatedQp}`, ordersRes],
+          [`/companies${consolidatedQp}`, companiesRes],
+          [`/room-blocks${consolidatedQp}`, roomBlocksRes],
+          [`/petty-cash${consolidatedQp}`, pettyCashRes],
+          [`/liabilities${consolidatedQp}`, liabilitiesRes],
+          [`/hotels${currentHotelId ? `/${currentHotelId}` : ""}/stats`, statsRes],
+        ];
+
+        settledCalls.forEach(([endpoint, result]) => {
+          if (result.status === "rejected") {
+            console.error(`Dashboard data API failed for ${endpoint}`, result.reason);
+          }
+        });
+
         if (usersRes.status === "fulfilled") setAppUsers(usersRes.value.data.data || []);
         if (roomsRes.status === "fulfilled") setRooms(roomsRes.value.data.data || []);
         if (bookingsRes.status === "fulfilled") setBookings(bookingsRes.value.data.data || []);
+        else setBookings([]);
         if (billsRes.status === "fulfilled") setBills(billsRes.value.data.data || []);
         if (invoicesRes.status === "fulfilled") setInvoices(invoicesRes.value.data.data || []);
         if (expensesRes.status === "fulfilled") setExpenses(expensesRes.value.data.data || []);
@@ -937,8 +971,15 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.data } : b)));
       await fetchAll(); // refresh rooms and bills
     } else if (updates.status === "checked_out") {
+      const targetBooking = bookings.find((b) => b.id === id);
+      const targetRoomId = targetBooking?.roomId;
       const res = await api.put(`/bookings/${id}/check-out`, { finalPayment: (updates as any).finalPayment });
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.booking } : b)));
+      if (targetRoomId) {
+        setRooms((prev) =>
+          prev.map((r) => (r.id === targetRoomId ? { ...r, status: "vacant" } : r)),
+        );
+      }
       await fetchAll();
     } else {
       const res = await api.put(`/bookings/${id}`, updates);

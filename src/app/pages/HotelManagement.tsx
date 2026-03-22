@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { usePMS, CloneOptions, Hotel } from "../contexts/PMSContext";
+import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
 import {
   Building2,
@@ -983,6 +984,7 @@ function CloneModal({
 
 // ── MAIN PAGE ─────────────────────────────────────────────────
 export function HotelManagement() {
+  const { user } = useAuth();
   const { hotels, addHotel, updateHotel, deleteHotel, cloneHotelData, rooms } =
     usePMS();
   const [showForm, setShowForm] = useState(false);
@@ -1119,6 +1121,9 @@ export function HotelManagement() {
   const activeHotels = hotels.filter((h) => h.isActive);
   const totalRooms = rooms.length;
   const totalOccupied = rooms.filter((r) => r.status === "occupied").length;
+  const maxHotels = Math.max(1, Number(user?.maxHotels || 1));
+  const currentHotels = hotels.length;
+  const isHotelLimitReached = currentHotels >= maxHotels;
 
   return (
     <AppLayout title="Hotel Management" requiredRole="admin">
@@ -1178,18 +1183,26 @@ export function HotelManagement() {
 
         {/* Controls */}
         <div className="flex items-center justify-between">
-          <h2
-            className="text-base font-semibold"
-            style={{ fontFamily: "Times New Roman, serif", color: DARKGOLD }}
-          >
-            {hotels.length} {hotels.length === 1 ? "Hotel" : "Hotels"} in System
-          </h2>
+          <div>
+            <h2
+              className="text-base font-semibold"
+              style={{ fontFamily: "Times New Roman, serif", color: DARKGOLD }}
+            >
+              {hotels.length} {hotels.length === 1 ? "Hotel" : "Hotels"} in System
+            </h2>
+            <p style={{ color: "#888", fontSize: "13px" }}>
+              Hotels: {currentHotels} / {maxHotels} allowed
+            </p>
+          </div>
           <button
+            disabled={isHotelLimitReached}
+            title={isHotelLimitReached ? "Hotel limit reached. Contact support." : "Add new hotel"}
             onClick={() => {
+              if (isHotelLimitReached) return;
               setEditingHotel(null);
               setShowForm(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               background: "linear-gradient(135deg, #C6A75E, #A8832D)",
               boxShadow: "0 2px 8px #E5E1DA",
@@ -1226,11 +1239,14 @@ export function HotelManagement() {
           })}
           {/* Add new hotel card */}
           <button
+            disabled={isHotelLimitReached}
+            title={isHotelLimitReached ? "Hotel limit reached. Contact support." : "Add new hotel"}
             onClick={() => {
+              if (isHotelLimitReached) return;
               setEditingHotel(null);
               setShowForm(true);
             }}
-            className="rounded-2xl flex flex-col items-center justify-center gap-3 p-8 min-h-64 transition-all"
+            className="rounded-2xl flex flex-col items-center justify-center gap-3 p-8 min-h-64 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               border: "2px dashed #E5E1DA",
               background: "rgba(184,134,11,0.02)",

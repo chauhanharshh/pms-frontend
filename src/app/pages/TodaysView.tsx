@@ -182,11 +182,26 @@ export function TodaysView() {
 
   const todaySettlements = useMemo(
     () =>
-      invoices.filter((inv) => {
+      invoices.filter((inv: any) => {
         const matchHotel = hotelFilter === "all" || inv.hotelId === hotelFilter;
+        const status = String(inv.status || "").toLowerCase();
         return (
           matchHotel &&
-          inv.status === "issued" &&
+          status !== "paid" &&
+          inv.createdAt?.startsWith(todayStr)
+        );
+      }),
+    [invoices, hotelFilter, todayStr],
+  );
+
+  const todayPayments = useMemo(
+    () =>
+      invoices.filter((inv: any) => {
+        const matchHotel = hotelFilter === "all" || inv.hotelId === hotelFilter;
+        const status = String(inv.status || "").toLowerCase();
+        return (
+          matchHotel &&
+          status === "paid" &&
           inv.createdAt?.startsWith(todayStr)
         );
       }),
@@ -213,6 +228,12 @@ export function TodaysView() {
         return filteredBookings;
       case "settlements":
         return todaySettlements;
+      case "payments":
+        return todayPayments;
+      case "invoices":
+        return todayInvoices;
+      case "advances":
+        return todayAdvances;
       default:
         return [];
     }
@@ -741,18 +762,18 @@ export function TodaysView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {todaySettlements.length === 0 ? (
+                  {(segment === "payments" ? todayPayments : todaySettlements).length === 0 ? (
                     <tr>
                       <td
                         colSpan={6}
                         className="py-12 text-center text-sm"
                         style={{ color: "#9CA3AF" }}
                       >
-                        No settlements for {dateFilter}
+                        {segment === "payments" ? `No payments for ${dateFilter}` : `No settlements for ${dateFilter}`}
                       </td>
                     </tr>
                   ) : (
-                    todaySettlements.map((inv: any) => (
+                    (segment === "payments" ? todayPayments : todaySettlements).map((inv: any) => (
                       <tr
                         key={inv.id}
                         style={{ borderBottom: `1px solid ${BORDER}` }}
@@ -795,7 +816,7 @@ export function TodaysView() {
                             className="px-2 py-0.5 rounded-full text-xs font-medium"
                             style={{ background: "#dcfce7", color: "#166534" }}
                           >
-                            settled
+                            {segment === "payments" ? "paid" : "settled"}
                           </span>
                         </td>
                       </tr>

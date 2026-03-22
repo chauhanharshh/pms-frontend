@@ -186,6 +186,7 @@ export function CheckIn() {
   });
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [customRoomRate, setCustomRoomRate] = useState<number>(0);
+  const [roomRateInput, setRoomRateInput] = useState("");
   const [search, setSearch] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [checkInTime, setCheckInTime] = useState("");
@@ -214,7 +215,11 @@ export function CheckIn() {
   const handleRoomSelect = (roomId: string) => {
     setSelectedRoomId(roomId);
     const room = rooms.find((r) => r.id === roomId);
-    if (room) setCustomRoomRate(Number(room.basePrice));
+    if (room) {
+      const baseRate = Number(room.basePrice);
+      setCustomRoomRate(baseRate);
+      setRoomRateInput(String(baseRate));
+    }
   };
 
   const nights =
@@ -1005,16 +1010,33 @@ export function CheckIn() {
                         ₹
                       </span>
                       <input
-                        type="number"
-                        min={0}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         className="w-full pl-8 pr-4 py-3 rounded-xl outline-none text-lg font-bold"
                         style={{
                           border: `2px solid ${GOLD}`,
                           color: DARKGOLD,
                           background: "white",
                         }}
-                        value={roomRate}
-                        onChange={(e) => setCustomRoomRate(+e.target.value)}
+                        value={roomRateInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          setRoomRateInput(val);
+                          setCustomRoomRate(val === "" ? 0 : Number(val));
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key !== "Backspace" &&
+                            e.key !== "Delete" &&
+                            e.key !== "ArrowLeft" &&
+                            e.key !== "ArrowRight" &&
+                            e.key !== "Tab" &&
+                            !/^\d$/.test(e.key)
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
                       />
                     </div>
                     <p className="text-xs mt-1.5" style={{ color: "#9CA3AF" }}>

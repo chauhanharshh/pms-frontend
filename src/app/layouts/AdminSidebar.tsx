@@ -279,17 +279,17 @@ const ADMIN_SECTIONS: NavSection[] = [
     items: [
       {
         label: "Payments",
-        path: "/admin/settlements/payments",
+        path: "/admin/today/payments",
         icon: <Banknote className="w-4 h-4" />,
       },
       {
         label: "Co. Credit Settlements",
-        path: "/admin/settlements/credit",
+        path: "/admin/companies",
         icon: <Building className="w-4 h-4" />,
       },
       {
         label: "Room Transfer Settlements",
-        path: "/admin/settlements/room-transfer",
+        path: "/admin/bills",
         icon: <Shuffle className="w-4 h-4" />,
       },
       {
@@ -299,7 +299,7 @@ const ADMIN_SECTIONS: NavSection[] = [
       },
       {
         label: "Other Collections",
-        path: "/admin/settlements/other",
+        path: "/admin/vouchers",
         icon: <PiggyBank className="w-4 h-4" />,
       },
     ],
@@ -656,7 +656,7 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
               color: "var(--accent-color, #C6A75E)",
             }}
           >
-            <option value="all">All Hotels (Consolidated)</option>
+            <option value="all">All Hotels</option>
             {hotels.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}

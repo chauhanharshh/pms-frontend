@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import { usePMS } from "../contexts/PMSContext";
 import api from "../services/api";
 import { calculateRoomDays, formatActualCheckInDateTime } from "../utils/format";
 import {
@@ -21,10 +22,10 @@ import {
 
 export function CheckOut() {
   const { currentHotelId, isAdmin } = useAuth();
+  const { bookings, updateBooking } = usePMS();
   const navigate = useNavigate();
 
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Modal state
@@ -33,24 +34,6 @@ export function CheckOut() {
   const [paymentMode, setPaymentMode] = useState<"cash" | "upi" | "">("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchActiveBookings();
-  }, [currentHotelId]);
-
-  const fetchActiveBookings = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await api.get(`/bookings?status=checked_in`);
-      setBookings(res.data.data || []);
-    } catch (err: any) {
-      console.error("Failed to fetch bookings:", err);
-      setError("Failed to load active bookings. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleInitiateCheckout = async (booking: any) => {
     try {
@@ -84,16 +67,15 @@ export function CheckOut() {
       setIsProcessing(true);
       setError(null);
 
-      await api.put(`/bookings/${selectedBooking.id}/check-out`, {
+      await updateBooking(selectedBooking.id, {
+        status: "checked_out",
         finalPayment: balanceDue > 0 ? balanceDue : 0,
-        paymentMode: balanceDue > 0 ? paymentMode : undefined
+        paymentMode: balanceDue > 0 ? paymentMode : undefined,
       });
 
       alert(`Check-out successful for Room ${selectedBooking.room?.roomNumber}`);
       setSelectedBooking(null);
       setCheckoutPreview(null);
-      // Refresh the list
-      await fetchActiveBookings();
 
     } catch (err: any) {
       console.error("Checkout failed:", err);
@@ -112,9 +94,15 @@ export function CheckOut() {
   };
 
   const getFilteredBookings = () => {
-    if (!searchQuery) return bookings;
+    const activeBookings = bookings.filter((b: any) => {
+      const isCheckedIn = b?.status === "checked_in";
+      const matchHotel = !currentHotelId || b?.hotelId === currentHotelId;
+      return isCheckedIn && matchHotel;
+    });
+
+    if (!searchQuery) return activeBookings;
     const query = searchQuery.toLowerCase();
-    return bookings.filter(b =>
+    return activeBookings.filter((b: any) =>
       b.guestName?.toLowerCase().includes(query) ||
       b.room?.roomNumber?.toLowerCase().includes(query)
     );
@@ -183,8 +171,8 @@ export function CheckOut() {
                     <tr>
                       <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
                         <LogOut className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-lg font-medium text-gray-900">No Check-outs Pending</p>
-                        <p className="text-sm">There are currently no active checked-in rooms.</p>
+                        <p className="text-lg font-medium text-gray-900">No rooms checked in</p>
+                        <p className="text-sm">There are currently no active check-ins for this hotel.</p>
                       </td>
                     </tr>
                   ) : (

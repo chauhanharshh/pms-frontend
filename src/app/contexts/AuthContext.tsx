@@ -7,6 +7,7 @@ export interface AuthUser {
   fullName: string;
   email?: string | null;
   role: "super_admin" | "admin" | "hotel_manager" | "hotel_user" | "restaurant_staff";
+  maxHotels?: number | null;
   hotelId?: string | null;
   hotel?: { id: string; name: string; brandName?: string | null; logoUrl?: string | null } | null;
 }
@@ -16,6 +17,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   currentHotelId: string | null;
   setCurrentHotelId: (hotelId: string | null) => void;
@@ -66,6 +68,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (credential: string): Promise<void> => {
+    const response = await api.post("/auth/google", { credential });
+    const { token: newToken, user: newUser } = response.data.data;
+    localStorage.setItem("pms_token", newToken);
+    localStorage.setItem("pms_user", JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
+    // Set default hotel context if user has one
+    if (newUser.hotelId) {
+      setCurrentHotelIdState(newUser.hotelId);
+      localStorage.setItem("pms_hotel_ctx", newUser.hotelId);
+    } else {
+      setCurrentHotelIdState(null);
+      localStorage.removeItem("pms_hotel_ctx");
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("pms_token");
     localStorage.removeItem("pms_user");
@@ -94,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         loading,
         login,
+        loginWithGoogle,
         logout,
         currentHotelId,
         setCurrentHotelId,

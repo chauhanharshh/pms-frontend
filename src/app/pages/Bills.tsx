@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { Bill, BillItem } from "../contexts/PMSContext";
 import { formatCurrency as utilFormatCurrency, formatDate as utilFormatDate } from "../utils/format";
 import { calculateRoomTax } from "../utils/tax";
+import { calculateStayDays, isLateCheckout as isLateCheckoutByTime } from "../utils/stayCalculation";
 import {
   FileText,
   Search,
@@ -35,34 +36,6 @@ function EditBillModal({
   const [items, setItems] = useState<BillItem[]>(b.items || []);
   const [discount, setDiscount] = useState(b.discount || 0);
 
-  const calculateStayDays = (checkInDate: any, checkInTime: any, checkOutDate: any, checkOutTime: any) => {
-    if (!checkInDate || !checkOutDate) return 1;
-
-    const checkInStr = `${String(checkInDate).split("T")[0]}T${checkInTime || "12:00"}:00`;
-    const checkOutStr = `${String(checkOutDate).split("T")[0]}T${checkOutTime || "12:00"}:00`;
-
-    const checkIn = new Date(checkInStr);
-    const checkOut = new Date(checkOutStr);
-    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) return 1;
-
-    const checkInNoon = new Date(checkIn);
-    checkInNoon.setHours(12, 0, 0, 0);
-
-    const checkOutNoon = new Date(checkOut);
-    checkOutNoon.setHours(12, 0, 0, 0);
-
-    const msPerDay = 1000 * 60 * 60 * 24;
-    let days = Math.round((checkOutNoon.getTime() - checkInNoon.getTime()) / msPerDay);
-
-    const checkOutHour = checkOut.getHours();
-    const checkOutMinutes = checkOut.getMinutes();
-    if (checkOutHour > 12 || (checkOutHour === 12 && checkOutMinutes > 0)) {
-      days += 1;
-    }
-
-    return Math.max(days, 1);
-  };
-
   const roomSubtotal = items.filter(i => i.type === "room").reduce((s, i) => s + i.amount, 0);
   const otherSubtotal = items.filter(i => i.type !== "room").reduce((s, i) => s + i.amount, 0);
 
@@ -75,12 +48,7 @@ function EditBillModal({
     )
     : 1;
   const isLateCheckout = () => {
-    if (!b?.booking?.checkOutTime) return false;
-    const [hoursRaw, minutesRaw] = String(b.booking.checkOutTime).split(":");
-    const hours = Number(hoursRaw);
-    const minutes = Number(minutesRaw);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return false;
-    return hours > 12 || (hours === 12 && minutes > 0);
+    return isLateCheckoutByTime(String(b?.booking?.checkOutTime || ""));
   };
   const effectiveDailyRent = Math.max(0, roomSubtotal) / Math.max(1, nights);
   const taxRatePercent = calculateRoomTax(effectiveDailyRent, 1).rate;
@@ -406,6 +374,10 @@ export function Bills() {
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
 
+  useEffect(() => {
+    console.log("Bill statuses:", bills.map((b: any) => b?.status));
+  }, [bills]);
+
   const hotelFilter = isAdmin ? adminHotelFilter : (currentHotelId || user?.hotelId || "");
 
   const filtered = bills.filter((bill) => {
@@ -418,11 +390,16 @@ export function Bills() {
       .filter(Boolean);
 
     const matchHotel = hotelFilter === "all" || b.hotelId === hotelFilter;
+    const selectedStatus = String(filterStatus || "").trim().toLowerCase();
+    const unpaidStatuses = ["pending", "unpaid", "due", "outstanding", "partial"];
+    const paidStatuses = ["paid", "completed", "settled", "cleared"];
+
     const matchStatus =
-      filterStatus === "all" ||
-      statusValues.includes(String(filterStatus || "").trim().toLowerCase()) ||
-      (["unpaid", "pending"].includes(String(filterStatus || "").trim().toLowerCase()) &&
-        statusValues.some((value) => ["pending", "unpaid"].includes(value)));
+      selectedStatus === "all" ||
+      (selectedStatus === "unpaid" &&
+        statusValues.some((value) => unpaidStatuses.includes(value))) ||
+      (selectedStatus === "paid" &&
+        statusValues.some((value) => paidStatuses.includes(value)));
     const matchSearch =
       guestName.toLowerCase().includes(search.toLowerCase()) ||
       String(roomNumber).includes(search);
@@ -483,10 +460,8 @@ export function Bills() {
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="partial">Partial</option>
+            <option value="unpaid">Unpaid</option>
             <option value="paid">Paid</option>
-            <option value="finalized">Finalized</option>
           </select>
           {isAdmin && (
             <select
@@ -594,9 +569,39 @@ export function Bills() {
                     (h) => h.id === b.hotelId,
                   )?.name;
 
-                  const totalAmount = Number(b.totalAmount);
-                  const paidAmount = Number(b.paidAmount);
-                  const balance = totalAmount - paidAmount;
+                  const firstPositiveNumber = (...values: any[]) => {
+                    for (const value of values) {
+                      const parsed = Number(value);
+                      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+                    }
+                    return 0;
+                  };
+                  const nights = calculateStayDays(
+                    booking?.checkInDate || b.booking?.checkInDate || "",
+                    booking?.checkInTime || b.booking?.checkInTime || "12:00",
+                    booking?.checkOutDate || b.booking?.checkOutDate || "",
+                    booking?.checkOutTime || b.booking?.checkOutTime || "12:00",
+                  );
+                  const roomRate = firstPositiveNumber(
+                    booking?.roomRate,
+                    booking?.ratePerNight,
+                    booking?.customRate,
+                    booking?.pricePerNight,
+                    b?.booking?.roomRate,
+                    b?.booking?.ratePerNight,
+                    b?.roomRate,
+                    booking?.room?.basePrice,
+                    b?.booking?.room?.basePrice,
+                  );
+                  const computedRoomCharges = roomRate > 0 ? roomRate * nights : Number(b.roomCharges || 0);
+                  const computedTotalAmount =
+                    computedRoomCharges +
+                    Number(b.restaurantCharges || 0) +
+                    Number(b.miscCharges || 0) +
+                    Number(b.taxAmount || 0);
+                  const paidAmount = Number(b.paidAmount || 0);
+                  const totalAmountForBalance = computedTotalAmount;
+                  const balance = totalAmountForBalance - paidAmount;
 
                   let balanceLabel = "";
                   if (balance > 0) {
@@ -607,7 +612,7 @@ export function Bills() {
                     else if (hasFood) balanceLabel = " (Food)";
                   }
 
-                  const displayStatus = totalAmount <= paidAmount ? "paid" : "pending";
+                  const displayStatus = totalAmountForBalance <= paidAmount ? "paid" : "pending";
 
                   return (
                     <tr

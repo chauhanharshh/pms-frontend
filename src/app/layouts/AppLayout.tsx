@@ -39,7 +39,7 @@ function isRestaurantRoute(pathname: string) {
 }
 
 function isSuperAdminRole(role: string) {
-  return role === "super_admin";
+  return role === "super_admin" || role === "superadmin";
 }
 
 export function AppLayout({
