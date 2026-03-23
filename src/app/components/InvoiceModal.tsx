@@ -497,7 +497,29 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     }
   }
 
-  if (Number(invoice.bill?.miscCharges) > 0) {
+  const individualMiscCharges: any[] = invoice.bill?.booking?.miscCharges || [];
+
+  if (individualMiscCharges.length > 0) {
+    // Render one row per individual misc charge with actual category + description
+    for (const charge of individualMiscCharges) {
+      const chargeAmount = Number(charge.amount || 0) * Number(charge.quantity || 1);
+      if (chargeAmount <= 0) continue;
+      const categoryLabel = charge.category
+        ? charge.category.charAt(0).toUpperCase() + charge.category.slice(1)
+        : 'Misc';
+      const descLabel = [categoryLabel, charge.description].filter(Boolean).join(' — ');
+      items.push({
+        date: billDateStr,
+        type: "Misc\nCharges",
+        desc: descLabel,
+        charges: chargeAmount,
+        discount: 0,
+        gst: 0,  // No GST on misc charges
+        total: chargeAmount
+      });
+    }
+  } else if (Number(invoice.bill?.miscCharges) > 0) {
+    // Fallback: aggregated row when individual records aren't available
     const base = Number(invoice.bill.miscCharges);
     items.push({
       date: billDateStr,
@@ -505,7 +527,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       desc: `Miscellaneous Guest Services`,
       charges: base,
       discount: 0,
-      gst: 0,  // No GST on misc charges — GST applies only on room rent
+      gst: 0,
       total: base
     });
   }
