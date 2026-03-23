@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { QrCode, X } from "lucide-react";
 
 export function QRScannerModal({
@@ -11,34 +11,49 @@ export function QRScannerModal({
   onClose: () => void;
   onScanSuccess: (data: string) => void;
 }) {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      // Small timeout to ensure DOM element is ready
-      const timer = setTimeout(() => {
-        const scanner = new Html5QrcodeScanner(
-          "qr-reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          /* verbose= */ false
-        );
+    let scanner: Html5Qrcode | null = null;
 
-        scanner.render(
-          (decodedText) => {
-            scanner.clear();
-            onScanSuccess(decodedText);
-          },
-          (error) => {
-            // Silently ignore scan errors (they happen constantly when no QR is in frame)
-          }
-        );
-        scannerRef.current = scanner;
-      }, 300);
+    if (isOpen) {
+      const startScanner = async () => {
+        try {
+          scanner = new Html5Qrcode("qr-reader");
+          scannerRef.current = scanner;
+
+          await scanner.start(
+            { facingMode: "environment" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+            },
+            (decodedText) => {
+              if (scanner) {
+                scanner.stop().then(() => {
+                  onScanSuccess(decodedText);
+                }).catch(err => {
+                  console.error("Failed to stop scanner after success", err);
+                  onScanSuccess(decodedText);
+                });
+              }
+            },
+            (errorMessage) => {
+              // Silently ignore scan errors
+            }
+          );
+        } catch (err) {
+          console.error("Failed to start scanner:", err);
+        }
+      };
+
+      // Small timeout to ensure DOM element exists
+      const timer = setTimeout(startScanner, 300);
 
       return () => {
         clearTimeout(timer);
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch(e => console.error("Failed to clear scanner", e));
+        if (scannerRef.current && scannerRef.current.isScanning) {
+          scannerRef.current.stop().catch(e => console.error("Failed to stop scanner on cleanup", e));
         }
       };
     }
