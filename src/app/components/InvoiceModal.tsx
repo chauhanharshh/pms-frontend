@@ -463,8 +463,8 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     const lateCheckoutCharge = lateCheckoutApplied
       ? (roomRate > 0 ? roomRate : Math.max(base - normalRoomCharge, 0))
       : 0;
-    const normalRoomGst = subtotal > 0 ? (normalRoomCharge / subtotal) * totalGst : 0;
-    const lateCheckoutGst = subtotal > 0 ? (lateCheckoutCharge / subtotal) * totalGst : 0;
+    const normalRoomGst = (normalRoomCharge * slabRate) / 100;
+    const lateCheckoutGst = (lateCheckoutCharge * slabRate) / 100;
     const normalChargeDate = formatStoredDateOnly(checkInDateValue) !== '-' ? formatStoredDateOnly(checkInDateValue) : billDateStr;
     const lateChargeDate = formatStoredDateOnly(checkOutDateValue) !== '-' ? formatStoredDateOnly(checkOutDateValue) : billDateStr;
 
@@ -735,7 +735,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           </div>
 
           <div class="rupees-box">
-            RUPEES ${numberToWords(Math.round(itemsNetPayable))} ONLY
+            ${numberToWords(Math.round(itemsNetPayable))}
           </div>
 
           ${lateCheckoutNoteHtml}
