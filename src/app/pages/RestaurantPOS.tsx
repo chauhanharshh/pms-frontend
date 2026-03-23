@@ -224,16 +224,16 @@ export function RestaurantPOS() {
       );
       return;
     }
-    
+
     if (passedRoomId && availableRooms.length > 0) {
       const selectedRoom = availableRooms.find(r => r.id === passedRoomId);
       if (selectedRoom) {
         const currentBooking = selectedRoom.bookings?.find((b: any) => b.status === "checked_in");
-        
+
         setRoomId(selectedRoom.id);
         setRoomNumber(selectedRoom.roomNumber);
         setTableNumber(""); // Clear table if room selected
-        
+
         if (currentBooking) {
           setBookingId(currentBooking.id);
           setGuestName(currentBooking.guest?.name || "");
@@ -659,17 +659,17 @@ export function RestaurantPOS() {
   };
 
   const printThermalBill = (invoice: any) => {
-        const thermalSubtotal = Number(invoice?.subtotal ?? subtotal ?? 0);
-        const thermalService = thermalSubtotal * 0.10;
-        const thermalNet = thermalSubtotal + thermalService;
-        const printTableNumber = invoice?.restaurantOrder?.tableNumber || tableNumber || "-";
-        const printRoomNumber = invoice?.restaurantOrder?.room?.roomNumber || roomNumber || "";
-        const printSteward = invoice?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
-        const addressLines = splitAddressLines(activeHotel?.address);
-        const items = getReceiptItems(invoice);
-        const contactNo = activeHotel?.phone || (activeHotel as any)?.mobile || (activeHotel as any)?.contactNumber || "-";
+    const thermalSubtotal = Number(invoice?.subtotal ?? subtotal ?? 0);
+    const thermalService = thermalSubtotal * 0.10;
+    const thermalNet = thermalSubtotal + thermalService;
+    const printTableNumber = invoice?.restaurantOrder?.tableNumber || tableNumber || "-";
+    const printRoomNumber = invoice?.restaurantOrder?.room?.roomNumber || roomNumber || "";
+    const printSteward = invoice?.restaurantOrder?.stewardName || stewardName || user?.fullName || "Staff";
+    const addressLines = splitAddressLines(activeHotel?.address);
+    const items = getReceiptItems(invoice);
+    const contactNo = activeHotel?.phone || (activeHotel as any)?.mobile || (activeHotel as any)?.contactNumber || "-";
 
-        const getThermalHtml = () => `
+    const getThermalHtml = () => `
         <html><head><title>Print Receipt</title>
         <style>
           @page { size: 80mm auto; margin: 2mm; }
@@ -723,8 +723,8 @@ export function RestaurantPOS() {
         </body></html>
       `;
 
-        printHtml(getThermalHtml());
-    };
+    printHtml(getThermalHtml());
+  };
 
   const printThermalKOT = async (kot: any) => {
     try {

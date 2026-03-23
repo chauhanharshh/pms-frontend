@@ -30,7 +30,7 @@ export function LicenseActivation() {
       return;
     }
 
-    const isLicenseGatedRole = user.role === "admin" || user.role === "hotel_manager";
+    const isLicenseGatedRole = user.role === "admin";
     if (!isLicenseGatedRole) {
       navigate(getDefaultRouteForRole(user.role), { replace: true });
       return;
@@ -64,11 +64,24 @@ export function LicenseActivation() {
         return;
       }
 
+      // Save against ADMIN ID (from response)
+      const adminId = res.data?.data?.adminId || res.data?.adminId;
+      if (adminId) {
+        localStorage.setItem(`license_${adminId}`, normalizedKey);
+      }
+
+      // Also save against current user id as backup:
       localStorage.setItem(`license_${user.id}`, normalizedKey);
+      
       sessionStorage.removeItem(LICENSE_GATE_FLAG);
       navigate(getDefaultRouteForRole(user.role), { replace: true });
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Invalid license key");
+      const msg = err?.response?.data?.message || "";
+      if (msg.includes("no_license") || msg.toLowerCase().includes("not activated")) {
+        setError("License is not activated. Please contact Hotels4U PMS support.");
+      } else {
+        setError(msg || "Invalid license key");
+      }
     } finally {
       setIsSubmitting(false);
     }

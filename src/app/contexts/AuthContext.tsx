@@ -92,35 +92,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       newUser.role === 'restaurant_staff'
     ) {
       try {
-        // Check admin's license status from backend
-        const res = await api.get('/license/check-user', {
-          headers: { Authorization: `Bearer ${newToken}` }
-        });
-        const license = res.data;
+        const res = await api.post(
+          '/license/check-staff',
+          { userId: newUser.id },
+          { headers: { Authorization: `Bearer ${newToken}` } }
+        );
 
-        // License not activated:
-        if (!license.valid && license.status === 'no_license') {
+        if (res.data.valid) {
+          // Admin's license is active → go to dashboard:
+          if (res.data.adminId && res.data.licenseKey) {
+            localStorage.setItem(`license_${res.data.adminId}`, res.data.licenseKey);
+          }
+          window.location.href = '/hotel/dashboard';
+        } else {
+          // License not valid → show message and logout:
           logout();
-          alert('Software not activated. Please contact your administrator.');
-          return;
+          alert(res.data.message || 'License is not activated. Please contact your administrator.');
         }
-
-        // License expired or grace ended:
-        if (!license.valid && (license.status === 'expired' || license.status === 'grace_ended')) {
-          logout();
-          alert('Your plan has expired. Please contact your administrator to renew.');
-          return;
-        }
-
-        // License active or grace → open dashboard:
-        window.location.href = '/hotel/dashboard';
-        return;
       } catch (error) {
-        // If API unreachable → allow login (offline mode):
-        console.error('License check failed — allowing offline login');
+        // API failed → allow login (offline mode):
+        console.error('License check failed:', error);
         window.location.href = '/hotel/dashboard';
-        return;
       }
+      return;
     }
 
     // Default fallback:

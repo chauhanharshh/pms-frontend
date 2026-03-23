@@ -139,8 +139,8 @@ function ProtectedLicenseRoute({ children }: { children: JSX.Element }) {
     return <Navigate to="/" replace />;
   }
 
-  // Only admin/hotel_manager can access this page:
-  if (!['admin', 'hotel_manager'].includes(user?.role || '')) {
+  // Only admin can access this page:
+  if (user?.role !== 'admin') {
     return <Navigate to="/hotel/dashboard" />;
   }
 

@@ -654,8 +654,8 @@ export function RestaurantRoomSelector() {
                                                         )}
                                                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                                             {group.rooms.map((room: any) => {
-                                                    const currentBooking = room.bookings?.find((b: any) => b.status === 'checked_in') || checkedInRooms.find(r => r.id === room.id)?.bookings?.find((b: any) => b.status === 'checked_in');
-                                                    const guestName = currentBooking?.guest?.name || checkedInRooms.find(r => r.id === room.id)?.guestName || "Vacant";
+                                                    const currentBooking = room.bookings?.find((b: any) => b.status === 'checked_in') || checkedInRooms.find((r: any) => r.id === room.id)?.bookings?.find((b: any) => b.status === 'checked_in');
+                                                    const guestName = currentBooking?.guestName || checkedInRooms.find((r: any) => r.id === room.id)?.guestName || "Vacant";
                                                     const hasOpenKOT = isCardKotCut(room) || roomsWithOpenKOT.has(room.id);
                                                     const isBilled = isCardBilled(room);
 

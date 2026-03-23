@@ -33,7 +33,7 @@ export function MiscCharges() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const empty = (): Omit<MiscCharge, "id"> & { guestName?: string; roomNumber?: string } => ({
+  const empty = (): Omit<MiscCharge, "id"> & { guestName?: string; roomNumber?: string; roomId?: string; bookingId?: string } => ({
     hotelId: isAdmin ? "" : user?.hotelId || "",
     guestName: "",
     description: "",
@@ -42,6 +42,8 @@ export function MiscCharges() {
     category: "Laundry",
     quantity: 1,
     addedToFinalBill: false,
+    roomId: "",
+    bookingId: "",
   });
   const [form, setForm] = useState(empty());
 
@@ -346,14 +348,42 @@ export function MiscCharges() {
                   >
                     Room Number
                   </label>
-                  <input
+                  <select
                     className="w-full px-3 py-2.5 rounded-lg outline-none"
-                    style={{ border: "2px solid #E5E1DA" }}
-                    value={form.roomNumber || ""}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, roomNumber: e.target.value }))
-                    }
-                  />
+                    style={{ border: "2px solid #E5E1DA", backgroundColor: "white" }}
+                    value={form.roomId || ""}
+                    onChange={(e) => {
+                      const selectedRoomId = e.target.value;
+                      if (!selectedRoomId) {
+                        setForm((f) => ({ ...f, roomId: "", roomNumber: "", bookingId: "" }));
+                        return;
+                      }
+
+                      const activeBookings = bookings.filter(b => b.status === "checked_in" && b.hotelId === form.hotelId);
+                      const booking = activeBookings.find(b => b.roomId === selectedRoomId);
+                      const room = rooms.find(r => r.id === selectedRoomId);
+
+                      setForm((f) => ({
+                        ...f,
+                        roomId: selectedRoomId,
+                        roomNumber: room?.roomNumber || "",
+                        guestName: booking ? booking.guestName : f.guestName,
+                        bookingId: booking ? booking.id : f.bookingId,
+                      }));
+                    }}
+                  >
+                    <option value="">{form.roomNumber && !form.roomId ? `Room ${form.roomNumber}` : "Select Room (Optional)"}</option>
+                    {bookings
+                      .filter(b => b.status === "checked_in" && b.hotelId === form.hotelId)
+                      .map((b) => {
+                        const room = rooms.find(r => r.id === b.roomId);
+                        return (
+                          <option key={b.roomId} value={b.roomId}>
+                            {room ? room.roomNumber : ''} - {b.guestName}
+                          </option>
+                        );
+                      })}
+                  </select>
                 </div>
                 <div>
                   <label

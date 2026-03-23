@@ -1067,10 +1067,16 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   // ── MISC CHARGES ─────────────────────────────────────────────────
   const addMiscCharge = async (mc: any) => {
-    const res = await api.post("/misc-charges", mc);
-    const newMiscCharge = res.data.data;
-    setMiscCharges((prev) => [...prev, newMiscCharge]);
-    return newMiscCharge;
+    try {
+      const res = await api.post("/misc-charges", mc);
+      const newMiscCharge = res.data.data;
+      setMiscCharges((prev) => [...prev, newMiscCharge]);
+      return newMiscCharge;
+    } catch (error: any) {
+      console.error('MiscCharge error:', error?.response?.data || error);
+      console.error('Payload sent:', mc);
+      throw error;
+    }
   };
 
   const updateMiscCharge = async (id: string, updates: Partial<MiscCharge>) => {
