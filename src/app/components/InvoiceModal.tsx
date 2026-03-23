@@ -427,17 +427,6 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const guestAddressText = String(address || guestAddress || "").trim();
 
   // Use the effective GST rate for description text (room invoice should show full GST rate, e.g. 5%).
-  const taxRate = subtotal > 0 ? (totalGst / subtotal) * 100 : 0;
-  const effectiveGstRate = Number(
-    invoice.gstRate ??
-      invoice.bill?.gstRate ??
-      invoice.bill?.booking?.gstRate ??
-      taxRate
-  );
-  const gstPercentage = Number.isFinite(effectiveGstRate)
-    ? effectiveGstRate.toFixed(2).replace(/\.00$/, "")
-    : "0";
-
   const firstPositiveNumber = (...values: any[]) => {
     for (const value of values) {
       const parsed = Number(value);
@@ -458,6 +447,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     bill?.booking?.room?.basePrice,
     bill?.booking?.room?.price
   );
+
+  // Slab-based GST calculation: 5% up to 7500, 18% above 7500
+  const dailyRoomRate = Number(roomRate || 0);
+  const slabRate = dailyRoomRate > 7500 ? 18 : 5;
+  const gstPercentage = String(slabRate);
 
   const items: any[] = [];
 
