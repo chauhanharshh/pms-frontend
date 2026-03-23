@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import api from "../services/api";
@@ -34,6 +34,18 @@ export function CheckOut() {
   const [paymentMode, setPaymentMode] = useState<"cash" | "upi" | "">("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [searchParams] = useSearchParams();
+  const paramBookingId = searchParams.get("bookingId");
+
+  useEffect(() => {
+    if (paramBookingId && bookings.length > 0) {
+      const booking = bookings.find((b: any) => b.id === paramBookingId);
+      if (booking && booking.status === "checked_in") {
+        handleInitiateCheckout(booking);
+      }
+    }
+  }, [paramBookingId, bookings]);
 
   const handleInitiateCheckout = async (booking: any) => {
     try {

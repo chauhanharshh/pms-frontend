@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -46,6 +47,24 @@ export function MiscCharges() {
     bookingId: "",
   });
   const [form, setForm] = useState(empty());
+
+  const [searchParams] = useSearchParams();
+  const paramBookingId = searchParams.get("bookingId");
+
+  useEffect(() => {
+    if (paramBookingId && bookings.length > 0) {
+      const booking = bookings.find((b: any) => b.id === paramBookingId);
+      if (booking) {
+        setShowForm(true);
+        setForm((f) => ({
+          ...f,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+          roomNumber: booking.roomNumber,
+        }));
+      }
+    }
+  }, [paramBookingId, bookings]);
 
   const filtered = miscCharges.filter(
     (m) => hotelFilter === "all" || m.hotelId === hotelFilter,

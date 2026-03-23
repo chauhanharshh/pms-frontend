@@ -528,7 +528,28 @@ export function Bills() {
           {/* Export/Print Buttons */}
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px' }}>
             <button
-              onClick={() => exportToCSV(filtered, 'bills')}
+              onClick={() => {
+                const dataToExport = filtered.map((b: any) => {
+                  const hotelName = hotels.find((h: any) => h.id === b.hotelId)?.name || "—";
+                  return {
+                    "Guest Name": b.guestName || b.booking?.guestName || "—",
+                    "Room": b.roomNumber || b.booking?.roomNumber || "—",
+                    ...(isAdmin ? { "Hotel": hotelName } : {}),
+                    "Booking Ref": (b.booking?.id || b.bookingId || "").split("-").pop()?.toUpperCase() || "—",
+                    "Invoice No": b.invoice?.invoiceNumber || "—",
+                    "Room Charges": b.roomCharges,
+                    "Restaurant": b.restaurantCharges,
+                    "Misc": b.miscCharges,
+                    "Tax": b.taxAmount,
+                    "Total": b.totalAmount,
+                    "Paid": b.paidAmount,
+                    "Balance": b.balanceDue,
+                    "Status": b.status,
+                    "Date": b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-IN') : "—"
+                  };
+                });
+                exportToCSV(dataToExport, 'bills');
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',

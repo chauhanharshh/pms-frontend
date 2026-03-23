@@ -3,6 +3,7 @@ import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "
 import { calculateStayDays, isLateCheckout } from "../utils/stayCalculation";
 import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car } from "lucide-react";
 import { resolveBrandName } from "../utils/branding";
+import { QRCodeSVG } from "qrcode.react";
 
 const T = {
     gold: "#C6A75E",
@@ -112,6 +113,16 @@ export function BookingPreviewModal({
         }
     };
 
+    const qrData = JSON.stringify({
+        bookingId: booking.id,
+        bookingRef: booking.id.split("-").pop()?.toUpperCase(),
+        guestName: booking.guestName,
+        roomNumber: room?.roomNumber || booking.roomNumber || "Unassigned",
+        checkIn: checkInDisplay,
+        checkOut: checkOutDisplay,
+        plan: booking?.plan || "EP",
+    });
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 print:bg-white print:static print:p-0"
@@ -163,7 +174,15 @@ export function BookingPreviewModal({
                 </div>
 
                 {/* Printable Area */}
-                <div id="booking-preview-printable" className="p-5 md:p-6 space-y-5 bg-white text-gray-800 overflow-y-auto print:overflow-visible">
+                <div id="booking-preview-printable" className="p-5 md:p-6 space-y-5 bg-white text-gray-800 overflow-y-auto print:overflow-visible relative">
+                    {/* QR Code Overlay (Hidden on Desktop, Showing top-right in printable area) */}
+                    <div className="absolute top-6 right-6 flex flex-col items-center gap-1">
+                        <div className="p-2 bg-white border rounded-lg shadow-sm" style={{ borderColor: T.border }}>
+                            <QRCodeSVG value={qrData} size={80} level="M" />
+                        </div>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Booking QR</span>
+                    </div>
+
 
                     {/* Print Header */}
                     <div className="text-center border-b pb-4" style={{ borderColor: T.border }}>

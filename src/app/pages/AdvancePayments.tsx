@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -33,6 +34,23 @@ export function AdvancePayments() {
     usedAmount: 0,
     status: "pending",
   });
+
+  const [searchParams] = useSearchParams();
+  const paramBookingId = searchParams.get("bookingId");
+
+  useEffect(() => {
+    if (paramBookingId && bookings.length > 0) {
+      const booking = bookings.find((b: any) => b.id === paramBookingId);
+      if (booking) {
+        setShowForm(true);
+        setForm((f) => ({
+          ...f,
+          bookingId: booking.id,
+          guestName: booking.guestName,
+        }));
+      }
+    }
+  }, [paramBookingId, bookings]);
 
   const filtered = advances.filter(
     (a) => hotelFilter === "all" || a.hotelId === hotelFilter,

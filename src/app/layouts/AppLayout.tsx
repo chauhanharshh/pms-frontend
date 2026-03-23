@@ -5,6 +5,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { AdminSidebar } from "./AdminSidebar";
 import { HotelSidebar } from "./HotelSidebar";
 import { TopNavbar } from "./TopNavbar";
+import { usePMS } from "../contexts/PMSContext";
+import { QRScannerModal } from "../components/QRScannerModal";
+import { QRScanResultModal } from "../components/QRScanResultModal";
 
 interface AppLayoutProps {
   title: string;
@@ -48,6 +51,13 @@ export function AppLayout({
   requiredRole = "any",
 }: AppLayoutProps) {
   const { user, loading } = useAuth();
+  const { 
+    isQRScannerOpen, 
+    setIsQRScannerOpen, 
+    handleQRScan,
+    scannedBooking,
+    setScannedBooking
+  } = usePMS();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -149,6 +159,18 @@ export function AppLayout({
           {children}
         </main>
       </div>
+
+      <QRScannerModal
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+        onScanSuccess={handleQRScan}
+      />
+
+      <QRScanResultModal
+        isOpen={!!scannedBooking}
+        onClose={() => setScannedBooking(null)}
+        booking={scannedBooking}
+      />
     </div>
   );
 }

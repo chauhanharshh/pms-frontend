@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -60,6 +61,19 @@ export function Reservations() {
       : filterHotel
     : user?.hotelId || "";
   const [form, setForm] = useState(emptyBooking(defaultHotel));
+
+  const [searchParams] = useSearchParams();
+  const paramRoomId = searchParams.get("roomId");
+
+  useEffect(() => {
+    if (paramRoomId && rooms.length > 0) {
+      const room = rooms.find((r) => r.id === paramRoomId);
+      if (room && room.status === "vacant") {
+        setShowForm(true);
+        handleRoomSelect(paramRoomId);
+      }
+    }
+  }, [paramRoomId, rooms]);
 
   const filtered = bookings.filter((b) => {
     const matchHotel = filterHotel === "all" || b.hotelId === filterHotel;

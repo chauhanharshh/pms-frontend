@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room, Booking } from "../contexts/PMSContext";
@@ -194,6 +195,23 @@ export function CheckIn() {
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [reservationId, setReservationId] = useState("");
+
+  const [searchParams] = useSearchParams();
+  const paramRoomId = searchParams.get("roomId");
+
+  useEffect(() => {
+    if (paramRoomId) {
+      setMode("walkin");
+      setStep("guest"); // Skip type selection and go to guest details if room is pre-selected
+      setSelectedRoomId(paramRoomId);
+      const room = rooms.find((r) => r.id === paramRoomId);
+      if (room) {
+        const baseRate = Number(room.basePrice);
+        setCustomRoomRate(baseRate);
+        setRoomRateInput(String(baseRate));
+      }
+    }
+  }, [paramRoomId, rooms]);
 
   const hotelRooms = rooms.filter((r) => r.hotelId === hotelId);
   const confirmedBookings = bookings.filter((b) => {

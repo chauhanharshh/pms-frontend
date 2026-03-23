@@ -26,9 +26,10 @@ import {
   IndianRupee,
   ClipboardList,
   BedDouble,
-  ChevronLeft,
   ChevronRight,
+  ChevronLeft,
   Users,
+  QrCode,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -104,6 +105,16 @@ const HOTEL_SECTIONS: NavSection[] = [
         path: "/hotel/checkout",
         icon: <UserMinus className="w-4 h-4" />,
       },
+      {
+        label: "Scan QR Check-In",
+        path: "#scan-qr",
+        icon: <QrCode className="w-4 h-4" />,
+      },
+      {
+        label: "Day Closing",
+        path: "/hotel/day-closing",
+        icon: <ClipboardList className="w-4 h-4" />,
+      },
     ],
   },
   {
@@ -170,11 +181,6 @@ const HOTEL_SECTIONS: NavSection[] = [
         label: "Reports",
         path: "/hotel/reports",
         icon: <BarChart3 className="w-4 h-4" />,
-      },
-      {
-        label: "Day Closing",
-        path: "/hotel/day-closing",
-        icon: <ClipboardList className="w-4 h-4" />,
       },
       {
         label: "Room Panel",
@@ -302,7 +308,7 @@ function writeSidebarState(next: SidebarStoredState) {
 
 export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, logout, currentHotelId } = useAuth();
-  const { hotels } = usePMS();
+  const { hotels, setIsQRScannerOpen } = usePMS();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -341,6 +347,15 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
     logout();
     navigate("/");
   };
+
+  const handleNavClick = (path: string) => {
+    if (path === "#scan-qr") {
+      setIsQRScannerOpen(true);
+    } else {
+      navigate(path);
+    }
+  };
+
   const isActive = (path: string) => location.pathname === path;
 
   const activeHotel = currentHotelId
@@ -456,7 +471,7 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
                     {section.items.map((item) => (
                       <button
                         key={item.path + item.label}
-                        onClick={() => navigate(item.path)}
+                        onClick={() => handleNavClick(item.path)}
                         className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all duration-200"
                         style={{
                           background: isActive(item.path)
@@ -502,7 +517,7 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
                 {section.items.map((item) => (
                   <button
                     key={item.path + item.label}
-                    onClick={() => navigate(item.path)}
+                    onClick={() => handleNavClick(item.path)}
                     title={item.label}
                     className="w-full flex items-center justify-center p-2 rounded-lg transition-all duration-200"
                     style={{

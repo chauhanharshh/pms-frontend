@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from "react";
 import api from "../services/api.js";
 import { useAuth } from "./AuthContext.js";
+import { toast } from "sonner";
 
 // ── TYPE DEFINITIONS ─────────────────────────────────────────────
 export interface Hotel {
@@ -503,6 +504,15 @@ interface PMSContextType {
   updateLiability: (id: string, updates: Partial<Liability>) => Promise<void>;
   addLiabilityPayment: (id: string, payment: any) => Promise<void>;
   deleteLiability: (id: string) => Promise<void>;
+  
+  // QR Scanner Global State
+  isQRScannerOpen: boolean;
+  setIsQRScannerOpen: (open: boolean) => void;
+  scannedBooking: Booking | null;
+  setScannedBooking: (booking: Booking | null) => void;
+  isConfirmingQRCheckIn: boolean;
+  handleQRScan: (data: string) => void;
+  confirmQRCheckIn: () => Promise<void>;
 }
 
 const PMSContext = createContext<PMSContextType | undefined>(undefined);
@@ -517,6 +527,9 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+  const [scannedBooking, setScannedBooking] = useState<Booking | null>(null);
+  const [isConfirmingQRCheckIn, setIsConfirmingQRCheckIn] = useState(false);
 
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [appUsers, setAppUsers] = useState<AppUser[]>([]);
@@ -1400,6 +1413,59 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     setVendors((prev) => prev.filter((v) => v.id !== id));
   };
 
+  // ── QR SCANNER ──────────────────────────────────────────────────
+  const handleQRScan = useCallback((data: string) => {
+    try {
+      const parsed = JSON.parse(data);
+      if (!parsed.bookingId) {
+        toast.error("Invalid QR Code: Booking ID not found");
+        return;
+      }
+
+      const booking = bookings.find(b => b.id === parsed.bookingId);
+      if (!booking) {
+        toast.error(`Booking not found for ID: ${parsed.bookingId}`);
+        return;
+      }
+
+      if (booking.status === "checked_in") {
+        toast.info(`${booking.guestName} is already checked in.`);
+        setIsQRScannerOpen(false);
+        return;
+      }
+
+      if (booking.status === "checked_out") {
+        toast.error("This booking has already been checked out.");
+        setIsQRScannerOpen(false);
+        return;
+      }
+
+      // Found a pending/confirmed booking, show confirmation dialog
+      setScannedBooking(booking);
+      setIsQRScannerOpen(false);
+    } catch (error) {
+      console.error("Scan error:", error);
+      toast.error("Failed to parse QR code data");
+    }
+  }, [bookings]);
+
+  const confirmQRCheckIn = useCallback(async () => {
+    if (!scannedBooking) return;
+    setIsConfirmingQRCheckIn(true);
+    try {
+      await updateBooking(scannedBooking.id, { status: "checked_in" });
+      const room = rooms.find(r => r.id === scannedBooking.roomId);
+      toast.success(`Guest ${scannedBooking.guestName} checked in to Room ${room?.roomNumber || "N/A"} successfully!`);
+      setScannedBooking(null);
+    } catch (error) {
+      console.error("Check-in confirmation error:", error);
+      toast.error("Failed to complete check-in. Please try again.");
+      throw error;
+    } finally {
+      setIsConfirmingQRCheckIn(false);
+    }
+  }, [scannedBooking, updateBooking]);
+
   // ── ROOM BLOCKS ──────────────────────────────────────────────────
   const addRoomBlock = async (b: any) => {
     const res = await api.post("/room-blocks", b);
@@ -1550,6 +1616,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           String(h.id) === String(currentHotelId) ||
           String((h as any)._id) === String(currentHotelId)
         ) || null,
+        isQRScannerOpen,
+        setIsQRScannerOpen,
+        scannedBooking,
+        setScannedBooking,
+        isConfirmingQRCheckIn,
+        handleQRScan,
+        confirmQRCheckIn,
       }}
     >
       {children}

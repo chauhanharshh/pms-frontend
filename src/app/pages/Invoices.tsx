@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Invoice } from "../contexts/PMSContext";
@@ -138,6 +139,18 @@ export function Invoices() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [genForm, setGenForm] = useState({ billId: "", guestAddress: "" });
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [searchParams] = useSearchParams();
+  const paramBookingId = searchParams.get("bookingId");
+
+  useEffect(() => {
+    if (paramBookingId && invoices.length > 0) {
+      const invoice = invoices.find((inv) => (inv as any).bookingId === paramBookingId);
+      if (invoice) {
+        setViewInvoice(invoice);
+      }
+    }
+  }, [paramBookingId, invoices]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [hotelNameFilter, setHotelNameFilter] = useState("all");
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);

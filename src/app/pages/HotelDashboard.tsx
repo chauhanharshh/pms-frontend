@@ -37,11 +37,14 @@ import {
   FileText,
   Building2,
   Briefcase,
+  QrCode,
 } from "lucide-react";
 import { InvoiceModal } from "../components/InvoiceModal";
 import { BookingPreviewModal } from "../components/BookingPreviewModal";
 import { Eye } from "lucide-react";
 import { useRoomStatusColors } from "../utils/roomStatusColors";
+import { RoomContextMenu } from "../components/RoomContextMenu";
+import { toast } from "sonner";
 
 // ── THEME TOKENS ───────────────────────────────────────────────
 const T = {
@@ -110,6 +113,7 @@ function RoomDetailPanel({
   onCheckOut,
   navigate,
   hotelId,
+  onContextMenu,
 }: {
   room: Room;
   booking?: Booking;
@@ -122,6 +126,7 @@ function RoomDetailPanel({
   onCheckOut: (booking: Booking) => void;
   navigate: (path: string) => void;
   hotelId: string;
+  onContextMenu?: (e: React.MouseEvent, room: Room) => void;
 }) {
   const { bills, miscCharges, restaurantOrders } = usePMS();
   const cfg = SC[room.status];
@@ -821,10 +826,12 @@ function RoomCard({
   room,
   booking,
   onClick,
+  onContextMenu,
 }: {
   room: Room;
   booking?: Booking;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent, room: Room) => void;
 }) {
   const cfg = SC[room.status];
   const roomStatusColors = useRoomStatusColors({
@@ -851,6 +858,7 @@ function RoomCard({
   return (
     <button
       onClick={onClick}
+      onContextMenu={(e) => onContextMenu && onContextMenu(e, room)}
       className="rounded-lg text-left transition-all w-full"
       style={{
         background: cardBg,
@@ -943,7 +951,13 @@ export function HotelDashboard() {
     updateRoom,
     updateBooking,
     hotels,
+    isQRScannerOpen,
+    setIsQRScannerOpen,
+    handleQRScan
   } = usePMS();
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; room: Room } | null>(null);
+  const roomCardClickTimersRef = useRef<Record<string, number>>({});
 
   const hotelId = currentHotelId || user?.hotelId || user?.hotel?.id || "";
   const hotel = hotels.find((h) => String(h.id) === String(hotelId));
@@ -1027,7 +1041,6 @@ export function HotelDashboard() {
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
   const [viewInvoice, setViewInvoice] = useState<any>(null);
   const [lastRefresh] = useState(new Date());
-  const roomCardClickTimersRef = useRef<Record<string, number>>({});
 
   // Stats
   const occupied = hotelRooms.filter((r) => r.status === "occupied").length;
@@ -1086,6 +1099,43 @@ export function HotelDashboard() {
       ),
     [hotelBookings],
   );
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, room: Room) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, room });
+  }, []);
+
+  const handleContextMenuAction = useCallback((action: string, room: Room) => {
+    setContextMenu(null);
+    const booking = getBooking(room);
+
+    switch (action) {
+      case "check-in":
+        navigate(`/hotel/check-in?roomId=${room.id}`);
+        break;
+      case "reserve":
+        navigate(`/hotel/reservations?roomId=${room.id}`);
+        break;
+      case "maintenance":
+        updateRoom(room.id, { status: "maintenance" });
+        break;
+      case "dirty":
+        updateRoom(room.id, { status: "cleaning" });
+        break;
+      case "checkout":
+        if (booking) navigate(`/hotel/checkout?bookingId=${booking.id}`);
+        break;
+      case "invoice":
+        if (booking) navigate(`/hotel/invoices?bookingId=${booking.id}`);
+        break;
+      case "misc":
+        if (booking) navigate(`/hotel/misc-charges?bookingId=${booking.id}`);
+        break;
+      case "advance":
+        if (booking) navigate(`/hotel/advances?bookingId=${booking.id}`);
+        break;
+    }
+  }, [navigate, updateRoom, getBooking]);
 
   const handleCheckOut = useCallback(
     (booking: Booking, paymentMode: string) => {
@@ -1420,6 +1470,7 @@ export function HotelDashboard() {
                             room={room}
                             booking={getBooking(room)}
                             onClick={() => handleRoomCardClick(room)}
+                            onContextMenu={handleContextMenu}
                           />
                         ))}
                     </div>
@@ -1486,6 +1537,37 @@ export function HotelDashboard() {
               </h3>
             </div>
             <div className="p-4 space-y-2">
+              <button
+                onClick={() => setIsQRScannerOpen(true)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all"
+                style={{ 
+                  border: `2px solid ${T.gold}`,
+                  background: T.gold + "10"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = T.gold + "20";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = T.gold + "10";
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: T.gold, color: "white" }}
+                  >
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <span
+                    className="text-sm font-bold"
+                    style={{ color: T.darkGold }}
+                  >
+                    Scan QR Check-In
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4" style={{ color: T.gold }} />
+              </button>
+
               {[
                 {
                   label: "Walk-in Check-in",
@@ -1775,6 +1857,18 @@ export function HotelDashboard() {
           booking={previewBooking}
           room={rooms.find((r) => r.id === previewBooking.roomId)}
           onClose={() => setPreviewBooking(null)}
+        />
+      )}
+
+      {contextMenu && (
+        <RoomContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          status={contextMenu.room.status}
+          roomNumber={contextMenu.room.roomNumber}
+          guestName={getBooking(contextMenu.room)?.guestName}
+          onClose={() => setContextMenu(null)}
+          onAction={(action) => handleContextMenuAction(action, contextMenu.room)}
         />
       )}
     </AppLayout>
