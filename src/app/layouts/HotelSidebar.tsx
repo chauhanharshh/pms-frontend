@@ -61,6 +61,11 @@ const HOTEL_SECTIONS: NavSection[] = [
         icon: <LayoutDashboard className="w-4 h-4" />,
       },
       {
+        label: "Bookings",
+        path: "/hotel/bookings",
+        icon: <ClipboardList className="w-4 h-4" />,
+      },
+      {
         label: "Bills",
         path: "/hotel/bills",
         icon: <FileText className="w-4 h-4" />,

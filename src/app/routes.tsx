@@ -313,6 +313,7 @@ const routes = [
   { path: "/hotel/restaurant/expenses", Component: Expenses, errorElement: <ErrorBoundary /> },
   { path: "/hotel/restaurant/day-closing", Component: RestaurantDayClosingPage, errorElement: <ErrorBoundary /> },
   { path: "/hotel/rooms", Component: SuspendedRoomManagement },
+  { path: "/hotel/bookings", Component: BookingsPage },
   { path: "/hotel/reports", Component: Reports },
   { path: "/hotel/settings", Component: Settings },
   { path: "/hotel/day-closing", Component: DayClosingPage },
