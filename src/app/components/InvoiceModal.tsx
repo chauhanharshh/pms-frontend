@@ -499,15 +499,14 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
   if (Number(invoice.bill?.miscCharges) > 0) {
     const base = Number(invoice.bill.miscCharges);
-    const gstPart = subtotal > 0 ? (base / subtotal) * totalGst : 0;
     items.push({
       date: billDateStr,
       type: "Misc\nCharges",
-      desc: `Miscellaneous Guest Services, GST (${gstPercentage}%)`,
+      desc: `Miscellaneous Guest Services`,
       charges: base,
       discount: 0,
-      gst: gstPart,
-      total: base + gstPart
+      gst: 0,  // No GST on misc charges — GST applies only on room rent
+      total: base
     });
   }
 
