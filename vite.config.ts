@@ -12,7 +12,7 @@ export default defineConfig({
   ],
   // base './' is REQUIRED for Electron: built assets must use relative paths
   // so they resolve correctly when loaded via file:// protocol
-  base: './',
+  base: '/',
   resolve: {
     alias: {
       // Alias @ to the src directory
