@@ -114,14 +114,18 @@ const SuspendedRoomManagement = withSuspense(RoomManagement);
 const LICENSE_GATE_FLAG = "pms_license_gate_ready";
 
 function getDefaultRouteForRole(role: string) {
-  if (role === "super_admin") return "/superadmin";
-  if (role === "admin") return "/admin";
+  if (role === "super_admin" || role === "superadmin") return "/superadmin";
+  if (role === "admin") return "/admin/dashboard";
+  if (role === "hotel_manager") return "/hotel/dashboard";
+  if (role === "hotel_staff") return "/hotel/dashboard";
   if (role === "restaurant_staff") return "/hotel/restaurant/rooms";
-  return "/hotel";
+  return "/hotel/dashboard";
 }
 
+// Only admin/hotel_manager can access this page:
 function ProtectedLicenseRoute({ children }: { children: JSX.Element }) {
   const { user, token, loading } = useAuth();
+  const navigate = typeof window !== 'undefined' ? window.navigate || ((url: string) => { window.location.href = url; }) : () => {};
 
   if (loading) {
     return (
@@ -135,19 +139,9 @@ function ProtectedLicenseRoute({ children }: { children: JSX.Element }) {
     return <Navigate to="/" replace />;
   }
 
-  const isLicenseGatedRole = user.role === "admin" || user.role === "hotel_manager";
-  if (!isLicenseGatedRole) {
-    return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
-  }
-
-  const licenseAlreadySaved = localStorage.getItem(`license_${user.id}`);
-  if (licenseAlreadySaved) {
-    return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
-  }
-
-  const canOpenLicenseGate = sessionStorage.getItem(LICENSE_GATE_FLAG) === "1";
-  if (!canOpenLicenseGate) {
-    return <Navigate to="/" replace />;
+  // Only admin/hotel_manager can access this page:
+  if (!['admin', 'hotel_manager'].includes(user?.role || '')) {
+    return <Navigate to="/hotel/dashboard" />;
   }
 
   return children;
@@ -158,6 +152,10 @@ const routes = [
     path: "/",
     Component: LoginPage,
     errorElement: <ErrorBoundary />,
+  },
+  {
+    path: "/login",
+    element: <Navigate to="/" replace />,
   },
   {
     path: "/register",
@@ -195,6 +193,10 @@ const routes = [
   // Core
   {
     path: "/admin",
+    element: <Navigate to="/admin/dashboard" replace />,
+  },
+  {
+    path: "/admin/dashboard",
     Component: AdminDashboard,
     errorElement: <ErrorBoundary />,
   },
@@ -282,7 +284,11 @@ const routes = [
 
   // ── HOTEL ROUTES ──────────────────────────────────────────────────────────
 
-  { path: "/hotel", Component: HotelDashboard },
+  {
+    path: "/hotel",
+    element: <Navigate to="/hotel/dashboard" replace />,
+  },
+  { path: "/hotel/dashboard", Component: HotelDashboard },
   { path: "/hotel/check-in", Component: CheckIn },
   { path: "/hotel/checkout", Component: CheckOut },
   { path: "/hotel/reservations", Component: Reservations },

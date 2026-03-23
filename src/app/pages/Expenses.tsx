@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { exportToCSV, printTable } from '../utils/tableExport';
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -257,8 +258,47 @@ export function Expenses() {
               Expense Records
             </h2>
           </div>
+          {/* Export/Print Buttons */}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px' }}>
+            <button
+              onClick={() => exportToCSV(expenses, 'expenses')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                background: '#ffffff',
+                border: '1px solid #B8860B',
+                borderRadius: '8px',
+                color: '#B8860B',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              📥 Export CSV
+            </button>
+            <button
+              onClick={() => printTable('expenses-table', 'Expenses Report')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                background: '#B8860B',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#ffffff',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              🖨️ Print
+            </button>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" id="expenses-table">
               <thead>
                 <tr style={{ background: "#FFFFFF" }}>
                   {[

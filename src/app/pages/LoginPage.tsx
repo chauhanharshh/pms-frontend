@@ -19,10 +19,10 @@ export function LoginPage() {
   const LICENSE_GATE_FLAG = "pms_license_gate_ready";
 
   const getDefaultRouteForRole = (role: string) => {
-    if (role === "super_admin") return "/superadmin";
-    if (role === "admin") return "/admin";
+    if (role === "super_admin" || role === "superadmin") return "/superadmin";
+    if (role === "admin") return "/admin/dashboard";
     if (role === "restaurant_staff") return "/hotel/restaurant/rooms";
-    return "/hotel";
+    return "/hotel/dashboard";
   };
 
   useEffect(() => {

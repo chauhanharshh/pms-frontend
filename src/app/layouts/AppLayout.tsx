@@ -15,7 +15,7 @@ interface AppLayoutProps {
 // Backend returns: admin | hotel_manager | hotel_user | restaurant_staff
 // Frontend treats these as hotel-shell roles, with restaurant_staff restricted to restaurant routes only.
 function isHotelRole(role: string) {
-  return role === "hotel_manager" || role === "hotel_user" || role === "restaurant_staff" || role === "hotel";
+  return ["admin", "hotel_manager", "hotel_staff", "restaurant_staff", "hotel"].includes(role);
 }
 
 function isRestaurantOnlyRole(role: string) {

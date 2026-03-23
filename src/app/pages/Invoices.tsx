@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Invoice } from "../contexts/PMSContext";
+import { exportToCSV, printTable } from '../utils/tableExport';
 import {
   formatCurrency,
   formatDate,
@@ -342,22 +343,101 @@ export function Invoices() {
   return (
     <AppLayout title="Invoices">
       <div className="space-y-5 max-w-6xl">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div />
+        {/* Header: Only Generate Invoice button here */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
           <button
             onClick={() => setShowGenerate(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
             style={{
-              background: "linear-gradient(135deg, #C6A75E, #A8832D)",
-              boxShadow: "0 2px 8px #E5E1DA",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #C6A75E, #A8832D)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '15px',
+              boxShadow: '0 2px 8px #E5E1DA',
+              cursor: 'pointer',
             }}
           >
-            <Plus className="w-4 h-4" /> Generate Invoice
+            + Generate Invoice
           </button>
         </div>
 
+        {/* Search and filter bar remains unchanged */}
+
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                  {/* Export/Print buttons — above table only */}
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                    <button
+                      onClick={() => {
+                        const csvData = filteredInvoices.map(inv => {
+                          // Use getInvoiceDisplayFields for guest/room/checkin/checkout
+                          const displayFields = getInvoiceDisplayFields(inv);
+                          // Hotel name
+                          const hotelName = hotels.find((h) => String(h.id) === String(inv.hotelId) || String((h)._id) === String(inv.hotelId))?.name || '';
+                          // Tax calculation
+                          let tax = 0;
+                          if (typeof inv.cgst === 'number' && typeof inv.sgst === 'number') {
+                            tax = inv.cgst + inv.sgst;
+                          } else if (!isNaN(Number(inv.cgst)) && !isNaN(Number(inv.sgst))) {
+                            tax = Number(inv.cgst) + Number(inv.sgst);
+                          }
+                          return {
+                            'Invoice No': inv.invoiceNumber || '-',
+                            'Guest Name': displayFields.guestName || '-',
+                            'Room No': displayFields.roomNumber || '-',
+                            'Hotel': hotelName || '-',
+                            'Check-In': displayFields.checkIn !== 'N/A' ? displayFields.checkIn : '-',
+                            'Check-Out': displayFields.checkOut !== 'N/A' ? displayFields.checkOut : '-',
+                            'Subtotal (₹)': inv.subtotal || 0,
+                            'Tax (₹)': tax,
+                            'Total (₹)': inv.totalAmount || 0,
+                            'Status': inv.status || '-',
+                            'Invoice Date': inv.invoiceDate
+                              ? new Date(inv.invoiceDate).toLocaleDateString('en-IN')
+                              : (inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-IN') : '-')
+                          };
+                        });
+                        exportToCSV(csvData, 'invoices');
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 16px',
+                        background: '#ffffff',
+                        border: '1px solid #B8860B',
+                        borderRadius: '8px',
+                        color: '#B8860B',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📥 Export CSV
+                    </button>
+                    <button
+                      onClick={() => printTable('invoices-table', 'Invoices Report')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 16px',
+                        background: '#B8860B',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🖨️ Print
+                    </button>
+                  </div>
           <div className="relative flex-1 sm:max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input

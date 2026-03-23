@@ -6,10 +6,10 @@ import api from "../services/api";
 import { handleLogoImageError, resolveLogoUrl } from "../utils/branding";
 
 const getDefaultRouteForRole = (role: string) => {
-  if (role === "super_admin") return "/superadmin";
-  if (role === "admin") return "/admin";
+  if (role === "super_admin" || role === "superadmin") return "/superadmin";
+  if (role === "admin") return "/admin/dashboard";
   if (role === "restaurant_staff") return "/hotel/restaurant/rooms";
-  return "/hotel";
+  return "/hotel/dashboard";
 };
 
 export function LicenseActivation() {
@@ -103,8 +103,37 @@ export function LicenseActivation() {
           maxWidth: "420px",
           textAlign: "center",
           boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+          display: "flex", // added for flex-start alignment
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
+        <button
+          onClick={() => {
+            localStorage.removeItem("token"); // user requested
+            localStorage.removeItem("user");  // user requested
+            localStorage.removeItem("pms_token");
+            localStorage.removeItem("pms_user");
+            localStorage.removeItem("pms_hotel_ctx");
+            window.location.href = "/login";
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            background: "none",
+            border: "none",
+            color: "#B8860B",
+            fontSize: "13px",
+            cursor: "pointer",
+            padding: "0",
+            marginBottom: "20px",
+            alignSelf: "flex-start",
+          }}
+        >
+          ← Back to Login
+        </button>
+
         <img
           src={resolveLogoUrl(null)}
           alt="Hotels4U PMS"

@@ -66,6 +66,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentHotelIdState(null);
       localStorage.removeItem("pms_hotel_ctx");
     }
+
+    // --- LOGIN SUCCESS HANDLER: Role-based navigation and license check ---
+    // Superadmin → direct to super admin panel, NO license check:
+    if (newUser.role === 'super_admin') {
+      window.location.href = '/superadmin';
+      return;
+    }
+
+    // Admin first time → activate license:
+    if (newUser.role === 'admin') {
+      const licenseKey = localStorage.getItem(`license_${newUser.id}`);
+      if (!licenseKey) {
+        window.location.href = '/activate-license';
+        return;
+      }
+      window.location.href = '/admin/dashboard';
+      return;
+    }
+
+    // Hotel staff/manager/restaurant_staff → check admin's license from backend:
+    if (
+      newUser.role === 'hotel_manager' ||
+      newUser.role === 'hotel_staff' ||
+      newUser.role === 'restaurant_staff'
+    ) {
+      try {
+        // Check admin's license status from backend
+        const res = await api.get('/license/check-user', {
+          headers: { Authorization: `Bearer ${newToken}` }
+        });
+        const license = res.data;
+
+        // License not activated:
+        if (!license.valid && license.status === 'no_license') {
+          logout();
+          alert('Software not activated. Please contact your administrator.');
+          return;
+        }
+
+        // License expired or grace ended:
+        if (!license.valid && (license.status === 'expired' || license.status === 'grace_ended')) {
+          logout();
+          alert('Your plan has expired. Please contact your administrator to renew.');
+          return;
+        }
+
+        // License active or grace → open dashboard:
+        window.location.href = '/hotel/dashboard';
+        return;
+      } catch (error) {
+        // If API unreachable → allow login (offline mode):
+        console.error('License check failed — allowing offline login');
+        window.location.href = '/hotel/dashboard';
+        return;
+      }
+    }
+
+    // Default fallback:
+    window.location.href = '/hotel/dashboard';
+    return;
   };
 
   const loginWithGoogle = async (credential: string): Promise<void> => {

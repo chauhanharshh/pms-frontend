@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { exportToCSV, printTable } from '../utils/tableExport';
 import { AppLayout } from "../layouts/AppLayout";
 import { usePMS } from "../contexts/PMSContext";
 import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
@@ -450,8 +451,47 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
 
                 {/* Invoices Table */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    {/* Export/Print Buttons */}
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px' }}>
+                        <button
+                            onClick={() => exportToCSV(invoices, 'restaurant-invoices')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 16px',
+                                background: '#ffffff',
+                                border: '1px solid #B8860B',
+                                borderRadius: '8px',
+                                color: '#B8860B',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            📥 Export CSV
+                        </button>
+                        <button
+                            onClick={() => printTable('restaurant-invoices-table', 'Restaurant Invoices')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 16px',
+                                background: '#B8860B',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: '#ffffff',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            🖨️ Print
+                        </button>
+                    </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse" id="restaurant-invoices-table">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b border-gray-100">
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</th>
