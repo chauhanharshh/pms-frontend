@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Invoice } from "../contexts/PMSContext";
-import { exportToCSV, printTable } from '../utils/tableExport';
+import { exportToCSV, printTable, formatDateForCSV } from '../utils/tableExport';
 import {
   formatCurrency,
   formatDate,
@@ -403,15 +403,13 @@ export function Invoices() {
                               'Guest Name': displayFields.guestName || '-',
                               'Room No': displayFields.roomNumber || '-',
                               'Hotel': hotelName || '-',
-                              'Check-In': displayFields.checkIn !== 'N/A' ? displayFields.checkIn : '-',
-                              'Check-Out': displayFields.checkOut !== 'N/A' ? displayFields.checkOut : '-',
+                              'Check-In': formatDateForCSV((inv as any)?.booking?.checkInDate || displayFields.booking?.checkInDate),
+                              'Check-Out': formatDateForCSV((inv as any)?.booking?.checkOutDate || displayFields.booking?.checkOutDate),
                               'Subtotal (₹)': inv.subtotal || 0,
                               'Tax (₹)': tax,
                               'Total (₹)': inv.totalAmount || 0,
                               'Status': inv.status || '-',
-                              'Invoice Date': inv.invoiceDate
-                                ? new Date(inv.invoiceDate).toLocaleDateString('en-IN')
-                                : (inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-IN') : '-')
+                              'Invoice Date': formatDateForCSV(inv.invoiceDate || inv.createdAt)
                             };
                           });
                           exportToCSV(csvData, 'invoices');

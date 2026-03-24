@@ -326,6 +326,11 @@ const ADMIN_SECTIONS: NavSection[] = [
         icon: <Users className="w-4 h-4" />,
       },
       {
+        label: "Table Management",
+        path: "/admin/restaurant/tables",
+        icon: <LayoutGrid className="w-4 h-4" />,
+      },
+      {
         label: "Service Charge Report",
         path: "/admin/restaurant/service-charge-report",
         icon: <IndianRupee className="w-4 h-4" />,
@@ -540,7 +545,24 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const sections = ADMIN_SECTIONS;
+  const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
+
+  let sections = ADMIN_SECTIONS;
+
+  if (!restaurantEnabled) {
+    sections = sections
+      .filter((s) => s.title !== "Restaurant")
+      .map((s) => {
+        if (s.title === "GST Reports (Admin)") {
+          return {
+            ...s,
+            items: s.items.filter((item) => item.label !== "Restaurant GST"),
+          };
+        }
+        return s;
+      });
+  }
+
   const defaultOpen: Record<string, boolean> = {};
   sections.forEach((s) => {
     defaultOpen[s.title] =

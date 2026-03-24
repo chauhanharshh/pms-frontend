@@ -2,7 +2,11 @@ import { useState } from "react";
 import { AppLayout } from "../../layouts/AppLayout";
 import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
-import { formatCurrency } from "../../data/mockData";
+import { formatCurrency as mockFormatCurrency } from "../../data/mockData";
+import { exportToCSV } from "../../utils/tableExport";
+import { useMemo } from "react";
+
+const formatCurrency = (val: any) => Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function SacHsnReport() {
     const [loading, setLoading] = useState(false);
@@ -19,35 +23,40 @@ export function SacHsnReport() {
             setLoading(false);
         }
     };
+    
+    const totals = useMemo(() => {
+        return data.reduce((acc, row) => ({
+            taxable: acc.taxable + Number(row.totalTaxableValue || 0),
+            cgst: acc.cgst + Number(row.totalCgst || 0),
+            sgst: acc.sgst + Number(row.totalSgst || 0),
+            igst: acc.igst + Number(row.totalIgst || 0),
+        }), { taxable: 0, cgst: 0, sgst: 0, igst: 0 });
+    }, [data]);
 
     const exportToCsv = () => {
         if (data.length === 0) return;
-        const headers = [
-            "SAC Code",
-            "Description",
-            "Total Taxable Value",
-            "GST Rate",
-            "Total CGST",
-            "Total SGST",
-            "Total IGST",
-        ];
+        const dataToExport = data.map((r) => ({
+            "SAC Code": r.sacCode,
+            "Description": r.description || "",
+            "Total Taxable Value": r.totalTaxableValue,
+            "GST Rate": `${r.gstRate}%`,
+            "Total CGST": r.totalCgst,
+            "Total SGST": r.totalSgst,
+            "Total IGST": r.totalIgst,
+        }));
+        
+        // Add Total Row to Export
+        dataToExport.push({
+            "SAC Code": "TOTAL",
+            "Description": "",
+            "Total Taxable Value": totals.taxable as any,
+            "GST Rate": "" as any,
+            "Total CGST": totals.cgst as any,
+            "Total SGST": totals.sgst as any,
+            "Total IGST": totals.igst as any,
+        });
 
-        const rows = data.map((r) => [
-            r.sacCode,
-            `"${r.description || ""}"`,
-            r.totalTaxableValue,
-            `${r.gstRate}%`,
-            r.totalCgst,
-            r.totalSgst,
-            r.totalIgst,
-        ]);
-
-        const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `sac_hsn_summary_${new Date().getTime()}.csv`;
-        link.click();
+        exportToCSV(dataToExport, "sac_hsn_summary");
     };
 
     return (
@@ -96,6 +105,16 @@ export function SacHsnReport() {
                                             <td className="px-4 py-3 text-right text-gray-500">{formatCurrency(row.totalIgst)}</td>
                                         </tr>
                                     ))
+                                )}
+                                {data.length > 0 && !loading && (
+                                    <tr className="bg-gray-50 font-bold border-t-2 border-gray-200">
+                                        <td className="px-4 py-3" colSpan={2}>TOTAL</td>
+                                        <td className="px-4 py-3 text-right">{formatCurrency(totals.taxable)}</td>
+                                        <td className="px-4 py-3 text-right">-</td>
+                                        <td className="px-4 py-3 text-right">{formatCurrency(totals.cgst)}</td>
+                                        <td className="px-4 py-3 text-right">{formatCurrency(totals.sgst)}</td>
+                                        <td className="px-4 py-3 text-right">{formatCurrency(totals.igst)}</td>
+                                    </tr>
                                 )}
                             </tbody>
                         </table>

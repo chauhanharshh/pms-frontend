@@ -15,20 +15,23 @@ export const calculateStayDays = (
 
   const msPerDay = 1000 * 60 * 60 * 24;
   let nights = Math.round((end.getTime() - start.getTime()) / msPerDay);
-  nights = Math.max(nights, 1);
-
-  const checkOutTime24 = checkOutTime || "12:00";
-  const [h, m] = String(checkOutTime24)
-    .split(":")
-    .map((value) => Number(value));
-  const hours = Number.isFinite(h) ? h : 12;
-  const minutes = Number.isFinite(m) ? m : 0;
-
-  if (hours > 12 || (hours === 12 && minutes > 0)) {
+  
+  // Rule 1: Early Check-in (< 9:00 AM) => +1 day
+  const ciTime = checkInTime || "14:00";
+  const [ciH, ciM] = String(ciTime).split(":").map(Number);
+  if (ciH < 9) {
     nights += 1;
   }
 
-  return nights;
+  // Rule 2: Late Check-out (> 11:00 AM) => +1 day
+  const coTime = checkOutTime || "11:00";
+  const [coH, coM] = String(coTime).split(":").map(Number);
+  if (coH > 11 || (coH === 11 && coM > 0)) {
+    nights += 1;
+  }
+
+  // Rule 3: Minimum 1 day stay
+  return Math.max(nights, 1);
 };
 
 export const isLateCheckout = (checkOutTime: string): boolean => {
@@ -38,5 +41,6 @@ export const isLateCheckout = (checkOutTime: string): boolean => {
     .map((value) => Number(value));
   const hours = Number.isFinite(h) ? h : 0;
   const minutes = Number.isFinite(m) ? m : 0;
-  return hours > 12 || (hours === 12 && minutes > 0);
+  // Rule: Late if after 11:00 AM
+  return hours > 11 || (hours === 11 && minutes > 0);
 };

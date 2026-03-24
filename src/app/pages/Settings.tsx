@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { ArrowLeft, Save, Building2, Clock3, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Save, Building2, Clock3, SlidersHorizontal, FileText } from "lucide-react";
+import api from "../services/api";
+import { toast } from "sonner";
 
 export function Settings() {
   const { currentHotelId } = useAuth();
-  const { hotels } = usePMS();
+  const { hotels, refreshAll } = usePMS();
   const navigate = useNavigate();
   const currentHotel = hotels.find((h) => h.id === currentHotelId);
 
@@ -16,9 +18,17 @@ export function Settings() {
     phone: currentHotel?.phone || "",
     email: currentHotel?.email || "",
     gstNumber: currentHotel?.gstNumber || "",
-    checkInTime: "14:00",
-    checkOutTime: "11:00",
+    checkInTime: currentHotel?.checkInTime || "14:00",
+    checkOutTime: currentHotel?.checkOutTime || "11:00",
+    invoiceShowCustomLines: currentHotel?.invoiceShowCustomLines ?? false,
+    invoiceLine1: currentHotel?.invoiceLine1 ?? "A UNIT OF",
+    invoiceLine2: currentHotel?.invoiceLine2 ?? "UTTARAKHAND HOTELS4U",
+    invoiceLine1Size: currentHotel?.invoiceLine1Size ?? 14,
+    invoiceLine2Size: currentHotel?.invoiceLine2Size ?? 16,
+    invoiceHotelNameColor: currentHotel?.invoiceHotelNameColor || "#000000",
+    invoiceHeaderColor: currentHotel?.invoiceHeaderColor || "#000000",
   });
+  const [saving, setSaving] = useState(false);
   const [showFinancialSummary, setShowFinancialSummary] = useState<boolean>(() => {
     try {
       return JSON.parse(localStorage.getItem("showFinancialSummary") ?? "true");
@@ -26,10 +36,48 @@ export function Settings() {
       return true;
     }
   });
+  const [restaurantEnabled, setRestaurantEnabled] = useState<boolean>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
+    } catch {
+      return false;
+    }
+  });
 
-  const handleSave = () => {
-    localStorage.setItem("showFinancialSummary", JSON.stringify(showFinancialSummary));
-    alert("Settings saved successfully!");
+  const handleSave = async () => {
+    if (!currentHotelId) return;
+    setSaving(true);
+    try {
+      const payload = {
+        name: settings.hotelName,
+        address: settings.address,
+        phone: settings.phone,
+        email: settings.email,
+        gstNumber: settings.gstNumber,
+        checkInTime: settings.checkInTime,
+        checkOutTime: settings.checkOutTime,
+        invoiceShowCustomLines: settings.invoiceShowCustomLines,
+        invoiceLine1: settings.invoiceLine1,
+        invoiceLine2: settings.invoiceLine2,
+        invoiceLine1Size: Number(settings.invoiceLine1Size),
+        invoiceLine2Size: Number(settings.invoiceLine2Size),
+        invoiceHotelNameColor: settings.invoiceHotelNameColor,
+        invoiceHeaderColor: settings.invoiceHeaderColor,
+      };
+      
+      await api.put(`/hotels/${currentHotelId}`, payload);
+      
+      localStorage.setItem("showFinancialSummary", JSON.stringify(showFinancialSummary));
+      localStorage.setItem("restaurantEnabled", JSON.stringify(restaurantEnabled));
+      
+      await refreshAll(true);
+      toast.success("Settings saved successfully!");
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      toast.error("Failed to save settings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -291,27 +339,175 @@ export function Settings() {
                 className="text-[15px] font-semibold mb-4 pb-2.5 flex items-center gap-2"
                 style={{ color: "#B8860B", borderBottom: "1px solid #F0E6D3" }}
               >
-                <SlidersHorizontal className="w-4 h-4" /> Display Preferences
+                <SlidersHorizontal className="w-4 h-4" /> Module Preferences
               </h2>
 
-              <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#E8DCC8]">
-                <div>
-                  <p className="font-semibold text-gray-800 text-sm">Show Financial Summary</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Display financial details in Check-In Details modal
-                  </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#E8DCC8]">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">Show Financial Summary</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Display financial details in Check-In Details modal
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${showFinancialSummary ? "bg-[#B8860B]" : "bg-gray-300"}`}
+                    onClick={() => setShowFinancialSummary((prev) => !prev)}
+                    aria-label="Toggle show financial summary"
+                    style={{ boxShadow: showFinancialSummary ? "0 0 8px rgba(184, 134, 11, 0.5)" : "none" }}
+                  >
+                    <div
+                      className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${showFinancialSummary ? "translate-x-7" : "translate-x-1"}`}
+                    />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className={`relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${showFinancialSummary ? "bg-[#B8860B]" : "bg-gray-300"}`}
-                  onClick={() => setShowFinancialSummary((prev) => !prev)}
-                  aria-label="Toggle show financial summary"
-                  style={{ boxShadow: showFinancialSummary ? "0 0 8px rgba(184, 134, 11, 0.5)" : "none" }}
-                >
-                  <div
-                    className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${showFinancialSummary ? "translate-x-7" : "translate-x-1"}`}
-                  />
-                </button>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#E8DCC8]">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">Enable Restaurant Module</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Show restaurant section in hotel dashboard and sidebar
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${restaurantEnabled ? "bg-[#B8860B]" : "bg-gray-300"}`}
+                    onClick={() => setRestaurantEnabled((prev) => !prev)}
+                    aria-label="Toggle restaurant module"
+                    style={{ boxShadow: restaurantEnabled ? "0 0 8px rgba(184, 134, 11, 0.5)" : "none" }}
+                  >
+                    <div
+                      className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${restaurantEnabled ? "translate-x-7" : "translate-x-1"}`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="rounded-xl p-6"
+              style={{
+                background: "#ffffff",
+                border: "1px solid #E8DCC8",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              <h2
+                className="text-[15px] font-semibold mb-4 pb-2.5 flex items-center gap-2"
+                style={{ color: "#B8860B", borderBottom: "1px solid #F0E6D3" }}
+              >
+                <FileText className="w-4 h-4" /> Invoice Customization
+              </h2>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-[white] rounded-xl border border-[#E8DCC8]">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">Show Custom Invoice Lines</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Enable the custom text lines on the invoice header
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${settings.invoiceShowCustomLines ? "bg-[#B8860B]" : "bg-gray-300"}`}
+                    onClick={() => setSettings({ ...settings, invoiceShowCustomLines: !settings.invoiceShowCustomLines })}
+                    aria-label="Toggle custom invoice lines"
+                    style={{ boxShadow: settings.invoiceShowCustomLines ? "0 0 8px rgba(184, 134, 11, 0.5)" : "none" }}
+                  >
+                    <div
+                      className={`absolute top-1 w-5 h-5 bg-[white] rounded-full shadow-md transition-transform duration-300 ${settings.invoiceShowCustomLines ? "translate-x-7" : "translate-x-1"}`}
+                    />
+                  </button>
+                </div>
+
+                {settings.invoiceShowCustomLines && (
+                  <div className="grid grid-cols-2 gap-6 p-4 bg-[#FAFAFA] rounded-xl border border-[#E8DCC8]">
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Line 1 Text
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.invoiceLine1 || ""}
+                        onChange={(e) => setSettings({ ...settings, invoiceLine1: e.target.value })}
+                        className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                        style={{ borderColor: "#D4B896", background: "#ffffff" }}
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Line 1 Font Size (px)
+                      </label>
+                      <input
+                        type="number"
+                        min="8"
+                        max="40"
+                        value={settings.invoiceLine1Size}
+                        onChange={(e) => setSettings({ ...settings, invoiceLine1Size: parseInt(e.target.value) || 14 })}
+                        className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                        style={{ borderColor: "#D4B896", background: "#ffffff" }}
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Line 2 Text
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.invoiceLine2 || ""}
+                        onChange={(e) => setSettings({ ...settings, invoiceLine2: e.target.value })}
+                        className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                        style={{ borderColor: "#D4B896", background: "#ffffff" }}
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Line 2 Font Size (px)
+                      </label>
+                      <input
+                        type="number"
+                        min="8"
+                        max="40"
+                        value={settings.invoiceLine2Size}
+                        onChange={(e) => setSettings({ ...settings, invoiceLine2Size: parseInt(e.target.value) || 16 })}
+                        className="w-full px-3.5 py-2.5 border rounded-lg outline-none text-sm transition"
+                        style={{ borderColor: "#D4B896", background: "#ffffff" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-6 p-4 bg-[white] rounded-xl border border-[#E8DCC8]">
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Hotel Name Color
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={settings.invoiceHotelNameColor || "#000000"}
+                        onChange={(e) => setSettings({ ...settings, invoiceHotelNameColor: e.target.value })}
+                        className="w-10 h-10 border-0 rounded cursor-pointer p-0"
+                      />
+                      <span className="text-sm font-mono text-gray-600 uppercase">{settings.invoiceHotelNameColor || "#000000"}</span>
+                    </div>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Header Text Color
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={settings.invoiceHeaderColor || "#000000"}
+                        onChange={(e) => setSettings({ ...settings, invoiceHeaderColor: e.target.value })}
+                        className="w-10 h-10 border-0 rounded cursor-pointer p-0"
+                      />
+                      <span className="text-sm font-mono text-gray-600 uppercase">{settings.invoiceHeaderColor || "#000000"}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -326,11 +522,11 @@ export function Settings() {
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 px-6 py-3 rounded-lg font-medium transition shadow-sm hover:shadow-md flex items-center justify-center gap-2 text-white"
+                disabled={saving}
+                className="flex-1 px-6 py-3 rounded-lg font-medium transition shadow-sm hover:shadow-md flex items-center justify-center gap-2 text-[white] disabled:opacity-70"
                 style={{ background: "#B8860B" }}
               >
-                <Save className="w-5 h-5" />
-                Save Settings
+                {saving ? "Saving..." : <><Save className="w-5 h-5" /> Save Settings</>}
               </button>
             </div>
           </div>

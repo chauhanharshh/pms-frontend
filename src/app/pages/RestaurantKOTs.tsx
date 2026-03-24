@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { usePMS } from "../contexts/PMSContext";
+import { exportToCSV, formatDateForCSV } from "../utils/tableExport";
 import {
     Search,
     Filter,
@@ -41,13 +42,15 @@ export default function RestaurantKOTs() {
     const fetchKOTs = async () => {
         try {
             setLoading(true);
-            await refreshRestaurantKOTs();
+            const hotelId = user?.hotelId || undefined;
+            await refreshRestaurantKOTs(undefined, hotelId);
         } catch (err) {
             console.error("Failed to fetch KOTs:", err);
         } finally {
             setLoading(false);
         }
     };
+
 
     useEffect(() => {
         fetchKOTs();
@@ -199,6 +202,8 @@ export default function RestaurantKOTs() {
         printHtml(getKotHtml());
     };
 
+    const isMobile = window.innerWidth < 768;
+
     return (
         <AppLayout title="Restaurant KOTs">
             <div className="space-y-6">
@@ -276,6 +281,38 @@ export default function RestaurantKOTs() {
 
                 {/* KOTs Table */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px', paddingRight: '16px' }}>
+                        <button
+                            onClick={() => {
+                                const csvData = filteredKOTs.map(kot => ({
+                                    'KOT No': kot.kotNumber,
+                                    'Date': formatDateForCSV(kot.printedAt || kot.createdAt),
+                                    'Table': kot.order?.tableNumber || 'N/A',
+                                    'Room': kot.order?.room?.roomNumber || '-',
+                                    'Steward': kot.order?.stewardName || 'Walk-in',
+                                    'Guest': kot.order?.guestName || '-',
+                                    'Items Count': kot.items?.length || 0,
+                                    'Status': kot.status
+                                }));
+                                exportToCSV(csvData, 'restaurant-kots');
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 16px',
+                                background: '#ffffff',
+                                border: '1px solid #B8860B',
+                                borderRadius: '8px',
+                                color: '#B8860B',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            📥 Export Excel
+                        </button>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -290,13 +327,10 @@ export default function RestaurantKOTs() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {loading ? (
+                                {loading && filteredKOTs.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="px-6 py-12 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                                <p className="text-gray-500 text-sm">Loading KOTs...</p>
-                                            </div>
+                                            {/* Removed loading message */}
                                         </td>
                                     </tr>
                                 ) : filteredKOTs.length === 0 ? (

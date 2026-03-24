@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
+import { exportToCSV, formatDateForCSV } from "../utils/tableExport";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -167,6 +168,37 @@ export function AdvancePayments() {
             </select>
           )}
           <div className="flex-1" />
+          <button
+            onClick={() => {
+              const csvData = filtered.map(adv => ({
+                'Guest': adv.guestName,
+                'Hotel': hotels.find(h => h.id === adv.hotelId)?.name || '-',
+                'Date': formatDateForCSV(adv.paymentDate),
+                'Amount': adv.amount,
+                'Used': adv.usedAmount,
+                'Balance': Number(adv.amount || 0) - Number(adv.usedAmount || 0),
+                'Payment Method': adv.paymentMethod,
+                'Status': adv.status
+              }));
+              exportToCSV(csvData, 'advance-payments');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: '#ffffff',
+              border: '1px solid #B8860B',
+              borderRadius: '8px',
+              color: '#B8860B',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              marginRight: '8px'
+            }}
+          >
+            📥 Export Excel
+          </button>
           <button
             onClick={openAdd}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white"

@@ -3,6 +3,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { formatCurrency } from "../utils/format";
+import { exportToCSV } from "../utils/tableExport";
 import {
   PiggyBank,
   Plus,
@@ -73,22 +74,16 @@ export function PettyCashPage() {
   };
 
   const exportCSV = () => {
-    const csv = [
-      ["Date", "Description", "Type", "Amount", "Category", "Balance"].join(
-        ",",
-      ),
-      ...filtered.map((t) =>
-        [t.date, t.description, t.type, t.amount, t.category, t.balance].join(
-          ",",
-        ),
-      ),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `petty-cash-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
+    const dataToExport = filtered.map((t) => ({
+      Date: t.date,
+      Description: t.description,
+      Type: t.type,
+      Amount: t.amount,
+      Category: t.category,
+      Balance: t.balance
+    }));
+
+    exportToCSV(dataToExport, "petty-cash");
   };
 
   return (

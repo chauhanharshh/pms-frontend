@@ -437,16 +437,20 @@ export function MiscCharges() {
                     Amount (₹) *
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     className="w-full px-3 py-2.5 rounded-lg outline-none"
-                    style={{ border: "2px solid #E5E1DA" }}
+                    style={{ border: "2px solid #E5E1DA", background: "white" }}
                     value={form.amount}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        amount: parseFloat(e.target.value) || 0,
-                      }))
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val || /^\d*\.?\d*$/.test(val)) {
+                        setForm((f) => ({
+                          ...f,
+                          amount: val === "." ? "0." : val,
+                        }));
+                      }
+                    }}
                   />
                 </div>
                 <div className="col-span-2">

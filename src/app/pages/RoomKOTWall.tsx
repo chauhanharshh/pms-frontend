@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { formatCurrency } from "../utils/format";
+import { resolveLogoUrl, handleLogoImageError } from "../utils/branding";
 import { toast } from "sonner";
 import { Printer, X } from "lucide-react";
 import { getKotWallColors } from "../utils/kotWallColors";
@@ -143,10 +144,19 @@ export function RoomKOTWall() {
     }
   };
 
-  const loadKOTs = async () => {
+  const lastFetchRef = useRef<number>(0);
+  const loadKOTs = async (force = false) => {
+    // Throttle: prevent multiple calls within 500ms
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < 500) return;
+    lastFetchRef.current = now;
+
     try {
-      setLoading(true);
-      const all = await refreshRestaurantKOTs("OPEN");
+      // Only set loading if we don't have any KOTs yet to avoid UI flicker
+      if (kots.length === 0) setLoading(true);
+      
+      const all = await refreshRestaurantKOTs("OPEN", queryHotelId);
+
       const normalizedSerialOrTable = tableNumberFilter.trim().toLowerCase();
       const normalizedRoom = roomNumberFilter.trim().toLowerCase();
 
@@ -602,13 +612,29 @@ export function RoomKOTWall() {
         className="mx-auto bg-white text-black"
         style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
       >
-        <div className="text-center font-bold text-[14px] leading-tight">{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
-        {lines.line1 && <div className="text-center leading-tight">{lines.line1}</div>}
-        {lines.line2 && <div className="text-center leading-tight">{lines.line2}</div>}
-        {lines.cityState && <div className="text-center leading-tight">{lines.cityState}</div>}
-        <div className="text-center leading-tight">Contact No: {contactNo}</div>
+        {selectedHotel?.logoUrl && (
+            <div className="flex justify-center mb-2">
+                <img 
+                    src={resolveLogoUrl(selectedHotel.logoUrl)} 
+                    alt="Logo" 
+                    style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }} 
+                    onError={handleLogoImageError}
+                />
+            </div>
+        )}
+        <div className="text-center font-bold text-[14px] leading-tight" style={{ color: selectedHotel?.invoiceHotelNameColor || "#000000" }}>{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+        {selectedHotel?.invoiceShowCustomLines && (
+            <>
+                <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine1Size || 11}px` }}>{selectedHotel.invoiceLine1 || ""}</div>
+                <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine2Size || 13}px` }}>{selectedHotel.invoiceLine2 || ""}</div>
+            </>
+        )}
+        {lines.line1 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
+        {lines.line2 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
+        {lines.cityState && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
+        <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
         <div className="text-center leading-tight">{RECEIPT_DASH}</div>
-        <div className="text-center font-bold leading-tight">TAX INVOICE</div>
+        <div className="text-center font-bold leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
         <div className="text-center leading-tight">{RECEIPT_DASH}</div>
         <pre className="m-0 whitespace-pre leading-tight">
 {formatReceiptMetaLine("Bill Date", formatDateTime(inv.invoiceDate || inv.createdAt))}
@@ -764,7 +790,7 @@ export function RoomKOTWall() {
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <h1 className="text-xl font-bold tracking-wide">KOT Wall</h1>
               <button
-                onClick={loadKOTs}
+                onClick={() => loadKOTs(true)}
                 disabled={loading}
                 className="h-9 px-4 border border-[#8f846d] bg-[#f5efe2] hover:bg-[#efe6d6] text-[13px] font-semibold disabled:opacity-60"
               >
@@ -820,9 +846,7 @@ export function RoomKOTWall() {
         </div>
 
         <div className="flex-1 overflow-auto p-4">
-          {loading ? (
-            <div className="h-full flex items-center justify-center text-slate-300 text-sm">Loading KOTs...</div>
-          ) : kots.length === 0 ? (
+          {loading && kots.length === 0 ? null : kots.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-300 text-sm">No KOTs found for the selected filters.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

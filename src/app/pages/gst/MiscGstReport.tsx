@@ -3,6 +3,7 @@ import { AppLayout } from "../../layouts/AppLayout";
 import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
 import { formatCurrency } from "../../data/mockData";
+import { exportToCSV, formatDateForCSV } from "../../utils/tableExport";
 
 export function MiscGstReport() {
     const [loading, setLoading] = useState(false);
@@ -22,42 +23,20 @@ export function MiscGstReport() {
 
     const exportToCsv = () => {
         if (data.length === 0) return;
-        const headers = [
-            "Invoice No",
-            "Date",
-            "Charge Description",
-            "SAC Code",
-            "Taxable Amount",
-            "GST Rate",
-            "CGST",
-            "SGST",
-            "IGST",
-            "Total",
-        ];
 
-        const rows = data.map((r) => {
-            const d = new Date(r.date);
-            const formattedDate = `"${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}"`;
-            return [
-                `"${r.invoiceNo}"`,
-                formattedDate,
-                `"${r.chargeDescription || "Miscellaneous Charges"}"`,
-                r.sacCode,
-                r.taxableAmount,
-                `${r.gstRate}%`,
-                r.cgst,
-                r.sgst,
-                r.igst,
-                r.total,
-            ];
-        });
-
-        const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `misc_gst_${new Date().getTime()}.csv`;
-        link.click();
+        const csvData = data.map((row) => ({
+            "Invoice No": row.invoiceNo,
+            "Date": formatDateForCSV(row.date),
+            "Charge Description": row.chargeDescription || "Miscellaneous Charges",
+            "SAC Code": row.sacCode,
+            "Taxable Amount": row.taxableAmount,
+            "GST Rate": `${row.gstRate}%`,
+            "CGST": row.cgst,
+            "SGST": row.sgst,
+            "IGST": row.igst,
+            "Total": row.total,
+        }));
+        exportToCSV(csvData, "misc-gst-report");
     };
 
     return (
@@ -66,6 +45,7 @@ export function MiscGstReport() {
                 title="Misc GST Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                printId="misc-gst-report-print"
             >
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">

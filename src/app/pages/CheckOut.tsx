@@ -100,8 +100,8 @@ export function CheckOut() {
   const calculateDays = (checkIn: string, checkOut: string, checkInTime?: string, checkOutTime?: string) => {
     if (!checkIn || !checkOut) return 1;
     return calculateRoomDays(
-      `${checkIn}T${checkInTime || "12:00"}`,
-      `${checkOut}T${checkOutTime || "12:00"}`,
+      `${checkIn}T${checkInTime || "14:00"}`,
+      `${checkOut}T${checkOutTime || "11:00"}`,
     );
   };
 

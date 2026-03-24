@@ -108,6 +108,13 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         (hotel as any)?.isComposition === true ||
         (hotel as any)?.isCompositionScheme === true ||
         String((hotel as any)?.taxType || "").toLowerCase() === "composition",
+      invoiceShowCustomLines: (hotel as any)?.invoiceShowCustomLines ?? false,
+      invoiceLine1: (hotel as any)?.invoiceLine1 || "A UNIT OF",
+      invoiceLine2: (hotel as any)?.invoiceLine2 || "UTTARAKHAND HOTELS4U",
+      invoiceLine1Size: (hotel as any)?.invoiceLine1Size || 14,
+      invoiceLine2Size: (hotel as any)?.invoiceLine2Size || 16,
+      invoiceHotelNameColor: (hotel as any)?.invoiceHotelNameColor === "#000000" ? "#C6A75E" : ((hotel as any)?.invoiceHotelNameColor || "#C6A75E"),
+      invoiceHeaderColor: (hotel as any)?.invoiceHeaderColor || "#000000",
     };
   }, [hotel, invoice]);
 
@@ -483,7 +490,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       items.push({
         date: lateChargeDate,
         type: "Late\nCheck-Out",
-        desc: `Late Check-Out Charge - checked out at ${checkOutTimeValue || '12:00'} (after 12:00 PM)`,
+        desc: `Late Check-Out Charge - checked out at ${checkOutTimeValue || '11:00'} (after 11:00 AM)`,
         charges: lateCheckoutCharge,
         discount: 0,
         gst: lateCheckoutGst,
@@ -567,11 +574,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     const hasLogoWatermark = safeLogoAttr.trim().length > 0;
 
     const watermarkHtml = hasLogoWatermark
-      ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${safeLogoAttr}" alt="watermark" /></div>`
+      ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${safeLogoAttr}" alt="watermark" onerror="handleLogoError(this)" /></div>`
       : "";
 
     const lateCheckoutNoteHtml = lateCheckoutApplied
-      ? `<div class="late-checkout-note">* Late Check-Out Charge Applied: Guest checked out at ${checkOutTimeValue} (after 12:00 PM noon). Extra day charge has been added as per hotel policy.</div>`
+      ? `<div class="late-checkout-note">* Late Check-Out Charge Applied: Guest checked out at ${checkOutTimeValue} (after 11:00 AM). Extra day charge has been added as per hotel policy.</div>`
       : "";
 
     let itemsHtml = items.map(item => `
@@ -619,11 +626,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         .border-l { border-left: 1px solid #C6A75E; }
         .border-r { border-right: 1px solid #C6A75E; }
         
-        .hotel-name { font-size: 22px; font-weight: bold; margin: 0; text-transform: uppercase; color: #c30909; font-family: 'Courier New', Courier, monospace; }
-        .hotel-subline-top { font-size: 16px; font-weight: bold; margin: 2px 0 0; text-transform: uppercase; color:#c30909; font-family: 'Courier New', Courier, monospace; }
-        .hotel-subline-brand { font-size: 22px; font-weight: bold; margin: 0 0 2px;color:#c30909; font-family: 'Courier New', Courier, monospace; text-transform: uppercase; line-height: 1.1; }
+        .hotel-name { font-size: 26px; font-weight: bold; margin: 0; text-transform: uppercase; color: #C6A75E; font-family: 'Times New Roman', serif; }
         .hotel-info { font-size: 14px; margin: 2px 0; font-family: 'Courier New', Courier, monospace; }
-        .proforma-title { font-size: 16px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; }
+        .proforma-title { font-size: 16px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; text-decoration: underline; }
         
         .info-box { border: 1.5px solid #C6A75E; display: flex; margin-bottom: 15px; }
         .info-col { width: 50%; padding: 8px 12px; }
@@ -660,20 +665,48 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           }
           @page { size: portrait; margin: 10mm; }
         }
-      </style></head>
+      </style>
+      <script>
+        function handleLogoError(img) {
+          if (!img) return;
+          img.onerror = null;
+          var stage = img.getAttribute('data-stage') || 'primary';
+          if (stage === 'primary') {
+            if (window.location.hostname === 'localhost' && !img.src.includes('localhost:5000')) {
+              img.setAttribute('data-stage', 'dev-local');
+              try {
+                var url = new URL(img.src);
+                img.src = 'http://localhost:5000' + url.pathname + url.search;
+                return;
+              } catch (e) {
+                console.error('Local fallback failed:', e);
+              }
+            }
+          }
+          img.style.display = 'none';
+          var parent = img.parentElement;
+          if (parent && parent.classList.contains('invoice-watermark')) {
+            parent.style.display = 'none';
+          }
+        }
+      </script>
+      </head>
       <body>
         <div class="invoice-wrapper invoice-container" style="border: 1px solid #C6A75E; min-height: 100vh;">
           ${watermarkHtml}
           <div class="invoice-content">
-          <div class="text-center" style="margin-bottom: 10px;">
-            <div class="hotel-name">${hotelFields.name}</div>
-            <div class="hotel-subline-top">A UNIT OF</div>
-            <div class="hotel-subline-brand">UTTARAKHAND HOTELS4U</div>
-            <div class="hotel-info">${hotelFields.addressLine1}</div>
-            ${hotelFields.addressLine2 ? `<div class="hotel-info">${hotelFields.addressLine2}</div>` : ""}
-            <div class="hotel-info">Contact No:- ${hotelFields.phone}</div>
-            <div class="hotel-info">GST Number: ${hotelFields.gst}</div>
-            <div class="proforma-title">TAX INVOICE</div>
+          <div class="text-center" style="margin-bottom: 20px;">
+            ${hasLogoWatermark ? `<div style="margin-bottom: 12px;"><img src="${safeLogoAttr}" style="max-height: 70px; width: auto; object-fit: contain;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
+            <div class="hotel-name" style="color: ${hotelFields.invoiceHotelNameColor};">${hotelFields.name}</div>
+            ${hotelFields.invoiceShowCustomLines ? `
+            <div class="hotel-info" style="font-weight: bold; margin-bottom: 2px; color: ${hotelFields.invoiceHeaderColor}; font-size: ${hotelFields.invoiceLine1Size || 14}px;">${hotelFields.invoiceLine1}</div>
+            <div class="hotel-info" style="font-weight: bold; margin-bottom: 8px; color: ${hotelFields.invoiceHeaderColor}; font-size: ${hotelFields.invoiceLine2Size || 16}px;">${hotelFields.invoiceLine2}</div>
+            ` : ""}
+            <div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">${hotelFields.addressLine1}</div>
+            ${hotelFields.addressLine2 ? `<div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">${hotelFields.addressLine2}</div>` : ""}
+            <div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">Contact No:- ${hotelFields.phone}</div>
+            <div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">GST Number: ${hotelFields.gst}</div>
+            <div class="proforma-title" style="color: ${hotelFields.invoiceHeaderColor};">TAX INVOICE</div>
           </div>
 
           <div class="info-box">

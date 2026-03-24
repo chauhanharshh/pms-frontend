@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Hotel, RestaurantOrder, RestaurantOrderItem as OrderItem } from "../contexts/PMSContext";
 import { formatCurrency, formatDate } from "../utils/format";
 import { printHtml } from "../utils/print";
+import { resolveLogoUrl, handleLogoImageError } from "../utils/branding";
 import { toast } from "sonner";
 import api from "../services/api";
 import {
@@ -50,6 +51,7 @@ export function RestaurantPOS() {
     systemSettings,
     refreshAll,
     rooms,
+    restaurantTables,
   } = usePMS();
   const currentHotelId = user?.hotelId || "";
   const currentUserHotel = hotels.find(h => h.id === currentHotelId);
@@ -691,13 +693,17 @@ export function RestaurantPOS() {
             html, body { width: 80mm; }
           }
         </style></head><body>
-          <div class="center bold big">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
-          ${addressLines.line1 ? `<div class="center">${addressLines.line1}</div>` : ""}
-          ${addressLines.line2 ? `<div class="center">${addressLines.line2}</div>` : ""}
-          ${addressLines.cityState ? `<div class="center">${addressLines.cityState}</div>` : ""}
-          <div class="center">Contact No: ${contactNo}</div>
+          <div class="center bold big" style="color: ${(activeHotel as any)?.invoiceHotelNameColor || "#000000"};">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
+          ${(activeHotel as any)?.invoiceShowCustomLines ? `
+          <div class="center bold" style="color: ${(activeHotel as any).invoiceHeaderColor}; font-size: ${(activeHotel as any).invoiceLine1Size || 13}px;">${(activeHotel as any).invoiceLine1 || ""}</div>
+          <div class="center bold" style="color: ${(activeHotel as any).invoiceHeaderColor}; font-size: ${(activeHotel as any).invoiceLine2Size || 15}px;">${(activeHotel as any).invoiceLine2 || ""}</div>
+          ` : ""}
+          ${addressLines.line1 ? `<div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.line1}</div>` : ""}
+          ${addressLines.line2 ? `<div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.line2}</div>` : ""}
+          ${addressLines.cityState ? `<div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.cityState}</div>` : ""}
+          <div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">Contact No: ${contactNo}</div>
           <div class="center">${RECEIPT_DASH}</div>
-          <div class="center bold">TAX INVOICE</div>
+          <div class="center bold" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">TAX INVOICE</div>
           <div class="center">${RECEIPT_DASH}</div>
           <div>Bill Date : ${formatReceiptDateTime(invoice?.invoiceDate || invoice?.createdAt)}</div>
           <div>Bill No.  : ${invoice?.invoiceNumber || "-"}</div>
@@ -986,13 +992,17 @@ export function RestaurantPOS() {
     </style></head><body>
     <div class="header">
       <div class="header-left">
-        ${activeHotel?.logoUrl ? `<img src="${activeHotel.logoUrl}" alt="logo" class="logo"/>` : ""}
+        ${activeHotel?.logoUrl ? `<img src="${resolveLogoUrl(activeHotel.logoUrl)}" alt="logo" class="logo" onerror="handleLogoError(this)"/>` : ""}
         <div>
-          <h2>${activeHotel?.name || "Restaurant"}</h2>
-          <p>${activeHotel?.address || ""}</p>
+          <h2 style="color: ${(activeHotel as any)?.invoiceHotelNameColor || "#000000"};">${activeHotel?.name || "Restaurant"}</h2>
+          ${(activeHotel as any)?.invoiceShowCustomLines ? `
+          <div style="font-weight: bold; color: ${(activeHotel as any).invoiceHeaderColor}; margin-bottom: 2px; font-size: ${(activeHotel as any).invoiceLine1Size || 13}px;">${(activeHotel as any).invoiceLine1 || ""}</div>
+          <div style="font-weight: bold; color: ${(activeHotel as any).invoiceHeaderColor}; margin-bottom: 6px; font-size: ${(activeHotel as any).invoiceLine2Size || 15}px;">${(activeHotel as any).invoiceLine2 || ""}</div>
+          ` : ""}
+          <p style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${activeHotel?.address || ""}</p>
         </div>
       </div>
-      <div><strong>Restaurant Bill</strong></div>
+      <div style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};"><strong>Restaurant Bill</strong></div>
     </div>
     <hr />
     <div class="meta">
@@ -1087,13 +1097,27 @@ export function RestaurantPOS() {
 
               <div>
                 <label className="block text-[11px] mb-1">Table No.</label>
-                <input
-                  type="text"
-                  placeholder="Table"
+                <select
                   value={tableNumber}
-                  onChange={(e) => setTableNumber(e.target.value)}
+                  onChange={(e) => {
+                    setTableNumber(e.target.value);
+                    if (e.target.value) {
+                      setRoomId(null as any);
+                      setRoomNumber("");
+                      setBookingId(null as any);
+                      setGuestName("");
+                    }
+                  }}
                   className="w-full h-8 px-2 border border-[#8f8f8f] bg-white text-[12px]"
-                />
+                >
+                  <option value="">Select Table</option>
+                  {restaurantTables
+                    .filter(t => t.hotelId === selectedHotelId && t.isActive)
+                    .map(t => (
+                      <option key={t.id} value={t.name}>{t.name} (Cap: {t.capacity})</option>
+                    ))
+                  }
+                </select>
               </div>
 
               <div>
@@ -1457,13 +1481,30 @@ export function RestaurantPOS() {
                     className="mx-auto bg-white text-black"
                     style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
                   >
-                    <div className="text-center font-bold text-[14px]">{activeHotel?.name || "HOTEL RESTAURANT"}</div>
-                    {lines.line1 && <div className="text-center">{lines.line1}</div>}
-                    {lines.line2 && <div className="text-center">{lines.line2}</div>}
-                    {lines.cityState && <div className="text-center">{lines.cityState}</div>}
-                    <div className="text-center">Contact No: {contactNo}</div>
+                    {activeHotel?.logoUrl && (
+                      <div className="flex justify-center mb-2">
+                        <img
+                          src={resolveLogoUrl(activeHotel.logoUrl)}
+                          alt="Logo"
+                          style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }}
+                          className="logo-preview-img"
+                          onError={handleLogoImageError}
+                        />
+                      </div>
+                    )}
+                    <div className="text-center font-bold text-[14px]" style={{ color: (activeHotel as any)?.invoiceHotelNameColor || "#000000" }}>{activeHotel?.name || "HOTEL RESTAURANT"}</div>
+                    {(activeHotel as any)?.invoiceShowCustomLines && (
+                      <>
+                        <div className="text-center font-bold" style={{ color: (activeHotel as any).invoiceHeaderColor, fontSize: `${(activeHotel as any).invoiceLine1Size || 11}px` }}>{(activeHotel as any).invoiceLine1 || ""}</div>
+                        <div className="text-center font-bold" style={{ color: (activeHotel as any).invoiceHeaderColor, fontSize: `${(activeHotel as any).invoiceLine2Size || 13}px` }}>{(activeHotel as any).invoiceLine2 || ""}</div>
+                      </>
+                    )}
+                    {lines.line1 && <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
+                    {lines.line2 && <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
+                    {lines.cityState && <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
+                    <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
                     <div className="text-center">{RECEIPT_DASH}</div>
-                    <div className="text-center font-bold">TAX INVOICE</div>
+                    <div className="text-center font-bold" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
                     <div className="text-center">{RECEIPT_DASH}</div>
                     <div>Bill Date : {formatReceiptDateTime(billToPreview?.invoiceDate || billToPreview?.createdAt)}</div>
                     <div>Bill No.  : {billToPreview?.invoiceNumber || "-"}</div>

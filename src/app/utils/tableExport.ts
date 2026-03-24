@@ -1,33 +1,59 @@
 // src/app/utils/tableExport.ts
 
-// CSV Export:
-export const exportToCSV = (data: any[], fileName: string) => {
+import * as XLSX from 'xlsx';
+
+/**
+ * Standardizes date strings to DD-MM-YYYY format for CSV/Excel export.
+ */
+export const formatDateForCSV = (dateStr: any): string => {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return String(dateStr);
+  }
+};
+
+/**
+ * Exports data to an Excel file (.xlsx) using SheetJS.
+ * Automatically fits column widths based on the data.
+ */
+export const exportToExcel = (data: any[], fileName: string) => {
   if (!data || data.length === 0) {
     alert('No data to export');
     return;
   }
-  const headers = Object.keys(data[0]);
-  const csvRows = [
-    headers.map(h => `"${h}"`).join(','),
-    ...data.map(row =>
-      headers.map(header => {
-        const val = row[header] ?? '';
-        // Always wrap in quotes, escape quotes inside values
-        return `"${String(val).replace(/"/g, '""')}"`;
-      }).join(',')
-    )
-  ];
-  const csvContent = '\uFEFF' + csvRows.join('\n'); // BOM for Excel UTF-8
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${fileName}-${new Date().toISOString().split('T')[0]}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+
+  // Create worksheet from JSON data
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  // Auto-calculate column widths
+  const colWidths = Object.keys(data[0]).map(key => ({
+    wch: Math.max(
+      key.length,
+      ...data.map(row => String(row[key] ?? '').length)
+    ) + 2
+  }));
+  ws['!cols'] = colWidths;
+
+  // Create workbook and append the worksheet
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+
+  // Generate and download the .xlsx file
+  const dateSuffix = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${fileName}-${dateSuffix}.xlsx`);
 };
+
+/**
+ * Alias for exportToExcel to maintain backward compatibility with existing components.
+ */
+export const exportToCSV = exportToExcel;
 
 // Print table:
 export const printTable = (tableId: string, title: string) => {

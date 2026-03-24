@@ -1,4 +1,4 @@
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useMemo } from "react";
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
@@ -146,12 +146,28 @@ export function AppLayout({
       className="flex h-full overflow-hidden"
       style={{ background: "#FAF7F2" }}
     >
+      <style>
+        {`
+          @media print {
+            body, html, #root {
+              overflow: visible !important;
+              height: auto !important;
+              background: white !important;
+            }
+            .overflow-hidden, .overflow-y-auto {
+              overflow: visible !important;
+            }
+          }
+        `}
+      </style>
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <SidebarComponent
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((prev) => !prev)}
-        />
+        <div className="print:hidden h-full">
+          <SidebarComponent
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((prev) => !prev)}
+          />
+        </div>
       )}
 
       {/* Mobile Drawer */}
@@ -178,10 +194,12 @@ export function AppLayout({
         </>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <TopNavbar title={title} onMenuClick={isMobile ? () => setMobileMenuOpen(true) : undefined} />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible print:h-auto">
+        <div className="print:hidden flex-shrink-0">
+          <TopNavbar title={title} onMenuClick={isMobile ? () => setMobileMenuOpen(true) : undefined} />
+        </div>
         <main
-          className="flex-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto print:overflow-visible print:h-auto"
           style={{
             background: "var(--background)",
             padding: isMobile ? "12px" : "24px",

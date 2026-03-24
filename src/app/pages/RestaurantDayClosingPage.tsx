@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
 import { toast } from "sonner";
 import { Download, Lock, Printer, Search } from "lucide-react";
+import { formatDateForCSV, exportToCSV } from "../utils/tableExport";
 
 type RestaurantDayClosingSummary = {
   date: string;
@@ -68,12 +69,23 @@ const sortByDateDesc = (rows: RestaurantDayClosingSummary[]) => {
   });
 };
 
-const toCsvCell = (value: string | number | null | undefined) => {
-  const text = String(value ?? "");
-  if (text.includes(",") || text.includes("\n") || text.includes('"')) {
-    return `"${text.replace(/"/g, '""')}"`;
+const toCsvCell = (val: any) => {
+  if (val === null || val === undefined) return '""';
+  
+  if (val instanceof Date) {
+    return `"${val.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}"`;
   }
-  return text;
+
+  if (typeof val === 'object') {
+    try {
+      const resolved = val.name || val.fullName || val.title || JSON.stringify(val);
+      return `"${String(resolved).replace(/"/g, '""')}"`;
+    } catch {
+      return '"[Object]"';
+    }
+  }
+
+  return `"${String(val).replace(/"/g, '""')}"`;
 };
 
 export function RestaurantDayClosingPage() {
@@ -275,22 +287,8 @@ export function RestaurantDayClosingPage() {
   };
 
   const handleDownloadCsv = () => {
-    const headers = [
-      "Date",
-      "Total KOTs",
-      "Open",
-      "Converted",
-      "Cancelled",
-      "Total Amount",
-      "Service Charge",
-      "Total Revenue",
-      "Total Invoices",
-      "Closed By",
-      "Actions",
-    ];
-
-    const rows = filteredRows.map((row) => ({
-      Date: row.date,
+    const dataToExport = filteredRows.map((row) => ({
+      Date: formatDateForCSV(row.date),
       "Total KOTs": row.totalKotsToday,
       Open: row.openKots,
       Converted: row.convertedKots,
@@ -303,19 +301,7 @@ export function RestaurantDayClosingPage() {
       Actions: !row.dayClosed && row.date === todayDisplay ? "Close Day" : "Closed",
     }));
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => Object.values(row).map(toCsvCell).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const todayText = toInputDate(new Date());
-    a.href = url;
-    a.download = `restaurant-day-closing-${todayText}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportToCSV(dataToExport, "restaurant-day-closing");
   };
 
   const generatedOn = toDisplayDate(new Date());

@@ -239,7 +239,11 @@ export function CheckIn() {
         `${form.checkOutDate}T${form.checkOutTime || "12:00"}`,
       )
       : 1;
-  const roomRate = customRoomRate > 0 ? customRoomRate : (checkInType === "reservation" ? Number(bookings.find(b => b.id === reservationId)?.roomPrice || 0) : 0);
+  const roomRate = customRoomRate > 0 
+    ? customRoomRate 
+    : (checkInType === "reservation" 
+        ? Number(bookings.find(b => b.id === reservationId)?.roomPrice || 0) 
+        : Number(selectedRoom?.basePrice || 0));
   const roomCharge = roomRate * nights;
   const taxInfo = calculateRoomTax(roomRate, nights);
   const gst = taxInfo.amount;

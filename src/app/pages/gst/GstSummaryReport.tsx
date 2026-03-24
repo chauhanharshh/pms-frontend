@@ -3,6 +3,7 @@ import { AppLayout } from "../../layouts/AppLayout";
 import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
 import { formatCurrency } from "../../data/mockData";
+import { exportToCSV } from "../../utils/tableExport";
 
 export function GstSummaryReport() {
     const [loading, setLoading] = useState(false);
@@ -23,26 +24,19 @@ export function GstSummaryReport() {
     const exportToCsv = () => {
         if (!data?.summary) return;
         const { summary } = data;
-        const csvContent = [
-            ["GST Summary Report"],
-            ["Header", "Value"],
-            ["Total Room Taxable", summary.totalRoomTaxable],
-            ["Total Restaurant Taxable", summary.totalRestaurantTaxable],
-            ["Total Misc Taxable", summary.totalMiscTaxable],
-            ["Total CGST", summary.totalCgst],
-            ["Total SGST", summary.totalSgst],
-            ["Total IGST", summary.totalIgst],
-            ["Grand Total Tax", summary.grandTotalTax],
-            ["Total Invoice Count", summary.totalInvoiceCount],
-        ]
-            .map((e) => e.join(","))
-            .join("\n");
 
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `gst_summary_${new Date().getTime()}.csv`;
-        link.click();
+        const exportData = [
+            { Header: "GST Summary Report", Value: "" },
+            { Header: "Total Room Taxable", Value: summary.totalRoomTaxable },
+            { Header: "Total Restaurant Taxable", Value: summary.totalRestaurantTaxable },
+            { Header: "Total Misc Taxable", Value: summary.totalMiscTaxable },
+            { Header: "Total CGST", Value: summary.totalCgst },
+            { Header: "Total SGST", Value: summary.totalSgst },
+            { Header: "Total IGST", Value: summary.totalIgst },
+            { Header: "Grand Total Tax", Value: summary.grandTotalTax },
+            { Header: "Total Invoice Count", Value: summary.totalInvoiceCount },
+        ];
+        exportToCSV(exportData, 'gst-summary-report');
     };
 
     return (
@@ -51,6 +45,7 @@ export function GstSummaryReport() {
                 title="GST Summary Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                printId="gst-summary-print"
             >
                 {loading ? (
                     <div className="flex justify-center p-8">

@@ -31,6 +31,7 @@ import {
   Users,
   QrCode,
   X,
+  LayoutGrid,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -143,6 +144,12 @@ const HOTEL_SECTIONS: NavSection[] = [
         icon: <Users className="w-4 h-4" />,
       },
       {
+        label: "Table Management",
+        path: "/hotel/restaurant/tables",
+        icon: <LayoutGrid className="w-4 h-4" />,
+      },
+
+      {
         label: "Service Charge Report",
         path: "/hotel/restaurant/service-charge-report",
         icon: <IndianRupee className="w-4 h-4" />,
@@ -254,6 +261,12 @@ const RESTAURANT_STAFF_SECTIONS: NavSection[] = [
         icon: <Users className="w-4 h-4" />,
       },
       {
+        label: "Table Management",
+        path: "/hotel/restaurant/tables",
+        icon: <LayoutGrid className="w-4 h-4" />,
+      },
+
+      {
         label: "Service Charge Report",
         path: "/hotel/restaurant/service-charge-report",
         icon: <IndianRupee className="w-4 h-4" />,
@@ -319,7 +332,24 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
 
   const isRestaurantOnlyUser = user?.role === "restaurant_staff";
-  const sections = isRestaurantOnlyUser ? RESTAURANT_STAFF_SECTIONS : HOTEL_SECTIONS;
+  const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
+
+  let sections = isRestaurantOnlyUser ? RESTAURANT_STAFF_SECTIONS : HOTEL_SECTIONS;
+
+  // Filter sections and items based on restaurantEnabled
+  if (!restaurantEnabled) {
+    sections = sections
+      .filter((s) => s.title !== "Restaurant")
+      .map((s) => {
+        if (s.title === "GST Reports") {
+          return {
+            ...s,
+            items: s.items.filter((item) => item.label !== "Restaurant GST"),
+          };
+        }
+        return s;
+      });
+  }
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const saved = readSidebarState();
     if (isRestaurantOnlyUser) {

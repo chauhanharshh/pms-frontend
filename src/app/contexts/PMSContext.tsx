@@ -41,6 +41,14 @@ export interface Hotel {
   accentColor?: string;
   isCustomTheme?: boolean;
   showAllRooms?: boolean;
+  // Invoice Settings
+  invoiceShowCustomLines?: boolean;
+  invoiceLine1?: string | null;
+  invoiceLine2?: string | null;
+  invoiceLine1Size?: number | null;
+  invoiceLine2Size?: number | null;
+  invoiceHotelNameColor?: string | null;
+  invoiceHeaderColor?: string | null;
 }
 
 export interface SystemSettings {
@@ -296,6 +304,14 @@ export interface RestaurantCategory {
   menuItems?: RestaurantItem[];
 }
 
+export interface RestaurantTable {
+  id: string;
+  hotelId: string;
+  name: string;
+  capacity: number;
+  isActive: boolean;
+}
+
 export interface RestaurantItem {
   id: string;
   hotelId: string;
@@ -469,12 +485,20 @@ interface PMSContextType {
 
   // KOT Management
   restaurantKOTs: any[];
-  refreshRestaurantKOTs: (status?: string) => Promise<any[]>;
+  refreshRestaurantKOTs: (status?: string, hotelId?: string) => Promise<any[]>;
   clearRestaurantKOTsForRoom: (roomId: string) => void;
-  getKOTs: (status?: string) => Promise<any[]>;
+  getKOTs: (status?: string, hotelId?: string) => Promise<any[]>;
   updateKOT: (id: string, updates: any) => Promise<void>;
   deleteKOT: (id: string) => Promise<void>;
   convertKOTToInvoice: (kotId: string, hotelId?: string) => Promise<Invoice>;
+
+  // Restaurant Tables
+  restaurantTables: RestaurantTable[];
+  refreshTables: (hotelId?: string) => Promise<RestaurantTable[]>;
+  addTable: (data: any) => Promise<any>;
+  updateTable: (id: string, data: any) => Promise<void>;
+  deleteTable: (id: string, hotelId?: string) => Promise<void>;
+
 
   // Legacy compat (not used but some pages might rely on these)
   restaurantExpenses: Expense[];
@@ -505,6 +529,8 @@ interface PMSContextType {
   updateLiability: (id: string, updates: Partial<Liability>) => Promise<void>;
   addLiabilityPayment: (id: string, payment: any) => Promise<void>;
   deleteLiability: (id: string) => Promise<void>;
+  
+  cancelBooking: (id: string) => Promise<void>;
   
   // QR Scanner Global State
   isQRScannerOpen: boolean;
@@ -546,6 +572,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const [restaurantItems, setRestaurantItems] = useState<RestaurantItem[]>([]);
   const [restaurantOrders, setRestaurantOrders] = useState<RestaurantOrder[]>([]);
   const [restaurantKOTs, setRestaurantKOTs] = useState<any[]>([]);
+  const [restaurantTables, setRestaurantTables] = useState<RestaurantTable[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
 
@@ -639,6 +666,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           categoriesData,
           menuData,
           ordersData,
+          tablesData,
           companiesData,
           vendorsData,
           roomBlocksData,
@@ -658,6 +686,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           aggregateByHotel(`/restaurant/categories`),
           aggregateByHotel(`/restaurant/menu`),
           aggregateByHotel(`/restaurant/orders`),
+          aggregateByHotel(`/restaurant/tables`),
           aggregateByHotel(`/companies`),
           Promise.resolve([]),
           aggregateByHotel(`/room-blocks`),
@@ -666,23 +695,24 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           Promise.allSettled(fetchedHotels.map((h: Hotel) => api.get(`/hotels/${h.id}/stats`))),
         ]);
 
-        setAppUsers(users || []);
-        setRooms(roomsData || []);
-        setBookings(bookingsData || []);
-        setBills(billsData || []);
-        setInvoices(invoicesData || []);
-        setExpenses(expensesData || []);
-        setAdvances(advancesData || []);
-        setMiscCharges(miscData || []);
-        setVouchers(vouchersData || []);
-        setRestaurantCategories(categoriesData || []);
-        setRestaurantItems(menuData || []);
-        setRestaurantOrders(ordersData || []);
-        setCompanies(companiesData || []);
-        setVendors(vendorsData || []);
-        setRoomBlocks(roomBlocksData || []);
-        setPettyCash(pettyCashData || []);
-        setLiabilities(liabilitiesData || []);
+        setAppUsers(Array.isArray(users) ? users : []);
+        setRooms(Array.isArray(roomsData) ? roomsData : []);
+        setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+        setBills(Array.isArray(billsData) ? billsData : []);
+        setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+        setExpenses(Array.isArray(expensesData) ? expensesData : []);
+        setAdvances(Array.isArray(advancesData) ? advancesData : []);
+        setMiscCharges(Array.isArray(miscData) ? miscData : []);
+        setVouchers(Array.isArray(vouchersData) ? vouchersData : []);
+        setRestaurantCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        setRestaurantItems(Array.isArray(menuData) ? menuData : []);
+        setRestaurantOrders(Array.isArray(ordersData) ? ordersData : []);
+        setRestaurantTables(Array.isArray(tablesData) ? tablesData : []);
+        setCompanies(Array.isArray(companiesData) ? companiesData : []);
+        setVendors(Array.isArray(vendorsData) ? vendorsData : []);
+        setRoomBlocks(Array.isArray(roomBlocksData) ? roomBlocksData : []);
+        setPettyCash(Array.isArray(pettyCashData) ? pettyCashData : []);
+        setLiabilities(Array.isArray(liabilitiesData) ? liabilitiesData : []);
 
         const statsList = statsSettled
           .filter((result): result is PromiseFulfilledResult<any> => result.status === "fulfilled")
@@ -722,6 +752,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           catsRes,
           menuRes,
           ordersRes,
+          tablesRes,
           companiesRes,
           vendorsRes,
           roomBlocksRes,
@@ -741,6 +772,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           api.get(`/restaurant/categories${consolidatedQp}`),
           api.get(`/restaurant/menu${consolidatedQp}`),
           api.get(`/restaurant/orders${consolidatedQp}`),
+          api.get(`/restaurant/tables${consolidatedQp}`),
           api.get(`/companies${consolidatedQp}`),
           Promise.resolve({ data: { data: [] } }),
           api.get(`/room-blocks${consolidatedQp}`),
@@ -748,6 +780,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           api.get(`/liabilities${consolidatedQp}`),
           api.get(`/hotels${currentHotelId ? `/${currentHotelId}` : ""}/stats`),
         ]);
+
 
         const settledCalls: Array<[string, PromiseSettledResult<any>]> = [
           [`/users${consolidatedQp}`, usersRes],
@@ -762,6 +795,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           [`/restaurant/categories${consolidatedQp}`, catsRes],
           [`/restaurant/menu${consolidatedQp}`, menuRes],
           [`/restaurant/orders${consolidatedQp}`, ordersRes],
+          [`/restaurant/tables${consolidatedQp}`, tablesRes],
           [`/companies${consolidatedQp}`, companiesRes],
           [`/room-blocks${consolidatedQp}`, roomBlocksRes],
           [`/petty-cash${consolidatedQp}`, pettyCashRes],
@@ -775,24 +809,26 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           }
         });
 
-        if (usersRes.status === "fulfilled") setAppUsers(usersRes.value.data.data || []);
-        if (roomsRes.status === "fulfilled") setRooms(roomsRes.value.data.data || []);
-        if (bookingsRes.status === "fulfilled") setBookings(bookingsRes.value.data.data || []);
+        if (usersRes.status === "fulfilled") setAppUsers(Array.isArray(usersRes.value.data?.data) ? usersRes.value.data.data : []);
+        if (roomsRes.status === "fulfilled") setRooms(Array.isArray(roomsRes.value.data?.data) ? roomsRes.value.data.data : []);
+        if (bookingsRes.status === "fulfilled") setBookings(Array.isArray(bookingsRes.value.data?.data) ? bookingsRes.value.data.data : []);
         else setBookings([]);
-        if (billsRes.status === "fulfilled") setBills(billsRes.value.data.data || []);
-        if (invoicesRes.status === "fulfilled") setInvoices(invoicesRes.value.data.data || []);
-        if (expensesRes.status === "fulfilled") setExpenses(expensesRes.value.data.data || []);
-        if (advancesRes.status === "fulfilled") setAdvances(advancesRes.value.data.data || []);
-        if (miscRes.status === "fulfilled") setMiscCharges(miscRes.value.data.data || []);
-        if (vouchersRes.status === "fulfilled") setVouchers(vouchersRes.value.data.data || []);
-        if (catsRes.status === "fulfilled") setRestaurantCategories(catsRes.value.data.data || []);
-        if (menuRes.status === "fulfilled") setRestaurantItems(menuRes.value.data.data || []);
-        if (ordersRes.status === "fulfilled") setRestaurantOrders(ordersRes.value.data.data || []);
-        if (companiesRes.status === "fulfilled") setCompanies(companiesRes.value.data.data || []);
-        if (vendorsRes.status === "fulfilled") setVendors(vendorsRes.value.data.data || []);
-        if (roomBlocksRes.status === "fulfilled") setRoomBlocks(roomBlocksRes.value.data.data || []);
-        if (pettyCashRes.status === "fulfilled") setPettyCash(pettyCashRes.value.data.data || []);
-        if (liabilitiesRes.status === "fulfilled") setLiabilities(liabilitiesRes.value.data.data || []);
+        if (billsRes.status === "fulfilled") setBills(Array.isArray(billsRes.value.data?.data) ? billsRes.value.data.data : []);
+        if (invoicesRes.status === "fulfilled") setInvoices(Array.isArray(invoicesRes.value.data?.data) ? invoicesRes.value.data.data : []);
+        if (expensesRes.status === "fulfilled") setExpenses(Array.isArray(expensesRes.value.data?.data) ? expensesRes.value.data.data : []);
+        if (advancesRes.status === "fulfilled") setAdvances(Array.isArray(advancesRes.value.data?.data) ? advancesRes.value.data.data : []);
+        if (miscRes.status === "fulfilled") setMiscCharges(Array.isArray(miscRes.value.data?.data) ? miscRes.value.data.data : []);
+        if (vouchersRes.status === "fulfilled") setVouchers(Array.isArray(vouchersRes.value.data?.data) ? vouchersRes.value.data.data : []);
+        if (catsRes.status === "fulfilled") setRestaurantCategories(Array.isArray(catsRes.value.data?.data) ? catsRes.value.data.data : []);
+        if (menuRes.status === "fulfilled") setRestaurantItems(Array.isArray(menuRes.value.data?.data) ? menuRes.value.data.data : []);
+        if (ordersRes.status === "fulfilled") setRestaurantOrders(Array.isArray(ordersRes.value.data?.data) ? ordersRes.value.data.data : []);
+        if (tablesRes.status === "fulfilled") setRestaurantTables(Array.isArray(tablesRes.value.data?.data) ? tablesRes.value.data.data : []);
+        if (companiesRes.status === "fulfilled") setCompanies(Array.isArray(companiesRes.value.data?.data) ? companiesRes.value.data.data : []);
+
+        if (vendorsRes.status === "fulfilled") setVendors(Array.isArray(vendorsRes.value.data?.data) ? vendorsRes.value.data.data : []);
+        if (roomBlocksRes.status === "fulfilled") setRoomBlocks(Array.isArray(roomBlocksRes.value.data?.data) ? roomBlocksRes.value.data.data : []);
+        if (pettyCashRes.status === "fulfilled") setPettyCash(Array.isArray(pettyCashRes.value.data?.data) ? pettyCashRes.value.data.data : []);
+        if (liabilitiesRes.status === "fulfilled") setLiabilities(Array.isArray(liabilitiesRes.value.data?.data) ? liabilitiesRes.value.data.data : []);
         if (statsRes && (statsRes as any).status === "fulfilled") setDashboardStats((statsRes as any).value.data.data);
       }
     } catch (err: any) {
@@ -1318,13 +1354,18 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     return response.data.data;
   };
 
-  const refreshRestaurantKOTs = async (status?: string) => {
-    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const refreshRestaurantKOTs = async (status?: string, hotelId?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    if (hotelId) params.append("hotelId", hotelId);
+    
+    const query = params.toString() ? `?${params.toString()}` : "";
     const res = await api.get(`/restaurant/kots${query}`);
     const next = res.data?.data || [];
     setRestaurantKOTs(next);
     return next;
   };
+
 
   const clearRestaurantKOTsForRoom = (roomId: string) => {
     if (!roomId) return;
@@ -1336,8 +1377,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const getKOTs = async (status?: string) => {
-    const allKOTs = await refreshRestaurantKOTs(status);
+  const getKOTs = async (status?: string, hotelId?: string) => {
+    const allKOTs = await refreshRestaurantKOTs(status, hotelId);
     if (!status) return allKOTs;
     const normalized = String(status).toUpperCase();
     return allKOTs.filter((kot: any) => String(kot?.status || "").toUpperCase() === normalized);
@@ -1351,13 +1392,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       if (!exists) return updatedKOT ? [...prev, updatedKOT] : prev;
       return prev.map((k) => (k.id === id ? { ...k, ...updates, ...(updatedKOT || {}) } : k));
     });
-    await fetchAll(true);
+    await refreshRestaurantKOTs();
   };
 
   const deleteKOT = async (id: string) => {
     await api.delete(`/restaurant/kots/${id}`);
     setRestaurantKOTs((prev) => prev.filter((k) => k.id !== id));
-    await fetchAll(true);
+    await refreshRestaurantKOTs();
   };
 
   const convertKOTToInvoice = async (kotId: string, hotelId?: string) => {
@@ -1383,6 +1424,37 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   };
+
+  // ── RESTAURANT TABLES ──────────────────────────────────────────
+  const refreshTables = async (hotelId?: string) => {
+    const hId = hotelId || currentHotelId || user?.hotelId || localStorage.getItem("pms_hotel_ctx") || undefined;
+    const query = hId ? `?hotelId=${hId}` : "";
+    const res = await api.get(`/restaurant/tables${query}`);
+    const next = res.data?.data || [];
+    setRestaurantTables(next);
+    return next;
+  };
+
+  const addTable = async (data: any) => {
+    const res = await api.post("/restaurant/tables", data);
+    const newTable = res.data.data;
+    setRestaurantTables((prev) => [...prev, newTable]);
+    return newTable;
+  };
+
+  const updateTable = async (id: string, data: any) => {
+    const res = await api.patch(`/restaurant/tables/${id}`, data);
+    const updated = res.data.data;
+    setRestaurantTables((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  };
+
+  const deleteTable = async (id: string, hotelId?: string) => {
+    const hId = hotelId || currentHotelId || user?.hotelId || localStorage.getItem("pms_hotel_ctx") || undefined;
+    const query = hId ? `?hotelId=${hId}` : "";
+    await api.delete(`/restaurant/tables/${id}${query}`);
+    setRestaurantTables((prev) => prev.filter((t) => t.id !== id));
+  };
+
 
   // ── RESTAURANT EXPENSES (stub — mapped to hotel expenses) ─────────
   const addRestaurantExpense = async (exp: any) => {
@@ -1466,6 +1538,22 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       setIsConfirmingQRCheckIn(false);
     }
   }, [scannedBooking, updateBooking]);
+
+  const cancelBooking = useCallback(async (id: string) => {
+    try {
+      setIsLoading(true);
+      await api.patch(`/bookings/${id}/cancel`);
+      toast.success("Booking cancelled successfully!");
+      // Refresh to update UI (status and room vacancy)
+      await fetchAll(true);
+    } catch (error: any) {
+      console.error("Cancellation error:", error);
+      toast.error(error.response?.data?.message || "Failed to cancel booking");
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchAll]);
 
   // ── ROOM BLOCKS ──────────────────────────────────────────────────
   const addRoomBlock = async (b: any) => {
@@ -1593,6 +1681,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         updateKOT,
         deleteKOT,
         convertKOTToInvoice,
+
+        restaurantTables,
+        refreshTables,
+        addTable,
+        updateTable,
+        deleteTable,
+
         restaurantExpenses: expenses.filter((e) => e.category === "Restaurant"),
         addRestaurantExpense,
         updateRestaurantExpense,
@@ -1624,6 +1719,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         isConfirmingQRCheckIn,
         handleQRScan,
         confirmQRCheckIn,
+        cancelBooking,
       }}
     >
       {children}

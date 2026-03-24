@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { usePMS } from "../contexts/PMSContext";
 import api from "../services/api";
-import { handleLogoImageError, resolveLogoUrl } from "../utils/branding";
+import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
 
 const getDefaultRouteForRole = (role: string) => {
   if (role === "super_admin" || role === "superadmin") return "/superadmin";
@@ -17,8 +18,17 @@ export function LicenseActivation() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, loading } = useAuth();
+  const { hotels } = usePMS();
   const navigate = useNavigate();
   const LICENSE_GATE_FLAG = "pms_license_gate_ready";
+
+  const activeHotel = useMemo(() => {
+    if (!user) return null;
+    return hotels.find(h => h.id === user.hotelId || h.id === (user as any).hotel?.id) || null;
+  }, [hotels, user]);
+
+  const brandName = resolveBrandName(activeHotel);
+  const logoUrl = resolveLogoUrl(activeHotel?.logoUrl);
 
   const normalizedKey = useMemo(() => licenseKey.trim().toUpperCase(), [licenseKey]);
 
@@ -78,7 +88,7 @@ export function LicenseActivation() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || "";
       if (msg.includes("no_license") || msg.toLowerCase().includes("not activated")) {
-        setError("License is not activated. Please contact Hotels4U PMS support.");
+        setError(`License is not activated. Please contact ${brandName} support.`);
       } else {
         setError(msg || "Invalid license key");
       }
@@ -148,8 +158,8 @@ export function LicenseActivation() {
         </button>
 
         <img
-          src={resolveLogoUrl(null)}
-          alt="Hotels4U PMS"
+          src={logoUrl}
+          alt={brandName}
           style={{ width: "100px", height: "100px", objectFit: "contain", marginBottom: "16px" }}
           onError={handleLogoImageError}
         />
@@ -158,7 +168,7 @@ export function LicenseActivation() {
           Activate Your License
         </h2>
         <p style={{ color: "#888", fontSize: "14px", marginBottom: "28px" }}>
-          Enter the license key provided by Hotels4U PMS
+          Enter the license key provided by {brandName}
         </p>
 
         <input

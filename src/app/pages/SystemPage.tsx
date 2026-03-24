@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import api from "../services/api";
+import { resolveBrandName } from "../utils/branding";
 import {
   Key,
   HardDrive,
@@ -62,8 +63,16 @@ const BACKUP_HISTORY = [
 ];
 
 export function SystemPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, currentHotelId } = useAuth();
   const { hotels, bookings, rooms, systemSettings, updateSystemSettings } = usePMS();
+
+  const activeHotel = useMemo(() => {
+    const hId = currentHotelId || user?.hotelId;
+    return hotels.find(h => h.id === hId) || null;
+  }, [hotels, user, currentHotelId]);
+
+  const brandName = resolveBrandName(activeHotel);
+
   const location = useLocation();
   const segment = location.pathname.split("/").pop() || "password";
 
@@ -152,7 +161,7 @@ export function SystemPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Hotels4U_Backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+      a.download = `${brandName.replace(/\s+/g, "_")}_Backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
       a.click();
       URL.revokeObjectURL(url);
       const ts = new Date().toLocaleString("en-IN");
@@ -557,7 +566,7 @@ export function SystemPage() {
                       color: DARKGOLD,
                     }}
                   >
-                    Hotels4U PMS
+                    {brandName}
                   </h3>
                   <p className="text-sm" style={{ color: "#6B7280" }}>
                     Property Management System
@@ -571,7 +580,7 @@ export function SystemPage() {
                 </div>
               </div>
               {[
-                ["System Version", "Hotels4U PMS v2.0.0"],
+                ["System Version", `${brandName} v2.0.0`],
                 ["Build Date", "February 2026"],
                 ["Architecture", "Multi-hotel, Role-based, Real-time"],
                 ["Hotels Registered", hotels.length.toString()],
@@ -581,7 +590,7 @@ export function SystemPage() {
                 ["Activation Date", formatDate(licenseInfo?.startDate)],
                 ["Expiry Date", formatDate(licenseInfo?.expiryDate)],
                 ["License Status", formatLicenseStatus(licenseInfo?.status)],
-                ["Support", "admin@hotels4u.com"],
+                ["Support", `admin@${brandName.toLowerCase().replace(/\s+/g, "")}.com`],
               ].map(([label, value]) => (
                 <div
                   key={label}

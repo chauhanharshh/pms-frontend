@@ -3,6 +3,7 @@ import { AppLayout } from "../../layouts/AppLayout";
 import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
 import { formatCurrency } from "../../data/mockData";
+import { exportToCSV, formatDateForCSV } from "../../utils/tableExport";
 
 export function InvoiceWiseGstReport() {
     const [loading, setLoading] = useState(false);
@@ -22,48 +23,24 @@ export function InvoiceWiseGstReport() {
 
     const exportToCsv = () => {
         if (data.length === 0) return;
-        const headers = [
-            "Invoice Number",
-            "Invoice Date",
-            "Guest Name",
-            "Company",
-            "GSTIN",
-            "Place of Supply",
-            "Taxable Value",
-            "GST Rate",
-            "CGST",
-            "SGST",
-            "IGST",
-            "Total Invoice Amount",
-            "Invoice Status",
-        ];
 
-        const rows = data.map((r) => {
-            const d = new Date(r.invoiceDate);
-            const formattedDate = `"${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}"`;
-            return [
-                `"${r.invoiceNumber}"`,
-                formattedDate,
-                `"${r.guestName || ""}"`,
-                `"${r.companyName || ""}"`,
-                `"${r.gstin || ""}"`,
-                `"${r.placeOfSupply || ""}"`,
-                r.taxableValue,
-                `${r.gstRate}%`,
-                r.cgst,
-                r.sgst,
-                r.igst,
-                r.totalAmount,
-                `"${r.invoiceStatus}"`,
-            ];
-        });
+        const mappedData = data.map((r) => ({
+            "Invoice Number": r.invoiceNumber,
+            "Invoice Date": formatDateForCSV(r.invoiceDate),
+            "Guest Name": r.guestName || "",
+            "Company": r.companyName || "",
+            "GSTIN": r.gstin || "",
+            "Place of Supply": r.placeOfSupply || "",
+            "Taxable Value": r.taxableValue,
+            "GST Rate": `${r.gstRate}%`,
+            "CGST": r.cgst,
+            "SGST": r.sgst,
+            "IGST": r.igst,
+            "Total Invoice Amount": r.totalAmount,
+            "Invoice Status": r.invoiceStatus,
+        }));
 
-        const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `invoice_wise_gst_${new Date().getTime()}.csv`;
-        link.click();
+        exportToCSV(mappedData, 'invoice-wise-gst-report');
     };
 
     return (
@@ -72,6 +49,7 @@ export function InvoiceWiseGstReport() {
                 title="Invoice-wise GST Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                printId="room-gst-report-print"
             >
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">

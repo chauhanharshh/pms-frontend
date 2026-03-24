@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
+import { exportToCSV } from "../utils/tableExport";
 import {
   Search,
   Calendar,
@@ -15,6 +16,7 @@ import {
   Filter,
   Eye,
   X,
+  XCircle,
   Phone,
   BedDouble,
   Clock,
@@ -39,9 +41,19 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 
 export function BookingsPage() {
   const { user } = useAuth();
-  const { bookings, rooms, hotels } = usePMS();
+  const { bookings, rooms, hotels, cancelBooking } = usePMS();
   const location = useLocation();
   const isAdmin = user?.role === "admin";
+
+  const handleCancelBooking = async (id: string, guestName: string) => {
+    if (window.confirm(`Are you sure you want to cancel the booking for ${guestName}? This action cannot be undone.`)) {
+      try {
+        await cancelBooking(id);
+      } catch (err) {
+        // Error already toasted in context
+      }
+    }
+  };
 
   const segment = location.pathname.split("/").pop() || "list";
   const [search, setSearch] = useState("");
@@ -99,37 +111,21 @@ export function BookingsPage() {
     }[segment] || "Bookings";
 
   const exportCSV = () => {
-    const csv = [
-      [
-        "Guest",
-        "Phone",
-        "Room",
-        "Hotel",
-        "Check-In",
-        "Check-Out",
-        "Amount",
-        "Status",
-      ].join(","),
-      ...filtered.map((b) => {
-        const hotel = hotels.find((h) => h.id === b.hotelId);
-        return [
-          b.guestName,
-          b.guestPhone,
-          b.roomNumber,
-          hotel?.name || "",
-          formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
-          b.checkOutDate,
-          b.totalAmount,
-          b.status,
-        ].join(",");
-      }),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `bookings-${segment}.csv`;
-    a.click();
+    const dataToExport = filtered.map((b) => {
+      const hotel = hotels.find((h) => h.id === b.hotelId);
+      return {
+        Guest: b.guestName,
+        Phone: b.guestPhone,
+        Room: b.roomNumber,
+        Hotel: hotel?.name || "",
+        "Check-In": formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
+        "Check-Out": b.checkOutDate || "—",
+        Amount: b.totalAmount,
+        Status: b.status,
+      };
+    });
+
+    exportToCSV(dataToExport, `bookings-${segment}`);
   };
 
   const isMobile = useMediaQuery("(max-width: 1024px)");
@@ -792,17 +788,28 @@ export function BookingsPage() {
                             <div className="text-[10px] text-gray-400 uppercase font-bold leading-tight">Total Amount</div>
                             <div className="text-sm font-bold" style={{ color: DARKGOLD }}>{formatCurrency(b.totalAmount)}</div>
                           </div>
-                          <button
-                            onClick={() => setPreviewBooking(b)}
-                            className="px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm"
-                            style={{ 
-                              background: "white", 
-                              color: DARKGOLD,
-                              border: `1.5px solid ${BORDER}`,
-                            }}
-                          >
-                            <Eye className="w-4 h-4" /> DETAILS
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setPreviewBooking(b)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+                              style={{ 
+                                background: "white", 
+                                color: DARKGOLD,
+                                border: `1.5px solid ${BORDER}`,
+                              }}
+                            >
+                              <Eye className="w-4 h-4" /> DETAILS
+                            </button>
+                            {(b.status === "pending" || b.status === "confirmed") && (
+                              <button
+                                onClick={() => handleCancelBooking(b.id, b.guestName)}
+                                className="p-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all active:scale-95 shadow-sm border border-red-100"
+                                title="Cancel Booking"
+                              >
+                                <XCircle className="w-5 h-5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -930,13 +937,24 @@ export function BookingsPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <button
-                              onClick={() => setPreviewBooking(b)}
-                              className="px-2 py-1.5 rounded-lg text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border flex items-center gap-1"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" /> View
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setPreviewBooking(b)}
+                                className="px-2 py-1.5 rounded-lg text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border flex items-center gap-1"
+                                title="View Details"
+                              >
+                                <Eye className="w-4 h-4" /> View
+                              </button>
+                              {(b.status === "pending" || b.status === "confirmed") && (
+                                <button
+                                  onClick={() => handleCancelBooking(b.id, b.guestName)}
+                                  className="p-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 flex items-center gap-1 transition-colors"
+                                  title="Cancel Booking"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

@@ -12,6 +12,7 @@ interface GstReportLayoutProps {
         hotelId?: string;
     }) => void;
     onExport: () => void;
+    printId?: string;
     children: React.ReactNode;
 }
 
@@ -19,6 +20,7 @@ export function GstReportLayout({
     title,
     onFilterChange,
     onExport,
+    printId = "gst-report-print",
     children,
 }: GstReportLayoutProps) {
     const { user, isAdmin } = useAuth();
@@ -56,46 +58,48 @@ export function GstReportLayout({
             <style>
                 {`
           @media print {
-            @page {
-              margin: 1cm;
-              size: A4 portrait;
+            body * {
+              visibility: hidden !important;
             }
-            body {
-              background: white !important;
-              color: black !important;
+            #${printId}, #${printId} * {
+              visibility: visible !important;
             }
-            .print\\:hidden, 
-            nav, 
-            aside, 
-            header,
-            [data-radix-scroll-area-viewport] > div > div:first-child {
-               display: none !important;
-            }
-            .print\\:block {
+            #${printId} {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
               display: block !important;
             }
-            .print\\:m-0 {
-              margin: 0 !important;
+            .print-header {
+              display: block !important;
+              text-align: center;
+              margin-bottom: 24px;
             }
-            .print\\:p-0 {
-              padding: 0 !important;
+            .sidebar, .top-navbar, .no-print, button {
+              display: none !important;
             }
-            * {
-              -webkit-print-color-adjust: exact !important;
-              color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              box-shadow: none !important;
-              text-shadow: none !important;
+            @page {
+              margin: 1.5cm;
+              size: A4 portrait;
             }
-            table th {
-              background: #f3f4f6 !important;
-              color: #111827 !important;
-              border-bottom: 2px solid #000 !important;
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
             }
-            table td {
-              border-bottom: 1px solid #e5e7eb !important;
-              color: #000 !important;
+            th, td {
+              border: 1px solid #ddd !important;
+              padding: 8px !important;
+              font-size: 10px !important;
             }
+            th {
+              background-color: #f9fafb !important;
+            }
+          }
+          .print-header {
+            display: none;
           }
         `}
             </style>
@@ -181,7 +185,12 @@ export function GstReportLayout({
                 </div>
 
                 {/* Report Content */}
-                <div className="print:m-0 print:p-0">
+                <div id={printId} className="print:m-0 print:p-0">
+                    <div className="print-header">
+                        <h2 className="text-xl font-bold uppercase">{hotels.find(h => h.id === filterHotel)?.name || "Hotel Suvidha Deluxe"}</h2>
+                        <h3 className="text-lg font-semibold uppercase mt-1">{title}</h3>
+                        <p className="text-sm mt-1">PERIOD: {startDate} TO {endDate}</p>
+                    </div>
                     {filterHotel ? children : (
                         <div className="p-8 text-center text-gray-500 print:hidden">
                             Please select a hotel to view reports.

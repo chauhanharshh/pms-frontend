@@ -105,28 +105,42 @@ function isAfterNoon(value: Date): boolean {
     return hours > 12 || (hours === 12 && (minutes > 0 || seconds > 0 || millis > 0));
 }
 
-export function calculateRoomDays(checkInTime: string | Date, checkOutTime: string | Date): number {
-    const checkIn = toDateWithNoonDefault(checkInTime);
-    const checkOut = toDateWithNoonDefault(checkOutTime);
+export function calculateRoomDays(
+    checkInTime: string | Date,
+    checkOutTime: string | Date,
+    standardCheckOut: string = "11:00"
+): number {
+    const ci = toDateWithNoonDefault(checkInTime);
+    const co = toDateWithNoonDefault(checkOutTime);
 
-    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+    if (Number.isNaN(ci.getTime()) || Number.isNaN(co.getTime())) {
         return 1;
     }
 
-    const checkInNoon = new Date(checkIn);
-    if (checkIn.getHours() < 12) {
-        checkInNoon.setDate(checkInNoon.getDate() - 1);
-    }
-    checkInNoon.setHours(12, 0, 0, 0);
+    // 1. Calculate Base Nights (Date difference)
+    const ciDate = new Date(ci);
+    ciDate.setHours(0, 0, 0, 0);
+    const coDate = new Date(co);
+    coDate.setHours(0, 0, 0, 0);
 
-    const checkOutNoon = new Date(checkOut);
-    checkOutNoon.setHours(12, 0, 0, 0);
+    let days = Math.floor((coDate.getTime() - ciDate.getTime()) / DAY_MS);
 
-    let days = Math.ceil((checkOutNoon.getTime() - checkInNoon.getTime()) / DAY_MS);
-    if (isAfterNoon(checkOut)) {
+    // 2. Early Check-In Rule: Before 9:00 AM
+    const ciHours = ci.getHours();
+    if (ciHours < 9) {
         days += 1;
     }
 
+    // 3. Late Check-Out Rule: After standard time (default 11:00 AM)
+    const [stdH, stdM] = standardCheckOut.split(':').map(Number);
+    const coHours = co.getHours();
+    const coMinutes = co.getMinutes();
+
+    if (coHours > stdH || (coHours === stdH && coMinutes > (stdM || 0))) {
+        days += 1;
+    }
+
+    // 4. Minimum 1 Day
     return Math.max(days, 1);
 }
 

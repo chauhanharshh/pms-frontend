@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
+import { exportToCSV } from "../utils/tableExport";
 import {
   Search,
   Plus,
@@ -78,37 +79,18 @@ export function CheckInRecordsPage() {
     }[segment] || "Check-In Records";
 
   const exportCSV = () => {
-    const headers = [
-      "Guest",
-      "Phone",
-      "Room",
-      "Check-In",
-      "Check-Out",
-      "Amount",
-      "Advance",
-      "Status",
-    ];
-    const csv = [
-      headers.join(","),
-      ...filtered.map((b) =>
-        [
-          b.guestName,
-          b.guestPhone,
-          b.roomNumber,
-          formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
-          b.checkOutDate,
-          b.totalAmount,
-          b.advanceAmount,
-          b.status,
-        ].join(","),
-      ),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${segment}-records.csv`;
-    a.click();
+    const dataToExport = filtered.map((b) => ({
+      Guest: b.guestName,
+      Phone: b.guestPhone,
+      Room: b.roomNumber,
+      "Check-In": formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
+      "Check-Out": b.checkOutDate || "—",
+      Amount: b.totalAmount,
+      Advance: b.advanceAmount,
+      Status: b.status,
+    }));
+
+    exportToCSV(dataToExport, `${segment}-records`);
   };
 
   return (

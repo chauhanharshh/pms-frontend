@@ -1,6 +1,7 @@
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { Calendar, Bell, Hotel, Menu } from "lucide-react";
+import { resolveBrandName, resolveLogoUrl, handleLogoImageError } from "../utils/branding";
 
 interface TopNavbarProps {
   title: string;
@@ -20,6 +21,9 @@ export function TopNavbar({ title, onMenuClick }: TopNavbarProps) {
   const currentHotel = currentHotelId
     ? hotels.find((h) => h.id === currentHotelId)
     : null;
+
+  const brandName = resolveBrandName(currentHotel);
+  const logoUrl = resolveLogoUrl(currentHotel?.logoUrl);
 
   return (
     <div
@@ -42,6 +46,19 @@ export function TopNavbar({ title, onMenuClick }: TopNavbarProps) {
             <Menu className="w-6 h-6" />
           </button>
         )}
+        
+        {/* Logo in Header */}
+        {currentHotel && (
+          <div className="hidden sm:flex w-10 h-10 items-center justify-center flex-shrink-0 bg-white rounded-lg border border-[#E5E1DA] p-1 shadow-sm">
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="w-full h-full object-contain"
+              onError={handleLogoImageError}
+            />
+          </div>
+        )}
+
         <div className="min-w-0">
           <h1
             className="text-lg sm:text-2xl font-semibold leading-tight truncate"
@@ -51,9 +68,8 @@ export function TopNavbar({ title, onMenuClick }: TopNavbarProps) {
           </h1>
           {currentHotel && (
             <div className="flex items-center gap-1 mt-0.5">
-              <Hotel className="w-3 h-3" style={{ color: "var(--accent-color, #C6A75E)" }} />
-              <span className="text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-none" style={{ color: "var(--accent-color, #A8832D)" }}>
-                {currentHotel.name}
+              <span className="text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-none font-medium" style={{ color: "var(--accent-color, #A8832D)" }}>
+                {brandName}
               </span>
             </div>
           )}

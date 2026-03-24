@@ -3,6 +3,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { formatCurrency, formatDate } from "../utils/format";
+import { formatDateForCSV, exportToCSV } from "../utils/tableExport";
 import api from "../services/api";
 import {
     Calendar,
@@ -46,12 +47,23 @@ const parseDisplayDate = (value: string) => {
     return d;
 };
 
-const toCsvCell = (value: string | number | null | undefined) => {
-    const text = String(value ?? "");
-    if (text.includes(",") || text.includes("\n") || text.includes('"')) {
-        return `"${text.replace(/"/g, '""')}"`;
+const toCsvCell = (val: any) => {
+    if (val === null || val === undefined) return '""';
+    
+    if (val instanceof Date) {
+        return `"${val.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}"`;
     }
-    return text;
+
+    if (typeof val === 'object') {
+        try {
+            const resolved = val.fullName || val.name || val.title || JSON.stringify(val);
+            return `"${String(resolved).replace(/"/g, '""')}"`;
+        } catch {
+            return '"[Object]"';
+        }
+    }
+
+    return `"${String(val).replace(/"/g, '""')}"`;
 };
 
 export function DayClosingPage() {
@@ -211,38 +223,18 @@ export function DayClosingPage() {
     };
 
     const handleDownloadCsv = () => {
-        const headers = [
-            "Working Date",
-            "Cash Received",
-            "Bank Received",
-            "Cash Paid",
-            "Bank Paid",
-            "Credit Sale",
-            "Closed By",
-            "Status"
-        ];
+        const dataToExport = filteredRows.map((row) => ({
+            "Working Date": formatDateForCSV(row.workingDate),
+            "Cash Received": row.cashReceived,
+            "Bank Received": row.bankReceived,
+            "Cash Paid": row.cashPaid,
+            "Bank Paid": row.bankPaid,
+            "Credit Sale": row.creditSale,
+            "Closed By": row.user?.fullName || "-",
+            "Status": row.status
+        }));
 
-        const csvContent = [
-            headers.join(","),
-            ...filteredRows.map((row) => [
-                formatDate(row.workingDate),
-                row.cashReceived,
-                row.bankReceived,
-                row.cashPaid,
-                row.bankPaid,
-                row.creditSale,
-                row.user?.fullName || "-",
-                row.status
-            ].map(toCsvCell).join(","))
-        ].join("\n");
-
-        const blob = new Blob([csvContent], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `hotel-day-closing-${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        exportToCSV(dataToExport, "hotel-day-closing");
     };
 
     const periodText = useMemo(() => {

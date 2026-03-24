@@ -4,6 +4,7 @@ import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePMS } from "../../contexts/PMSContext";
+import { exportToCSV, formatDateForCSV } from "../../utils/tableExport";
 
 const formatCurrency = (val: any) => Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatRawCurrency = (val: any) => Number(val || 0).toFixed(2);
@@ -55,32 +56,26 @@ export function RoomGstReport() {
 
     const exportToCsv = () => {
         if (data.length === 0) return;
-        const headers = [
-            "Invoice Date", "Bill No.", "Details", "Room Rent Disc.", "Room Rent",
-            "CGST", "SGST", "IGST", "Other Char.", "Other Charges GST", "Inv. Discount",
-            "Advance", "Net Payable", "Cash", "Bank", "Co. Cr."
-        ];
-
-        const rows = data.map((r) => {
-            const d = new Date(r.date);
-            const formattedDate = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
-            const details = `${r.guestName} / NA / ${r.roomNumber || ""} / 5%`;
-            return [
-                formattedDate, `"${r.invoiceNo}"`, `"${details}"`,
-                formatRawCurrency(r.roomRentDisc), formatRawCurrency(r.roomRent),
-                formatRawCurrency(r.cgst), formatRawCurrency(r.sgst), formatRawCurrency(r.igst),
-                formatRawCurrency(r.otherCharges), formatRawCurrency(r.otherChargesGst),
-                formatRawCurrency(r.invDiscount), formatRawCurrency(r.advance),
-                formatRawCurrency(r.netPayable), formatRawCurrency(r.cash), formatRawCurrency(r.bank), formatRawCurrency(r.coCr)
-            ];
-        });
-
-        const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `invoice_revenue_report_${new Date().getTime()}.csv`;
-        link.click();
+        const exportData = data.map((r) => ({
+            "Invoice Date": formatDateForCSV(r.date),
+            "Bill No.": r.invoiceNo,
+            "Guest Name": r.guestName,
+            "Room No": r.roomNumber || "",
+            "Room Rent Disc.": formatRawCurrency(r.roomRentDisc),
+            "Room Rent": formatRawCurrency(r.roomRent),
+            "CGST": formatRawCurrency(r.cgst),
+            "SGST": formatRawCurrency(r.sgst),
+            "IGST": formatRawCurrency(r.igst),
+            "Other Char.": formatRawCurrency(r.otherCharges),
+            "Other Charges GST": formatRawCurrency(r.otherChargesGst),
+            "Inv. Discount": formatRawCurrency(r.invDiscount),
+            "Advance": formatRawCurrency(r.advance),
+            "Net Payable": formatRawCurrency(r.netPayable),
+            "Cash": formatRawCurrency(r.cash),
+            "Bank": formatRawCurrency(r.bank),
+            "Co. Cr.": formatRawCurrency(r.coCr),
+        }));
+        exportToCSV(exportData, `invoice_revenue_report_${new Date().getTime()}`);
     };
 
     const formatDate = (dateStr: string) => {
@@ -95,13 +90,8 @@ export function RoomGstReport() {
                 title="Invoice Revenue Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                printId="invoice-revenue-report-print"
             >
-                {/* Print Header */}
-                <div className="hidden print:block text-center mb-6 text-black uppercase font-bold" style={{ fontFamily: "Arial, sans-serif" }}>
-                    <div className="text-xl mb-1">{activeHotel?.name || "HOTEL KING PLAZA"}</div>
-                    <div className="text-lg mb-2">Invoice Revenue Report</div>
-                    <div className="text-sm">PERIOD : {formatDate(period.start)} TO {formatDate(period.end)}</div>
-                </div>
 
                 <div className="bg-white print:bg-white border border-gray-200 print:border-none rounded-xl overflow-hidden print:overflow-visible shadow-sm">
                     <div className="overflow-x-auto print:overflow-visible text-black" style={{ fontFamily: "Arial, sans-serif" }}>
@@ -190,7 +180,7 @@ export function RoomGstReport() {
 
                         {/* Charges Summary Section */}
                         {!loading && data.length > 0 && (
-                            <div className="mt-8 break-inside-avoid">
+                            <div className="mt-8 print:break-inside-avoid">
                                 <table className="w-full text-[10px] print:text-[10px] text-left text-black print:text-black border-collapse">
                                     <thead className="bg-gray-100 print:bg-gray-300 font-bold border-y border-gray-200 print:border-black">
                                         <tr>

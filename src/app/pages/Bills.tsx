@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { exportToCSV, printTable } from '../utils/tableExport';
+import { exportToCSV, printTable, formatDateForCSV } from '../utils/tableExport';
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -534,12 +534,19 @@ export function Bills() {
                 onClick={() => {
                   const dataToExport = filtered.map((b: any) => {
                     const hotelName = hotels.find((h: any) => h.id === b.hotelId)?.name || "—";
+                    const booking = bookings.find(bk => bk.id === b.bookingId);
+                    const guestName = booking?.guestName || b.guestName || "—";
+                    const roomNumber = booking?.room?.roomNumber || booking?.roomId?.slice(-4) || b.roomNumber || "—";
+                    const bookingRef = (booking?.id || b.bookingId || "").split("-").pop()?.toUpperCase() || "—";
+                    
                     return {
-                      "Guest Name": b.guestName || b.booking?.guestName || "—",
-                      "Room": b.roomNumber || b.booking?.roomNumber || "—",
+                      "Guest Name": guestName,
+                      "Room": roomNumber,
                       ...(isAdmin ? { "Hotel": hotelName } : {}),
-                      "Booking Ref": (b.booking?.id || b.bookingId || "").split("-").pop()?.toUpperCase() || "—",
+                      "Booking Ref": bookingRef,
                       "Invoice No": b.invoice?.invoiceNumber || "—",
+                      "Check-In": formatDateForCSV(booking?.checkInDate),
+                      "Check-Out": formatDateForCSV(booking?.checkOutDate),
                       "Room Charges": b.roomCharges,
                       "Restaurant": b.restaurantCharges,
                       "Misc": b.miscCharges,
@@ -548,7 +555,7 @@ export function Bills() {
                       "Paid": b.paidAmount,
                       "Balance": b.balanceDue,
                       "Status": b.status,
-                      "Date": b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-IN') : "—"
+                      "Date": formatDateForCSV(b.createdAt)
                     };
                   });
                   exportToCSV(dataToExport, 'bills');

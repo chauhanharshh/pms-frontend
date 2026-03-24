@@ -6,7 +6,6 @@ import { usePMS, Hotel } from "../contexts/PMSContext";
 import api from "../services/api";
 import { AlertCircle, Building2, ChevronDown, RefreshCw, ClipboardPlus, HandCoins, X } from "lucide-react";
 
-const TABLE_IDS = ["T1", "T2", "T3", "T4", "T5", "T6"] as const;
 
 const readStoredList = (key: string) => {
     try {
@@ -20,7 +19,7 @@ const readStoredList = (key: string) => {
 
 export function RestaurantRoomSelector() {
     const { user } = useAuth();
-    const { getCheckedInRooms, getKOTs, hotels, systemSettings, rooms, clearRestaurantKOTsForRoom } = usePMS();
+    const { getCheckedInRooms, getKOTs, hotels, systemSettings, rooms, clearRestaurantKOTsForRoom, restaurantTables } = usePMS();
     const navigate = useNavigate();
     const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
     const [allHotelsRooms, setAllHotelsRooms] = useState<any[]>([]);
@@ -90,12 +89,12 @@ export function RestaurantRoomSelector() {
         return rooms
             .filter((r: any) => !activeSelectorHotelId || r.hotelId === activeSelectorHotelId)
             .map((r: any) => ({
-            id: r.id,
-            roomNumber: r.roomNumber,
-            bookings: r.bookings || [],
-            status: r.status,
-            hotelId: r.hotelId,
-        }));
+                id: r.id,
+                roomNumber: r.roomNumber,
+                bookings: r.bookings || [],
+                status: r.status,
+                hotelId: r.hotelId,
+            }));
     }, [rooms, activeSelectorHotelId]);
 
     const getRestaurantRooms = useCallback(() => {
@@ -127,11 +126,16 @@ export function RestaurantRoomSelector() {
     }, [activeHotel?.name, activeSelectorHotelId, filteredRooms]);
 
     const tableHotelGroups = useMemo(() => {
-        if (activeSelectorHotelId) {
-            return [{ hotelId: activeSelectorHotelId, hotelName: activeHotel?.name || "Selected Hotel" }];
-        }
-        return [];
-    }, [activeSelectorHotelId, activeHotel?.name]);
+        const hotelsToProcess = activeSelectorHotelId 
+            ? visibleHotels.filter(h => h.id === activeSelectorHotelId)
+            : (isAllHotelsMode ? visibleHotels : []);
+        
+        return hotelsToProcess.map(h => ({
+            hotelId: h.id,
+            hotelName: h.name,
+            tables: restaurantTables.filter(t => String(t.hotelId) === String(h.id) && t.isActive)
+        })).filter(group => group.tables.length > 0);
+    }, [activeSelectorHotelId, visibleHotels, restaurantTables, isAllHotelsMode]);
 
     useEffect(() => {
         let isMounted = true;
@@ -280,7 +284,7 @@ export function RestaurantRoomSelector() {
 
     useEffect(() => {
         if (import.meta.env?.DEV) {
-            const tableCount = tableHotelGroups.length * TABLE_IDS.length;
+            const tableCount = tableHotelGroups.reduce((acc, g) => acc + g.tables.length, 0);
             console.log("Hotel Rooms:", filteredRooms);
             console.log("Tables:", tableCount);
         }
@@ -584,7 +588,8 @@ export function RestaurantRoomSelector() {
                                                         </div>
                                                     )}
                                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                                        {TABLE_IDS.map((tableId) => {
+                                                        {hotelGroup.tables.map((t) => {
+                                                            const tableId = t.name;
                                                             const table = {
                                                                 id: `table:${hotelGroup.hotelId}:${tableId}`,
                                                                 tableId,
@@ -628,79 +633,68 @@ export function RestaurantRoomSelector() {
                                                     </div>
                                                 </div>
                                             ))}
+                                            {tableHotelGroups.length === 0 && (
+                                                <div className="py-12 bg-white rounded-xl border border-dashed border-slate-200 text-center">
+                                                    <p className="text-slate-400 font-medium">No active restaurant tables found for this hotel.</p>
+                                                    <p className="text-xs text-slate-400">Manage tables in Restaurant -&gt; Table Management</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </section>
 
                                     <section>
                                         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Rooms</h2>
-                                        {roomsToDisplay.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center py-14 bg-white rounded-xl border border-slate-200">
-                                                <AlertCircle className="w-10 h-10 text-slate-300 mb-3" />
-                                                <h3 className="text-base font-semibold text-slate-700">No Rooms Found</h3>
-                                                <p className="text-slate-500 text-sm mt-1">
-                                                    {isAllHotelsMode
-                                                        ? "There are currently no rooms available across hotels."
-                                                        : "There are currently no rooms available for this hotel."}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-5">
-                                                {roomGroups.map((group) => (
-                                                    <div key={`rooms-${group.hotelId || "default"}`}>
-                                                        {isAllHotelsMode && (
-                                                            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                                                                {group.hotelName}
-                                                            </div>
-                                                        )}
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                                            {group.rooms.map((room: any) => {
-                                                    const currentBooking = room.bookings?.find((b: any) => b.status === 'checked_in') || checkedInRooms.find((r: any) => r.id === room.id)?.bookings?.find((b: any) => b.status === 'checked_in');
-                                                    const guestName = currentBooking?.guestName || checkedInRooms.find((r: any) => r.id === room.id)?.guestName || "Vacant";
-                                                    const hasOpenKOT = isCardKotCut(room) || roomsWithOpenKOT.has(room.id);
-                                                    const isBilled = isCardBilled(room);
-
-                                                    const getNormalStatusColor = (status: string) => {
-                                                        switch (status) {
-                                                            case "maintenance": return "#EF4444";
-                                                            case "cleaning": return "#3B82F6";
-                                                            default: return hasOpenKOT ? "#FF4444" : "#22C55E";
-                                                        }
-                                                    };
-                                                    const cardColor = isBilled ? '#FFD700' : getNormalStatusColor(room.status);
-                                                    const cardBg = isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : "bg-white border-slate-200 hover:border-[#C6A75E]";
-
-                                                                return (
-                                                                    <button
-                                                                        key={room.id}
-                                                                        onClick={() => handleRoomCardClick(room)}
-                                                                        onDoubleClick={() => handleRoomCardDoubleClick(room)}
-                                                                        onContextMenu={(e) => handleContextMenu(e, room)}
-                                                                        className={`group rounded-xl p-5 border hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden ${cardBg}`}
-                                                                    >
-                                                                        <div className="absolute top-0 left-0 w-full h-1 transition-colors" style={{ backgroundColor: cardColor }} />
-
-                                                                        <div className="flex justify-between items-start mt-1">
-                                                                            <div>
-                                                                                <p className="text-2xl font-bold text-slate-800">Room {room.roomNumber}</p>
-                                                                            </div>
-                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${isBilled ? "bg-yellow-100 border border-yellow-300" : hasOpenKOT ? "bg-red-100 border border-red-200" : "bg-green-50 border border-green-100"}`}>
-                                                                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cardColor }} />
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <div className="mt-2 pt-3 border-t border-slate-100">
-                                                                            <p className="text-sm font-semibold text-slate-700 truncate">
-                                                                                <span className="text-slate-500 font-medium">Guest:</span> {guestName}
-                                                                            </p>
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
+                                        <div className="space-y-5">
+                                            {roomGroups.map((group) => (
+                                                <div key={`rooms-${group.hotelId}`}>
+                                                    {isAllHotelsMode && (
+                                                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                                            {group.hotelName}
                                                         </div>
+                                                    )}
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                                        {group.rooms.map((room) => {
+                                                            const hasOpenKOT = roomsWithOpenKOT.has(room.id);
+                                                            const isBilled = isCardBilled(room);
+                                                            const cardColor = isBilled ? "#FFD700" : hasOpenKOT ? "#FF4444" : "#22C55E";
+                                                            const cardBg = isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : "bg-white border-slate-200 hover:border-[#C6A75E]";
+
+                                                            return (
+                                                                <button
+                                                                    key={room.id}
+                                                                    onClick={() => handleRoomCardClick(room)}
+                                                                    onDoubleClick={() => handleRoomCardDoubleClick(room)}
+                                                                    onContextMenu={(e) => handleContextMenu(e, room)}
+                                                                    className={`group rounded-xl p-5 border hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden ${cardBg}`}
+                                                                >
+                                                                    <div className="absolute top-0 left-0 w-full h-1 transition-colors" style={{ backgroundColor: cardColor }} />
+
+                                                                    <div className="flex justify-between items-start mt-1">
+                                                                        <div>
+                                                                            <p className="text-2xl font-bold text-slate-800">Room {room.roomNumber}</p>
+                                                                        </div>
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${isBilled ? "bg-yellow-100 border border-yellow-300" : hasOpenKOT ? "bg-red-100 border border-red-200" : "bg-green-50 border border-green-100"}`}>
+                                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cardColor }} />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="mt-2 pt-3 border-t border-slate-100">
+                                                                        <p className="text-sm font-semibold text-slate-700 truncate">
+                                                                            <span className="text-slate-500 font-medium">Guest:</span> {room.bookings?.[0]?.guest?.name || room.bookings?.[0]?.guestName || "No Guest"}
+                                                                        </p>
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                </div>
+                                            ))}
+                                            {roomGroups.every(g => g.rooms.length === 0) && (
+                                                <div className="py-12 bg-white rounded-xl border border-dashed border-slate-200 text-center">
+                                                    <p className="text-slate-400 font-medium">No checked-in rooms found for this hotel.</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </section>
                                 </div>
                             );

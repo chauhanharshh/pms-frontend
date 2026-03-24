@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router";
+import { exportToCSV, formatDateForCSV } from "../utils/tableExport";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -180,6 +181,40 @@ export function Reservations() {
             <option value="checked_out">Checked-out</option>
             <option value="cancelled">Cancelled</option>
           </select>
+          <button
+            onClick={() => {
+              const csvData = filtered.map(b => ({
+                'Guest': b.guestName,
+                'Phone': b.guestPhone,
+                'Room': b.roomNumber,
+                'Hotel': hotels.find(h => h.id === b.hotelId)?.name || '-',
+                'Check-in': formatDateForCSV(b.checkInDate),
+                'Check-out': formatDateForCSV(b.checkOutDate),
+                'Adults': b.adults,
+                'Children': b.children,
+                'Total': b.totalAmount,
+                'Advance': b.advanceAmount,
+                'Status': b.status
+              }));
+              exportToCSV(csvData, 'reservations');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: '#ffffff',
+              border: '1px solid #B8860B',
+              borderRadius: '8px',
+              color: '#B8860B',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              marginRight: '8px'
+            }}
+          >
+            📥 Export Excel
+          </button>
           <div className="flex-1" />
           <button
             onClick={() => {

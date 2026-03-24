@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { exportToCSV, printTable } from '../utils/tableExport';
+import { exportToCSV, printTable, formatDateForCSV } from '../utils/tableExport';
 import { AppLayout } from "../layouts/AppLayout";
 import { usePMS } from "../contexts/PMSContext";
 import { handleLogoImageError, resolveBrandName, resolveLogoUrl } from "../utils/branding";
@@ -253,13 +253,29 @@ export default function RestaurantInvoices() {
                 className="mx-auto bg-white text-black"
                 style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
             >
-                <div className="text-center font-bold text-[14px] leading-tight">{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
-                {lines.line1 && <div className="text-center leading-tight">{lines.line1}</div>}
-                {lines.line2 && <div className="text-center leading-tight">{lines.line2}</div>}
-                {lines.cityState && <div className="text-center leading-tight">{lines.cityState}</div>}
-                <div className="text-center leading-tight">Contact No: {contactNo}</div>
+                {selectedHotel?.logoUrl && (
+                    <div className="flex justify-center mb-2">
+                        <img 
+                            src={resolveLogoUrl(selectedHotel.logoUrl)} 
+                            alt="Logo" 
+                            style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }} 
+                            onError={handleLogoImageError}
+                        />
+                    </div>
+                )}
+                <div className="text-center font-bold text-[14px] leading-tight" style={{ color: selectedHotel?.invoiceHotelNameColor || "#000000" }}>{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+                {selectedHotel?.invoiceShowCustomLines && (
+                    <>
+                        <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine1Size || 13}px` }}>{selectedHotel.invoiceLine1 || ""}</div>
+                        <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine2Size || 15}px` }}>{selectedHotel.invoiceLine2 || ""}</div>
+                    </>
+                )}
+                {lines.line1 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
+                {lines.line2 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
+                {lines.cityState && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
+                <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
                 <div className="text-center leading-tight">{RECEIPT_DASH}</div>
-                <div className="text-center font-bold leading-tight">TAX INVOICE</div>
+                <div className="text-center font-bold leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
                 <div className="text-center leading-tight">{RECEIPT_DASH}</div>
                 <pre className="m-0 whitespace-pre leading-tight">
 {formatReceiptMetaLine("Bill Date", formatReceiptDateTime(inv.invoiceDate || inv.createdAt))}
@@ -334,13 +350,18 @@ export default function RestaurantInvoices() {
                         </style>
                     </head>
                     <body>
-                        <div class="center bold big" style="line-height:1.2;">${selectedHotel?.name || "HOTEL RESTAURANT"}</div>
-                        ${lines.line1 ? `<div class="center" style="line-height:1.2;">${lines.line1}</div>` : ""}
-                        ${lines.line2 ? `<div class="center" style="line-height:1.2;">${lines.line2}</div>` : ""}
-                        ${lines.cityState ? `<div class="center" style="line-height:1.2;">${lines.cityState}</div>` : ""}
-                        <div class="center" style="line-height:1.2;">Contact No: ${contactNo}</div>
+                        ${selectedHotel?.logoUrl ? `<div class="center" style="margin-bottom: 8px;"><img src="${resolveLogoUrl(selectedHotel.logoUrl)}" style="max-height: 50px; width: auto; object-fit: contain;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
+                        <div class="center bold big" style="line-height:1.2; color:${selectedHotel?.invoiceHotelNameColor || "#000000"};">${selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+                        ${selectedHotel?.invoiceShowCustomLines ? `
+                        <div class="center bold" style="line-height:1.2; color:${selectedHotel.invoiceHeaderColor}; font-size: ${selectedHotel.invoiceLine1Size || 13}px;">${selectedHotel.invoiceLine1 || ""}</div>
+                        <div class="center bold" style="line-height:1.2; color:${selectedHotel.invoiceHeaderColor}; font-size: ${selectedHotel.invoiceLine2Size || 15}px;">${selectedHotel.invoiceLine2 || ""}</div>
+                        ` : ""}
+                        ${lines.line1 ? `<div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.line1}</div>` : ""}
+                        ${lines.line2 ? `<div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.line2}</div>` : ""}
+                        ${lines.cityState ? `<div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.cityState}</div>` : ""}
+                        <div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">Contact No: ${contactNo}</div>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
-                        <div class="center bold" style="line-height:1.2;">TAX INVOICE</div>
+                        <div class="center bold" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">TAX INVOICE</div>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
                         <pre style="line-height:1.2;">${formatReceiptMetaLine("Bill Date", formatReceiptDateTime(inv.invoiceDate || inv.createdAt))}
 ${formatReceiptMetaLine("Bill No.", getShortBillNumber(inv.invoiceNumber))}
@@ -467,7 +488,19 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                     {!isMobile && (
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px', paddingRight: '16px' }}>
                             <button
-                                onClick={() => exportToCSV(invoices, 'restaurant-invoices')}
+                                onClick={() => {
+                                    const csvData = invoices.map(inv => ({
+                                        'Invoice No': inv.invoiceNumber || '-',
+                                        'Date': formatDateForCSV(inv.invoiceDate || inv.createdAt),
+                                        'Steward/Guest': inv.restaurantOrder?.stewardName || inv.restaurantOrder?.guestName || 'Walk-in',
+                                        'Table': inv.restaurantOrder?.tableNumber || inv.tableNumber || '-',
+                                        'Room': inv.restaurantOrder?.room?.roomNumber || '-',
+                                        'Subtotal': inv.subtotal || 0,
+                                        'Total': inv.totalAmount || 0,
+                                        'Status': inv.status || '-'
+                                    }));
+                                    exportToCSV(csvData, 'restaurant-invoices');
+                                }}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -482,7 +515,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                     cursor: 'pointer',
                                 }}
                             >
-                                📥 Export CSV
+                                📥 Export Excel
                             </button>
                             <button
                                 onClick={() => printTable('restaurant-invoices-table', 'Restaurant Invoices')}

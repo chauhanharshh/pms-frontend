@@ -96,6 +96,7 @@ const EditRestaurantKOT = lazy(() => import("./pages/EditRestaurantKOT"));
 const RoomKOTWall = lazy(() => import("./pages/RoomKOTWall"));
 const RoomManagement = lazy(() => import("./pages/RoomManagement").then(m => ({ default: m.RoomManagement })));
 const RestaurantRoomSelector = lazy(() => import("./pages/RestaurantRoomSelector").then(m => ({ default: m.RestaurantRoomSelector })));
+const RestaurantTableManagement = lazy(() => import("./pages/RestaurantTableManagement").then(m => ({ default: m.default })));
 
 const withSuspense = (Component: any) => (props: any) => (
   <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
@@ -110,6 +111,8 @@ const SuspendedRestaurantKOTs = withSuspense(RestaurantKOTs);
 const SuspendedEditRestaurantKOT = withSuspense(EditRestaurantKOT);
 const SuspendedRoomKOTWall = withSuspense(RoomKOTWall);
 const SuspendedRoomManagement = withSuspense(RoomManagement);
+const SuspendedRestaurantRoomSelector = withSuspense(RestaurantRoomSelector);
+const SuspendedRestaurantTableManagement = withSuspense(RestaurantTableManagement);
 
 const LICENSE_GATE_FLAG = "pms_license_gate_ready";
 
@@ -123,9 +126,9 @@ function getDefaultRouteForRole(role: string) {
 }
 
 // Only admin/hotel_manager can access this page:
-function ProtectedLicenseRoute({ children }: { children: JSX.Element }) {
+function ProtectedLicenseRoute({ children }: { children: any }) {
   const { user, token, loading } = useAuth();
-  const navigate = typeof window !== 'undefined' ? window.navigate || ((url: string) => { window.location.href = url; }) : () => {};
+  const navigate = typeof window !== 'undefined' ? (window as any).navigate || ((url: string) => { window.location.href = url; }) : () => {};
 
   if (loading) {
     return (
@@ -142,6 +145,16 @@ function ProtectedLicenseRoute({ children }: { children: JSX.Element }) {
   // Only admin can access this page:
   if (user?.role !== 'admin') {
     return <Navigate to="/hotel/dashboard" />;
+  }
+
+  return children;
+}
+
+function RestaurantProtectedRoute({ children }: { children: any }) {
+  const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
+
+  if (!restaurantEnabled) {
+    return <Navigate to="/hotel/dashboard" replace />;
   }
 
   return children;
@@ -223,19 +236,20 @@ const routes = [
   { path: "/admin/rooms", Component: SuspendedRoomManagement },
 
   // Restaurant
-  { path: "/admin/restaurant/rooms", Component: withSuspense(RestaurantRoomSelector), errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/pos", Component: RestaurantPOS, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/invoices", Component: SuspendedRestaurantInvoices, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/invoices/:id/edit", Component: SuspendedEditRestaurantInvoice, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/kots", Component: SuspendedRestaurantKOTs, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/kots/:id/edit", Component: SuspendedEditRestaurantKOT, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/kot-wall", Component: SuspendedRoomKOTWall, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/menu", Component: SuspendedRestaurantMenu, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/stewards", Component: StewardManagement, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/service-charge-report", Component: ServiceChargeReport, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/reports", Component: Reports, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/expenses", Component: Expenses, errorElement: <ErrorBoundary /> },
-  { path: "/admin/restaurant/day-closing", Component: RestaurantDayClosingPage, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/rooms", element: <RestaurantProtectedRoute><SuspendedRestaurantRoomSelector /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/pos", element: <RestaurantProtectedRoute><RestaurantPOS /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/invoices", element: <RestaurantProtectedRoute><SuspendedRestaurantInvoices /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/invoices/:id/edit", element: <RestaurantProtectedRoute><SuspendedEditRestaurantInvoice /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/kots", element: <RestaurantProtectedRoute><SuspendedRestaurantKOTs /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/kots/:id/edit", element: <RestaurantProtectedRoute><SuspendedEditRestaurantKOT /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/kot-wall", element: <RestaurantProtectedRoute><SuspendedRoomKOTWall /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/menu", element: <RestaurantProtectedRoute><SuspendedRestaurantMenu /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/stewards", element: <RestaurantProtectedRoute><StewardManagement /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/service-charge-report", element: <RestaurantProtectedRoute><ServiceChargeReport /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/reports", element: <RestaurantProtectedRoute><Reports /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/expenses", element: <RestaurantProtectedRoute><Expenses /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/day-closing", element: <RestaurantProtectedRoute><RestaurantDayClosingPage /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/admin/restaurant/tables", element: <RestaurantProtectedRoute><SuspendedRestaurantTableManagement /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
 
   // GST Reports (Admin)
   { path: "/admin/gst/summary", Component: GstSummaryReport },
@@ -299,19 +313,20 @@ const routes = [
   { path: "/hotel/misc-charges", Component: MiscCharges },
   { path: "/hotel/vouchers", Component: PaymentVouchers },
   // Restaurant
-  { path: "/hotel/restaurant/rooms", Component: withSuspense(RestaurantRoomSelector), errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/pos", Component: RestaurantPOS, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/menu", Component: SuspendedRestaurantMenu, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/invoices", Component: SuspendedRestaurantInvoices, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/invoices/:id/edit", Component: SuspendedEditRestaurantInvoice, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/kots", Component: SuspendedRestaurantKOTs, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/kots/:id/edit", Component: SuspendedEditRestaurantKOT, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/kot-wall", Component: SuspendedRoomKOTWall, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/stewards", Component: StewardManagement, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/service-charge-report", Component: ServiceChargeReport, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/reports", Component: Reports, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/expenses", Component: Expenses, errorElement: <ErrorBoundary /> },
-  { path: "/hotel/restaurant/day-closing", Component: RestaurantDayClosingPage, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/rooms", element: <RestaurantProtectedRoute><SuspendedRestaurantRoomSelector /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/pos", element: <RestaurantProtectedRoute><RestaurantPOS /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/menu", element: <RestaurantProtectedRoute><SuspendedRestaurantMenu /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/invoices", element: <RestaurantProtectedRoute><SuspendedRestaurantInvoices /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/invoices/:id/edit", element: <RestaurantProtectedRoute><SuspendedEditRestaurantInvoice /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/kots", element: <RestaurantProtectedRoute><SuspendedRestaurantKOTs /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/kots/:id/edit", element: <RestaurantProtectedRoute><SuspendedEditRestaurantKOT /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/kot-wall", element: <RestaurantProtectedRoute><SuspendedRoomKOTWall /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/stewards", element: <RestaurantProtectedRoute><StewardManagement /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/service-charge-report", element: <RestaurantProtectedRoute><ServiceChargeReport /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/reports", element: <RestaurantProtectedRoute><Reports /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/expenses", element: <RestaurantProtectedRoute><Expenses /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/day-closing", element: <RestaurantProtectedRoute><RestaurantDayClosingPage /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
+  { path: "/hotel/restaurant/tables", element: <RestaurantProtectedRoute><SuspendedRestaurantTableManagement /></RestaurantProtectedRoute>, errorElement: <ErrorBoundary /> },
   { path: "/hotel/rooms", Component: SuspendedRoomManagement },
   { path: "/hotel/bookings", Component: BookingsPage },
   { path: "/hotel/reports", Component: Reports },

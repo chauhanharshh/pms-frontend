@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import { formatActualCheckInDateTime, formatCurrency } from "../utils/format";
+import { exportToCSV } from "../utils/tableExport";
 import {
   UserCheck,
   LogOut,
@@ -244,33 +245,16 @@ export function TodaysView() {
   const totalAdvanceAmt = todayAdvances.reduce((s, a) => s + Number(a.amount || 0), 0);
 
   const exportCSV = () => {
-    const headers = [
-      "Guest Name",
-      "Room",
-      "Check-In",
-      "Check-Out",
-      "Amount",
-      "Status",
-    ];
-    const csvRows = [
-      headers.join(","),
-      ...rows.map((b: any) =>
-        [
-          b.guestName,
-          b.room?.roomNumber || "—",
-          formatActualCheckInDateTime(b, b?.reservation, b?.checkInDate),
-          (b.checkOutDate as string)?.split("T")[0],
-          b.totalAmount,
-          b.status,
-        ].join(","),
-      ),
-    ].join("\n");
-    const blob = new Blob([csvRows], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${segment}-${todayStr}.csv`;
-    a.click();
+    const dataToExport = rows.map((b: any) => ({
+      "Guest Name": b.guestName,
+      Room: b.room?.roomNumber || "—",
+      "Check-In": formatActualCheckInDateTime(b, b?.reservation, b?.checkInDate),
+      "Check-Out": (b.checkOutDate as string)?.split("T")[0] || "—",
+      Amount: b.totalAmount,
+      Status: b.status,
+    }));
+
+    exportToCSV(dataToExport, segment);
   };
 
   // Summary cards

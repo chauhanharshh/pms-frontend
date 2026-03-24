@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { exportToCSV, printTable } from '../utils/tableExport';
+import { exportToCSV, printTable, formatDateForCSV } from '../utils/tableExport';
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -261,7 +261,18 @@ export function Expenses() {
           {/* Export/Print Buttons */}
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px' }}>
             <button
-              onClick={() => exportToCSV(expenses, 'expenses')}
+              onClick={() => {
+                const csvData = expenses.map(exp => ({
+                  'Date': formatDateForCSV(exp.expenseDate),
+                  'Description': exp.description,
+                  'Category': exp.category,
+                  'Hotel': hotels.find(h => h.id === exp.hotelId)?.name || '-',
+                  'Payee': exp.payee || '-',
+                  'Payment Method': exp.paymentMethod,
+                  'Amount': exp.amount
+                }));
+                exportToCSV(csvData, 'expenses');
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -276,7 +287,7 @@ export function Expenses() {
                 cursor: 'pointer',
               }}
             >
-              📥 Export CSV
+              📥 Export Excel
             </button>
             <button
               onClick={() => printTable('expenses-table', 'Expenses Report')}

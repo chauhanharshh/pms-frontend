@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room, Booking } from "../contexts/PMSContext";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import { calculateRoomTax } from "../utils/tax";
+import { resolveBrandName, resolveLogoUrl, handleLogoImageError } from "../utils/branding";
 import {
   DoorOpen,
   Users,
@@ -129,6 +130,7 @@ function RoomDetailPanel({
   onContextMenu?: (e: React.MouseEvent, room: Room) => void;
 }) {
   const { bills, miscCharges, restaurantOrders } = usePMS();
+  const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
   const cfg = SC[room.status];
 
   const roomBills = bills.filter(
@@ -335,7 +337,7 @@ function RoomDetailPanel({
                     {formatCurrency(totalBilled)}
                   </span>
                 </div>
-                {totalRestaurant > 0 && (
+                {restaurantEnabled && totalRestaurant > 0 && (
                   <div className="flex justify-between text-sm">
                     <span style={{ color: T.sub }}>Restaurant</span>
                     <span className="font-medium">
@@ -454,16 +456,18 @@ function RoomDetailPanel({
                     <LogOut className="w-5 h-5" /> PROCESS CHECK-OUT
                   </div>
                 </button>
-                <button
-                  onClick={() => navigate("/hotel/restaurant/pos")}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
-                  style={{
-                    border: `1.5px solid ${T.border}`,
-                    color: T.darkGold,
-                  }}
-                >
-                  RESTAURANT CHARGES
-                </button>
+                {restaurantEnabled && (
+                  <button
+                    onClick={() => navigate("/hotel/restaurant/pos")}
+                    className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
+                    style={{
+                      border: `1.5px solid ${T.border}`,
+                      color: T.darkGold,
+                    }}
+                  >
+                    RESTAURANT CHARGES
+                  </button>
+                )}
                 <button
                   onClick={() => navigate("/hotel/misc-charges")}
                   className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
@@ -540,6 +544,7 @@ function CheckOutModal({
   onClose: () => void;
 }) {
   const { bills, miscCharges, restaurantOrders } = usePMS();
+  const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
   const [paymentMode, setPaymentMode] = useState("Cash");
 
   const roomBills = bills.filter(
@@ -566,7 +571,7 @@ function CheckOutModal({
     ? Number(existingBill.roomCharges || 0)
     : Number(booking.totalAmount || 0);
   const miscTotal = miscList.reduce((s, m) => s + Number(m.amount), 0);
-  const restaurantTotal = restaurantList.reduce((s, o) => s + Number(o.totalAmount), 0);
+  const restaurantTotal = restaurantEnabled ? restaurantList.reduce((s, o) => s + Number(o.totalAmount), 0) : 0;
   const subTotal = roomCharge + miscTotal + restaurantTotal;
   const effectiveDailyRent = Math.max(0, roomCharge) / Math.max(nights, 1);
   const fallbackTaxRate = calculateRoomTax(effectiveDailyRent, 1).rate;
@@ -994,6 +999,7 @@ export function HotelDashboard() {
     (user as any)?.hotel?.gst_number ||
     (user as any)?.hotel?.gst ||
     "";
+  const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
   const hotelRating = Math.max(
     0,
     Math.min(
@@ -1176,20 +1182,29 @@ export function HotelDashboard() {
       >
         {/* Hotel Header row */}
         <div 
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-7 rounded-sm shadow-sm border"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 p-5 sm:p-7 rounded-sm shadow-sm border"
           style={{ background: "#1F2937", border: "1px solid #E5E1DA" }}
         >
-          <div className="min-w-0">
-            <h2
-              style={{
-                fontFamily: "Times New Roman, serif",
-                color: "#F9FAFB",
-                fontSize: "1.4rem",
-                marginBottom: "2px",
-              }}
-            >
-              {hotelName || "Hotel"}
-            </h2>
+            {/* Hotel Logo in Dashboard Header */}
+            <div className="hidden sm:flex w-16 h-16 items-center justify-center flex-shrink-0 bg-white rounded-xl border border-white/10 p-2 shadow-lg">
+              <img
+                src={resolveLogoUrl(hotelData?.logoUrl)}
+                alt="Logo"
+                className="w-full h-full object-contain"
+                onError={handleLogoImageError}
+              />
+            </div>
+            <div className="min-w-0">
+              <h2
+                style={{
+                  fontFamily: "Times New Roman, serif",
+                  color: "#F9FAFB",
+                  fontSize: "1.4rem",
+                  marginBottom: "2px",
+                }}
+              >
+                {resolveBrandName(hotelData)}
+              </h2>
             {(locationText || hotelGst) && (
               <p className="text-sm" style={{ color: "#D1D5DB" }}>
                 {[locationText, hotelGst ? `GST: ${hotelGst}` : ""].filter(Boolean).join(" · ")}
@@ -1261,7 +1276,7 @@ export function HotelDashboard() {
           <StatCard
             label="Room Revenue"
             value={formatCurrency(todayRevenue)}
-            sub={formatCurrency(restaurantRevenue) + " restaurant"}
+            sub={restaurantEnabled ? formatCurrency(restaurantRevenue) + " restaurant" : undefined}
             icon={<IndianRupee className="w-5 h-5" />}
             color={T.gold}
           />
@@ -1510,7 +1525,7 @@ export function HotelDashboard() {
         </div>
 
         {/* Quick Actions + Active Bookings */}
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div
             className="rounded-2xl overflow-hidden"
             style={{ background: T.card, border: `1px solid ${T.border}` }}
@@ -1577,12 +1592,12 @@ export function HotelDashboard() {
                   path: "/hotel/reservations",
                   color: "#3b82f6",
                 },
-                {
+                ...(restaurantEnabled ? [{
                   label: "Restaurant POS",
                   icon: <UtensilsCrossed className="w-4 h-4" />,
                   path: "/hotel/restaurant/pos",
                   color: "#f59e0b",
-                },
+                }] : []),
                 {
                   label: "View Bills",
                   icon: <Receipt className="w-4 h-4" />,
