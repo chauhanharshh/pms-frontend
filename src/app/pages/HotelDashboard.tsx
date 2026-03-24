@@ -430,13 +430,12 @@ function RoomDetailPanel({
             {room.status === "vacant" && (
               <button
                 onClick={() => navigate("/hotel/check-in")}
-                className="w-full py-3 rounded-xl font-medium text-white text-sm"
+                className="w-full py-4 rounded-xl font-bold text-white text-sm active:scale-[0.98] transition-all shadow-md"
                 style={{
                   background: `linear-gradient(135deg, ${T.gold}, ${T.darkGold})`,
-                  boxShadow: "0 2px 8px #E5E1DA",
                 }}
               >
-                Process Check-In
+                PROCESS CHECK-IN
               </button>
             )}
             {room.status === "occupied" && booking && (
@@ -446,50 +445,48 @@ function RoomDetailPanel({
                     onCheckOut(booking);
                     onClose();
                   }}
-                  className="w-full py-3 rounded-xl font-medium text-white text-sm"
+                  className="w-full py-4 rounded-xl font-bold text-white text-sm active:scale-[0.98] transition-all shadow-md"
                   style={{
                     background: "linear-gradient(135deg, #dc2626, #b91c1c)",
-                    boxShadow: "0 2px 8px rgba(220,38,38,0.3)",
                   }}
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <LogOut className="w-4 h-4" /> Process Check-Out
+                    <LogOut className="w-5 h-5" /> PROCESS CHECK-OUT
                   </div>
                 </button>
                 <button
                   onClick={() => navigate("/hotel/restaurant/pos")}
-                  className="w-full py-2.5 rounded-xl font-medium text-sm"
+                  className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
                   style={{
-                    border: `1px solid ${T.border}`,
+                    border: `1.5px solid ${T.border}`,
                     color: T.darkGold,
-                    background: "#FFFFFF",
                   }}
                 >
-                  Add Restaurant Charges
+                  RESTAURANT CHARGES
                 </button>
                 <button
                   onClick={() => navigate("/hotel/misc-charges")}
-                  className="w-full py-2.5 rounded-xl font-medium text-sm"
-                  style={{ border: `1px solid ${T.border}`, color: T.darkGold }}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
+                  style={{ border: `1.5px solid ${T.border}`, color: T.darkGold }}
                 >
-                  Add Misc. Charges
+                  MISC. CHARGES
                 </button>
               </>
             )}
             {room.status === "cleaning" && (
-              <button
-                onClick={() => {
-                  onStatusChange(room.id, "vacant");
-                  onClose();
-                }}
-                className="w-full py-3 rounded-xl font-medium text-sm transition-colors duration-200 bg-[#B8860B] hover:bg-[#9A7209]"
-                style={{
-                  color: "#ffffff",
-                  border: "none",
-                }}
-              >
-                Mark Room Ready ✓
-              </button>
+                <button
+                  onClick={() => {
+                    onStatusChange(room.id, "vacant");
+                    onClose();
+                  }}
+                  className="w-full py-4 rounded-xl font-bold text-sm transition-colors duration-200 bg-[#B8860B] hover:bg-[#9A7209] active:scale-[0.98] shadow-md"
+                  style={{
+                    color: "#ffffff",
+                    border: "none",
+                  }}
+                >
+                  MARK ROOM READY ✓
+                </button>
             )}
             {room.status === "maintenance" && (
               <button
@@ -510,16 +507,16 @@ function RoomDetailPanel({
               </button>
             )}
             {room.status === "vacant" && (
-              <button
-                onClick={() => {
-                  onStatusChange(room.id, "maintenance");
-                  onClose();
-                }}
-                className="w-full py-2.5 rounded-xl font-medium text-sm"
-                style={{ border: `1px solid ${T.border}`, color: "#6d28d9" }}
-              >
-                Report Maintenance Issue
-              </button>
+                <button
+                  onClick={() => {
+                    onStatusChange(room.id, "maintenance");
+                    onClose();
+                  }}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
+                  style={{ border: `1.5px solid ${T.border}`, color: "#6d28d9" }}
+                >
+                  REPORT MAINTENANCE ISSUE
+                </button>
             )}
           </div>
         </div>
@@ -1177,15 +1174,12 @@ export function HotelDashboard() {
         className="space-y-5"
         style={{ fontFamily: "Georgia, Inter, sans-serif" }}
       >
-        {/* Hotel banner */}
-        <div
-          className="rounded-sm px-6 py-4 flex items-center justify-between"
-          style={{
-            background: "#1F2937",
-            border: `1px solid #E5E1DA`,
-          }}
+        {/* Hotel Header row */}
+        <div 
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-7 rounded-sm shadow-sm border"
+          style={{ background: "#1F2937", border: "1px solid #E5E1DA" }}
         >
-          <div>
+          <div className="min-w-0">
             <h2
               style={{
                 fontFamily: "Times New Roman, serif",
@@ -1201,12 +1195,12 @@ export function HotelDashboard() {
                 {[locationText, hotelGst ? `GST: ${hotelGst}` : ""].filter(Boolean).join(" · ")}
               </p>
             )}
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 sm:gap-4 mt-2 flex-wrap">
+              <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star
                     key={i}
-                    className="w-3.5 h-3.5"
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5"
                     fill={i <= hotelRating ? T.gold : "none"}
                     stroke={
                       i <= hotelRating
@@ -1217,28 +1211,30 @@ export function HotelDashboard() {
                 ))}
               </div>
               <span
-                className="text-xs"
+                className="text-[10px] sm:text-xs"
                 style={{ color: "#D1D5DB" }}
               >
                 CI: {hotelCheckIn || "N/A"} · CO: {hotelCheckOut || "N/A"}
               </span>
             </div>
           </div>
-          <div className="text-right">
-            <div
-              className="text-xs mb-1"
-              style={{ color: "#D1D5DB" }}
-            >
-              Occupancy
+          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-4 sm:gap-1.5 pt-4 sm:pt-0 border-t sm:border-0 border-white/10">
+            <div className="flex flex-col items-start sm:items-end">
+              <div
+                className="text-[10px] sm:text-xs"
+                style={{ color: "#D1D5DB" }}
+              >
+                Occupancy
+              </div>
+              <div
+                className="text-2xl sm:text-3xl font-bold"
+                style={{ color: T.gold, fontFamily: "Times New Roman, serif" }}
+              >
+                {occupancyPct}%
+              </div>
             </div>
             <div
-              className="text-3xl font-bold"
-              style={{ color: T.gold, fontFamily: "Times New Roman, serif" }}
-            >
-              {occupancyPct}%
-            </div>
-            <div
-              className="text-xs mt-1"
+              className="text-[10px] sm:text-xs text-right"
               style={{ color: "#D1D5DB" }}
             >
               {occupied}/{hotelRooms.length} rooms
@@ -1247,7 +1243,7 @@ export function HotelDashboard() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Occupied Rooms"
             value={occupied}
@@ -1279,7 +1275,7 @@ export function HotelDashboard() {
         </div>
 
         {/* Status filter buttons */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {(
             [
               {
@@ -1313,19 +1309,19 @@ export function HotelDashboard() {
               onClick={() =>
                 setFilterStatus(f.status === filterStatus ? "all" : f.status)
               }
-              className="rounded-xl py-3 px-4 text-left transition-all"
+              className="rounded-xl py-3 px-3 sm:px-4 text-left transition-all"
               style={{
                 background: filterStatus === f.status ? f.color + "15" : T.card,
                 border: `1.5px solid ${filterStatus === f.status ? f.color : T.border}`,
               }}
             >
               <div
-                className="text-xl font-bold"
+                className="text-lg sm:text-xl font-bold"
                 style={{ color: f.color, fontFamily: "Times New Roman, serif" }}
               >
                 {f.count}
               </div>
-              <div className="text-xs mt-0.5" style={{ color: T.sub }}>
+              <div className="text-[10px] sm:text-xs mt-0.5" style={{ color: T.sub }}>
                 {f.label}
               </div>
             </button>
@@ -1342,7 +1338,7 @@ export function HotelDashboard() {
           }}
         >
           <div
-            className="px-5 py-4 flex items-center justify-between"
+            className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
             style={{
               background: "#FFFFFF",
               borderBottom: `2px solid ${T.border}`,
@@ -1361,8 +1357,8 @@ export function HotelDashboard() {
                 Live Room Panel — {filteredRooms.length} rooms
               </h3>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+              <div className="relative flex-1 sm:flex-none min-w-[120px]">
                 <Search
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
                   style={{ color: T.gold }}
@@ -1371,7 +1367,7 @@ export function HotelDashboard() {
                   value={roomSearch}
                   onChange={(e) => setRoomSearch(e.target.value)}
                   placeholder="Search room / guest…"
-                  className="pl-9 pr-3 py-2 rounded-lg text-xs outline-none w-48"
+                  className="pl-9 pr-3 py-2 rounded-lg text-xs outline-none w-full sm:w-48"
                   style={{
                     border: `1.5px solid ${T.border}`,
                     background: "white",
@@ -1385,39 +1381,39 @@ export function HotelDashboard() {
                     e.target.value === "all" ? "all" : +e.target.value,
                   )
                 }
-                className="px-3 py-2 rounded-lg text-xs outline-none"
+                className="px-2 py-2 rounded-lg text-xs outline-none min-w-[70px] sm:min-w-0"
                 style={{
                   border: `1.5px solid ${T.border}`,
                   background: "white",
                   color: T.text,
                 }}
               >
-                <option value="all">All Floors</option>
+                <option value="all">Floor (A)</option>
                 {floors.map((f) => (
                   <option key={f} value={f}>
-                    Floor {f}
+                    F{f}
                   </option>
                 ))}
               </select>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="px-3 py-2 rounded-lg text-xs outline-none"
+                className="px-2 py-2 rounded-lg text-xs outline-none min-w-[70px] sm:min-w-0"
                 style={{
                   border: `1.5px solid ${T.border}`,
                   background: "white",
                   color: T.text,
                 }}
               >
-                <option value="all">All Types</option>
+                <option value="all">Type (A)</option>
                 {types.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {t.length > 5 ? t.slice(0, 5) + "…" : t}
                   </option>
                 ))}
               </select>
               <button
-                className="p-2 rounded-lg"
+                className="p-2 rounded-lg hidden sm:block"
                 title="Refresh"
                 style={{
                   border: `1.5px solid ${T.border}`,

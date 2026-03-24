@@ -136,6 +136,7 @@ export interface Booking {
   businessSource?: string;
   vehicleDetails?: string;
   remarks?: string;
+  roomPrice?: number;
   createdAt?: string;
   updatedAt?: string;
 }

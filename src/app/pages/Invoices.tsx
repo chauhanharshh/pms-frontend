@@ -11,6 +11,7 @@ import {
 } from "../utils/format";
 import { Receipt, Plus, Eye, Printer, X, Check, CreditCard, Download, Search } from "lucide-react";
 import { InvoiceModal } from "../components/InvoiceModal";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const GOLD = "var(--accent-color, #C6A75E)";
 const DARKGOLD = "var(--primary, #A8832D)";
@@ -139,6 +140,7 @@ export function Invoices() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [genForm, setGenForm] = useState({ billId: "", guestAddress: "" });
   const [searchQuery, setSearchQuery] = useState("");
+  const isMobile = useMediaQuery("(max-width: 1024px)");
 
   const [searchParams] = useSearchParams();
   const paramBookingId = searchParams.get("bookingId");
@@ -383,172 +385,104 @@ export function Invoices() {
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   {/* Export/Print buttons — above table only */}
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px' }}>
-                    <button
-                      onClick={() => {
-                        const csvData = filteredInvoices.map(inv => {
-                          // Use getInvoiceDisplayFields for guest/room/checkin/checkout
-                          const displayFields = getInvoiceDisplayFields(inv);
-                          // Hotel name
-                          const hotelName = hotels.find((h) => String(h.id) === String(inv.hotelId) || String((h)._id) === String(inv.hotelId))?.name || '';
-                          // Tax calculation
-                          let tax = 0;
-                          if (typeof inv.cgst === 'number' && typeof inv.sgst === 'number') {
-                            tax = inv.cgst + inv.sgst;
-                          } else if (!isNaN(Number(inv.cgst)) && !isNaN(Number(inv.sgst))) {
-                            tax = Number(inv.cgst) + Number(inv.sgst);
-                          }
-                          return {
-                            'Invoice No': inv.invoiceNumber || '-',
-                            'Guest Name': displayFields.guestName || '-',
-                            'Room No': displayFields.roomNumber || '-',
-                            'Hotel': hotelName || '-',
-                            'Check-In': displayFields.checkIn !== 'N/A' ? displayFields.checkIn : '-',
-                            'Check-Out': displayFields.checkOut !== 'N/A' ? displayFields.checkOut : '-',
-                            'Subtotal (₹)': inv.subtotal || 0,
-                            'Tax (₹)': tax,
-                            'Total (₹)': inv.totalAmount || 0,
-                            'Status': inv.status || '-',
-                            'Invoice Date': inv.invoiceDate
-                              ? new Date(inv.invoiceDate).toLocaleDateString('en-IN')
-                              : (inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-IN') : '-')
-                          };
-                        });
-                        exportToCSV(csvData, 'invoices');
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '8px 16px',
-                        background: '#ffffff',
-                        border: '1px solid #B8860B',
-                        borderRadius: '8px',
-                        color: '#B8860B',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      📥 Export CSV
-                    </button>
-                    <button
-                      onClick={() => printTable('invoices-table', 'Invoices Report')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '8px 16px',
-                        background: '#B8860B',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: '#ffffff',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      🖨️ Print
-                    </button>
-                  </div>
+                  {!isMobile && (
+                    <div className="flex gap-2 justify-end mb-3 pr-6">
+                      <button
+                        onClick={() => {
+                          const csvData = filteredInvoices.map(inv => {
+                            const displayFields = getInvoiceDisplayFields(inv);
+                            const hotelName = hotels.find((h) => String(h.id) === String(inv.hotelId) || String((h as any)._id) === String(inv.hotelId))?.name || '';
+                            let tax = 0;
+                            if (typeof inv.cgst === 'number' && typeof inv.sgst === 'number') {
+                              tax = inv.cgst + inv.sgst;
+                            } else if (!isNaN(Number(inv.cgst)) && !isNaN(Number(inv.sgst))) {
+                              tax = Number(inv.cgst) + Number(inv.sgst);
+                            }
+                            return {
+                              'Invoice No': inv.invoiceNumber || '-',
+                              'Guest Name': displayFields.guestName || '-',
+                              'Room No': displayFields.roomNumber || '-',
+                              'Hotel': hotelName || '-',
+                              'Check-In': displayFields.checkIn !== 'N/A' ? displayFields.checkIn : '-',
+                              'Check-Out': displayFields.checkOut !== 'N/A' ? displayFields.checkOut : '-',
+                              'Subtotal (₹)': inv.subtotal || 0,
+                              'Tax (₹)': tax,
+                              'Total (₹)': inv.totalAmount || 0,
+                              'Status': inv.status || '-',
+                              'Invoice Date': inv.invoiceDate
+                                ? new Date(inv.invoiceDate).toLocaleDateString('en-IN')
+                                : (inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('en-IN') : '-')
+                            };
+                          });
+                          exportToCSV(csvData, 'invoices');
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors"
+                        style={{ background: '#ffffff', border: `1.5px solid ${GOLD}`, color: DARKGOLD }}
+                      >
+                        <Download className="w-4 h-4" /> Export CSV
+                      </button>
+                      <button
+                        onClick={() => printTable('invoices-table', 'Invoices Report')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors text-white"
+                        style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
+                      >
+                        <Printer className="w-4 h-4" /> Print
+                      </button>
+                    </div>                  )}
+
           <div className="relative flex-1 sm:max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm outline-none"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm outline-none shadow-sm transition-all focus:ring-2 focus:ring-amber-200"
               style={{ border: "2px solid #E5E1DA", background: "white" }}
-              placeholder="Search by Guest Name, Invoice No, Room, Date..."
+              placeholder="Search guest, room, invoice…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            {searchQuery.trim() && (
+          </div>
+          <div className="flex items-center gap-2">
+            <div ref={statusDropdownRef} className="relative flex-1 sm:w-[150px]">
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-gray-700"
-                aria-label="Clear search"
+                onClick={() => setIsStatusDropdownOpen((open) => !open)}
+                className="w-full rounded-xl px-4 py-2.5 pr-9 text-sm text-gray-800 cursor-pointer shadow-sm border border-amber-600/30 bg-white flex items-center justify-between"
               >
-                <X className="w-4 h-4" />
+                <span>{selectedStatusLabel}</span>
+                <span className="text-amber-600 text-[10px]">▼</span>
               </button>
-            )}
-          </div>
-          <div ref={statusDropdownRef} className="relative w-full sm:w-[150px] min-w-[150px]">
-            <button
-              type="button"
-              onClick={() => setIsStatusDropdownOpen((open) => !open)}
-              className="w-full rounded-xl px-4 py-2.5 pr-9 text-sm text-gray-800 cursor-pointer shadow-sm transition-all hover:border-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-600/20"
-              style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #c9a84c",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "8px",
-              }}
-              aria-haspopup="listbox"
-              aria-expanded={isStatusDropdownOpen}
-            >
-              <span>{selectedStatusLabel}</span>
-              <span style={{ color: "#c9a84c", fontSize: "12px", lineHeight: 1 }}>▼</span>
-            </button>
-
-            {isStatusDropdownOpen && (
-              <div
-                className="absolute left-0 mt-1 overflow-hidden rounded-xl"
-                style={{
-                  zIndex: 999,
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #c9a84c",
-                  minWidth: "150px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                }}
-                role="listbox"
-              >
-                {statusOptions.map((option) => {
-                  const isSelected = statusFilter === option.value;
-                  return (
+              {isStatusDropdownOpen && (
+                <div className="absolute left-0 mt-1 w-full bg-white border border-amber-600/20 rounded-xl shadow-xl z-50 overflow-hidden">
+                  {statusOptions.map((option) => (
                     <button
                       key={option.value}
-                      type="button"
                       onClick={() => {
                         setStatusFilter(option.value);
                         setIsStatusDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                      style={{
-                        color: isSelected ? "#ffffff" : "#1a1a1a",
-                        backgroundColor: isSelected ? "#c9a84c" : "transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) e.currentTarget.style.backgroundColor = "#fdf3dc";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
-                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm ${statusFilter === option.value ? "bg-amber-600 text-white" : "hover:bg-amber-50"}`}
                     >
                       {option.label}
                     </button>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {isAdmin && (
+              <select
+                className="px-3 py-2.5 rounded-xl text-sm outline-none flex-1 sm:w-[150px] border-2 border-[#E5E1DA] bg-white"
+                value={hotelNameFilter}
+                onChange={(e) => setHotelNameFilter(e.target.value)}
+              >
+                <option value="all">Hotels (All)</option>
+                {uniqueHotels.map((hotelName) => (
+                  <option key={hotelName} value={hotelName}>
+                    {hotelName}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
-          {isAdmin && (
-            <select
-              className="px-3 py-2.5 rounded-xl text-sm outline-none w-full sm:w-[150px]"
-              style={{ border: "2px solid #E5E1DA", background: "white" }}
-              value={hotelNameFilter}
-              onChange={(e) => setHotelNameFilter(e.target.value)}
-            >
-              <option value="all">All Hotels</option>
-              {uniqueHotels.map((hotelName) => (
-                <option key={hotelName} value={hotelName}>
-                  {hotelName}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
 
         {/* Table */}
@@ -576,111 +510,57 @@ export function Invoices() {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr style={{ background: "#FFFFFF" }}>
-                  {[
-                    "Invoice No",
-                    "Guest",
-                    "Room",
-                    "Hotel",
-                    "Check-in",
-                    "Check-out",
-                    "Subtotal",
-                    "Tax",
-                    "Total",
-                    "Status",
-                    "Actions",
-                  ].map((col) => (
-                    <th
-                      key={col}
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                      style={{
-                        color: DARKGOLD,
-                        borderBottom: "2px solid #E5E1DA",
-                      }}
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvoices.map((inv: any) => {
-                  const displayFields = getInvoiceDisplayFields(inv);
-                  return (
-                    <tr
-                      key={inv.id}
-                      style={{ borderBottom: "1px solid rgba(184,134,11,0.07)" }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#FFFFFF")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "white")
-                      }
-                    >
-                      <td
-                        className="px-4 py-3 text-sm font-mono font-semibold"
-                        style={{ color: GOLD }}
-                      >
-                        {inv.invoiceNumber}
-                      </td>
-                      <td
-                        className="px-4 py-3 text-sm font-medium"
-                        style={{ color: "#1F2937" }}
-                      >
-                        {displayFields.guestName}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{displayFields.roomNumber}</td>
-                      <td
-                        className="px-4 py-3 text-xs"
-                        style={{ color: "#6B7280" }}
-                      >
-                        {hotels.find((h) =>
-                          String(h.id) === String(inv.hotelId) ||
-                          String((h as any)._id) === String(inv.hotelId)
-                        )?.name || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {displayFields.checkIn}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {displayFields.checkOut}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {formatCurrency(Number(inv.subtotal))}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {formatCurrency(Number(inv.cgst) + Number(inv.sgst) + Number(inv.igst))}
-                      </td>
-                      <td
-                        className="px-4 py-3 text-sm font-bold"
-                        style={{ color: GOLD }}
-                      >
-                        {formatCurrency(Number(inv.totalAmount))}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="px-2 py-0.5 rounded-full text-xs font-medium"
-                          style={{
-                            background:
-                              inv.status === "paid" ? "#dcfce7" : "#fef2f2",
-                            color:
-                              inv.status === "paid" ? "#166534" : "#991b1b",
-                          }}
-                        >
-                          {inv.status === "paid" ? "PAID" : "UNPAID"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+            {isMobile ? (
+              <div className="divide-y divide-gray-100">
+                {filteredInvoices.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-gray-400">
+                    No invoices found
+                  </div>
+                ) : (
+                  filteredInvoices.map((inv: any) => {
+                    const displayFields = getInvoiceDisplayFields(inv);
+                    return (
+                      <div key={inv.id} className="p-4 active:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="font-bold text-gray-900">{displayFields.guestName}</div>
+                            <div className="text-[11px] text-gray-500 mt-0.5 font-mono uppercase tracking-wider">
+                              {inv.invoiceNumber} · Room {displayFields.roomNumber}
+                            </div>
+                          </div>
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                            style={{
+                              background: inv.status === "paid" ? "#dcfce7" : "#fef2f2",
+                              color: inv.status === "paid" ? "#166534" : "#991b1b",
+                            }}
+                          >
+                            {inv.status === "paid" ? "PAID" : "UNPAID"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="bg-gray-50 p-2 rounded-lg">
+                            <div className="text-[10px] text-gray-400 font-medium uppercase mb-1">Stay Duration</div>
+                            <div className="text-[11px] text-gray-700 font-bold">
+                              {displayFields.checkIn} - {displayFields.checkOut}
+                            </div>
+                          </div>
+                          <div className="bg-amber-50/50 p-2 rounded-lg text-right">
+                            <div className="text-[10px] text-amber-600/70 font-medium uppercase mb-1">Total Bill</div>
+                            <div className="text-[13px] text-amber-700 font-bold">
+                              {formatCurrency(Number(inv.totalAmount))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-50">
                           {inv.status !== "paid" && (
                             <button
                               onClick={() => setPayTarget(inv)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                              style={{ background: "#16a34a" }}
+                              className="bg-green-600 px-5 py-3 rounded-xl text-sm font-bold text-white shadow-md flex items-center gap-2 active:scale-95 transition-all"
                             >
-                              Pay
+                              <CreditCard className="w-4 h-4" /> PAY NOW
                             </button>
                           )}
                           <button
@@ -705,29 +585,170 @@ export function Invoices() {
                                 },
                               } as any);
                             }}
-                            className="p-1.5 rounded-lg transition-colors hover:bg-blue-50"
-                            style={{ color: "#3b82f6" }}
+                            className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-blue-600 border border-blue-100 shadow-sm flex items-center gap-2 active:scale-95 transition-all"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4 h-4" /> VIEW
                           </button>
                         </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ) : (
+              <table className="w-full" id="invoices-table">
+                <thead>
+                  <tr style={{ background: "#FFFFFF" }}>
+                    {[
+                      "Invoice No",
+                      "Guest",
+                      "Room",
+                      "Hotel",
+                      "Check-in",
+                      "Check-out",
+                      "Subtotal",
+                      "Tax",
+                      "Total",
+                      "Status",
+                      "Actions",
+                    ].map((col) => (
+                      <th
+                        key={col}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
+                        style={{
+                          color: DARKGOLD,
+                          borderBottom: "2px solid #E5E1DA",
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInvoices.map((inv: any) => {
+                    const displayFields = getInvoiceDisplayFields(inv);
+                    return (
+                      <tr
+                        key={inv.id}
+                        style={{ borderBottom: "1px solid rgba(184,134,11,0.07)" }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#FFFFFF")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "white")
+                        }
+                      >
+                        <td
+                          className="px-4 py-3 text-sm font-mono font-semibold"
+                          style={{ color: GOLD }}
+                        >
+                          {inv.invoiceNumber}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm font-medium"
+                          style={{ color: "#1F2937" }}
+                        >
+                          {displayFields.guestName}
+                        </td>
+                        <td className="px-4 py-3 text-sm">{displayFields.roomNumber}</td>
+                        <td
+                          className="px-4 py-3 text-xs"
+                          style={{ color: "#6B7280" }}
+                        >
+                          {hotels.find((h) =>
+                            String(h.id) === String(inv.hotelId) ||
+                            String((h as any)._id) === String(inv.hotelId)
+                          )?.name || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {displayFields.checkIn}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {displayFields.checkOut}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatCurrency(Number(inv.subtotal))}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatCurrency(Number(inv.cgst) + Number(inv.sgst) + Number(inv.igst))}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm font-bold"
+                          style={{ color: GOLD }}
+                        >
+                          {formatCurrency(Number(inv.totalAmount))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{
+                              background:
+                                inv.status === "paid" ? "#dcfce7" : "#fef2f2",
+                              color:
+                                inv.status === "paid" ? "#166534" : "#991b1b",
+                            }}
+                          >
+                            {inv.status === "paid" ? "PAID" : "UNPAID"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {inv.status !== "paid" && (
+                              <button
+                                onClick={() => setPayTarget(inv)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                                style={{ background: "#16a34a" }}
+                              >
+                                Pay
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                const matchedHotel = hotels.find((h: any) =>
+                                  String(h.id) === String(inv.hotelId) ||
+                                  String(h._id) === String(inv.hotelId)
+                                );
+                                const matchedBill = bills.find((b: any) => String(b.id) === String(inv.billId));
+                                const matchedBooking = bookings.find(
+                                  (b: any) =>
+                                    String(b.id) === String((inv as any)?.bill?.bookingId || matchedBill?.bookingId || displayFields.booking?.id)
+                                );
+
+                                setViewInvoice({
+                                  ...inv,
+                                  hotel: matchedHotel || (inv as any).hotel || null,
+                                  guestAddress: (inv as any)?.guestAddress || (matchedBooking as any)?.address || (matchedBooking as any)?.addressLine || "",
+                                  bill: {
+                                    ...(inv as any)?.bill,
+                                    booking: (inv as any)?.bill?.booking || matchedBooking || null,
+                                  },
+                                } as any);
+                              }}
+                              className="p-1.5 rounded-lg transition-colors hover:bg-blue-50"
+                              style={{ color: "#3b82f6" }}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredInvoices.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={11}
+                        className="py-12 text-center text-sm"
+                        style={{ color: "#9CA3AF" }}
+                      >
+                        No invoices found
                       </td>
                     </tr>
-                  );
-                })}
-                {filteredInvoices.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={11}
-                      className="py-12 text-center text-sm"
-                      style={{ color: "#9CA3AF" }}
-                    >
-                      No invoices found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

@@ -17,9 +17,13 @@ import {
   Trash2,
   Save,
   Eye,
+  Download,
+  Printer,
 } from "lucide-react";
 import { BookingPreviewModal } from "../components/BookingPreviewModal";
 import { Room, Booking } from "../contexts/PMSContext";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { BedDouble, Clock, Phone } from "lucide-react";
 
 const GOLD = "var(--accent-color, #C6A75E)";
 const DARKGOLD = "var(--primary, #A8832D)";
@@ -374,6 +378,7 @@ export function Bills() {
   const [adminHotelFilter, setAdminHotelFilter] = useState("all");
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
+  const isMobile = useMediaQuery("(max-width: 1024px)");
 
   useEffect(() => {
     console.log("Bill statuses:", bills.map((b: any) => b?.status));
@@ -429,10 +434,10 @@ export function Bills() {
     <AppLayout title="Bills Management">
       <div className="space-y-5 max-w-7xl">
         {/* Header Actions */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-48">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 sm:max-w-xs">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
               style={{ color: GOLD }}
             />
             <input
@@ -441,51 +446,49 @@ export function Bills() {
                 border: `2px solid #E5E1DA`,
                 background: "white",
               }}
-              placeholder="Search by guest name or room..."
+              placeholder="Search guest / room…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onFocus={(e) => (e.target.style.borderColor = GOLD)}
-              onBlur={(e) =>
-                (e.target.style.borderColor = "#E5E1DA")
-              }
             />
           </div>
-          <select
-            className="px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
-            style={{
-              border: "2px solid #E5E1DA",
-              background: "white",
-              color: DARKGOLD,
-            }}
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="all">All Status</option>
-            <option value="unpaid">Unpaid</option>
-            <option value="paid">Paid</option>
-          </select>
-          {isAdmin && (
+          <div className="flex items-center gap-2">
             <select
-              className="px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
+              className="px-3 py-2.5 rounded-xl text-sm outline-none appearance-none flex-1 sm:flex-none"
               style={{
                 border: "2px solid #E5E1DA",
                 background: "white",
                 color: DARKGOLD,
               }}
-              value={adminHotelFilter}
-              onChange={(e) => {
-                const val = e.target.value;
-                setAdminHotelFilter(val);
-              }}
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="all">All Hotels</option>
-              {hotels.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
+              <option value="all">Status (All)</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
             </select>
-          )}
+            {isAdmin && (
+              <select
+                className="px-3 py-2.5 rounded-xl text-sm outline-none appearance-none flex-1 sm:flex-none"
+                style={{
+                  border: "2px solid #E5E1DA",
+                  background: "white",
+                  color: DARKGOLD,
+                }}
+                value={adminHotelFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAdminHotelFilter(val);
+                }}
+              >
+                <option value="all">Hotels (All)</option>
+                {hotels.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
 
         {/* Bills Table */}
@@ -525,288 +528,322 @@ export function Bills() {
               </p>
             )}
           </div>
-          {/* Export/Print Buttons */}
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px' }}>
-            <button
-              onClick={() => {
-                const dataToExport = filtered.map((b: any) => {
-                  const hotelName = hotels.find((h: any) => h.id === b.hotelId)?.name || "—";
-                  return {
-                    "Guest Name": b.guestName || b.booking?.guestName || "—",
-                    "Room": b.roomNumber || b.booking?.roomNumber || "—",
-                    ...(isAdmin ? { "Hotel": hotelName } : {}),
-                    "Booking Ref": (b.booking?.id || b.bookingId || "").split("-").pop()?.toUpperCase() || "—",
-                    "Invoice No": b.invoice?.invoiceNumber || "—",
-                    "Room Charges": b.roomCharges,
-                    "Restaurant": b.restaurantCharges,
-                    "Misc": b.miscCharges,
-                    "Tax": b.taxAmount,
-                    "Total": b.totalAmount,
-                    "Paid": b.paidAmount,
-                    "Balance": b.balanceDue,
-                    "Status": b.status,
-                    "Date": b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-IN') : "—"
-                  };
-                });
-                exportToCSV(dataToExport, 'bills');
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 16px',
-                background: '#ffffff',
-                border: '1px solid #B8860B',
-                borderRadius: '8px',
-                color: '#B8860B',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-            >
-              📥 Export CSV
-            </button>
-            <button
-              onClick={() => printTable('bills-table', 'Bills Report')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 16px',
-                background: '#B8860B',
-                border: 'none',
-                borderRadius: '8px',
-                color: '#ffffff',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-            >
-              🖨️ Print
-            </button>
-          </div>
+          {!isMobile && (
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px', paddingRight: '24px' }}>
+              <button
+                onClick={() => {
+                  const dataToExport = filtered.map((b: any) => {
+                    const hotelName = hotels.find((h: any) => h.id === b.hotelId)?.name || "—";
+                    return {
+                      "Guest Name": b.guestName || b.booking?.guestName || "—",
+                      "Room": b.roomNumber || b.booking?.roomNumber || "—",
+                      ...(isAdmin ? { "Hotel": hotelName } : {}),
+                      "Booking Ref": (b.booking?.id || b.bookingId || "").split("-").pop()?.toUpperCase() || "—",
+                      "Invoice No": b.invoice?.invoiceNumber || "—",
+                      "Room Charges": b.roomCharges,
+                      "Restaurant": b.restaurantCharges,
+                      "Misc": b.miscCharges,
+                      "Tax": b.taxAmount,
+                      "Total": b.totalAmount,
+                      "Paid": b.paidAmount,
+                      "Balance": b.balanceDue,
+                      "Status": b.status,
+                      "Date": b.createdAt ? new Date(b.createdAt).toLocaleDateString('en-IN') : "—"
+                    };
+                  });
+                  exportToCSV(dataToExport, 'bills');
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors"
+                style={{
+                  background: '#ffffff',
+                  border: `1.5px solid ${GOLD}`,
+                  color: DARKGOLD,
+                }}
+              >
+                <Download className="w-4 h-4" /> Export CSV
+              </button>
+              <button
+                onClick={() => printTable('bills-table', 'Bills Report')}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors text-white"
+                style={{
+                  background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})`,
+                }}
+              >
+                <Printer className="w-4 h-4" /> Print
+              </button>
+            </div>
+          )}
           <div className="overflow-x-auto">
-            <table className="w-full" id="bills-table">
-              <thead>
-                <tr style={{ background: "#FFFFFF" }}>
-                  {[
-                    "Guest",
-                    "Room",
-                    isAdmin ? "Hotel" : null,
-                    "Room Charges",
-                    "Restaurant",
-                    "Misc",
-                    "Tax",
-                    "Total",
-                    "Paid",
-                    "Balance",
-                    "Status",
-                    "Actions",
-                  ]
-                    .filter(Boolean)
-                    .map((col) => (
-                      <th
-                        key={col!}
-                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                        style={{
-                          color: "#A8832D",
-                          borderBottom: "2px solid #E5E1DA",
-                        }}
-                      >
-                        {col}
-                      </th>
-                    ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((bill) => {
-                  const b = bill as any;
-                  const booking = bookings.find(bk => bk.id === b.bookingId);
-                  const guestName = booking?.guestName || b.guestName || "Unknown Guest";
-                  const roomNumber = booking?.room?.roomNumber || booking?.roomId?.slice(-4) || b.roomNumber || "N/A";
-                  const plan = booking?.plan || b.booking?.plan || "EP";
+            {isMobile ? (
+              <div className="divide-y divide-gray-100">
+                {filtered.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-gray-400">
+                    No bills found
+                  </div>
+                ) : (
+                  filtered.map((bill) => {
+                    const b = bill as any;
+                    const booking = bookings.find(bk => bk.id === b.bookingId);
+                    const guestName = booking?.guestName || b.guestName || "Unknown Guest";
+                    const roomNumber = booking?.room?.roomNumber || booking?.roomId?.slice(-4) || b.roomNumber || "N/A";
+                    
+                    const totalAmount = Number(b.totalAmount || 0);
+                    const paidAmount = Number(b.paidAmount || 0);
+                    const balance = Math.max(0, totalAmount - paidAmount);
 
-                  const hotelName = hotels.find(
-                    (h) => h.id === b.hotelId,
-                  )?.name;
+                    let displayStatus = "pending";
+                    if (balance <= 0 && paidAmount > 0) displayStatus = "paid";
+                    else if (paidAmount > 0) displayStatus = "partial";
 
-                  const firstPositiveNumber = (...values: any[]) => {
-                    for (const value of values) {
-                      const parsed = Number(value);
-                      if (Number.isFinite(parsed) && parsed > 0) return parsed;
-                    }
-                    return 0;
-                  };
-                  const nights = calculateStayDays(
-                    booking?.checkInDate || b.booking?.checkInDate || "",
-                    booking?.checkInTime || b.booking?.checkInTime || "12:00",
-                    booking?.checkOutDate || b.booking?.checkOutDate || "",
-                    booking?.checkOutTime || b.booking?.checkOutTime || "12:00",
-                  );
-                  const roomRate = firstPositiveNumber(
-                    booking?.roomRate,
-                    booking?.ratePerNight,
-                    booking?.customRate,
-                    booking?.pricePerNight,
-                    b?.booking?.roomRate,
-                    b?.booking?.ratePerNight,
-                    b?.roomRate,
-                    booking?.room?.basePrice,
-                    b?.booking?.room?.basePrice,
-                  );
-                  const computedRoomCharges = roomRate > 0 ? roomRate * nights : Number(b.roomCharges || 0);
-                  const computedTotalAmount =
-                    computedRoomCharges +
-                    Number(b.restaurantCharges || 0) +
-                    Number(b.miscCharges || 0) +
-                    Number(b.taxAmount || 0);
-                  const paidAmount = Number(b.paidAmount || 0);
-                  const totalAmountForBalance = computedTotalAmount;
-                  const balance = totalAmountForBalance - paidAmount;
-
-                  let balanceLabel = "";
-                  if (balance > 0) {
-                    const hasRoom = Number(b.roomCharges) > 0;
-                    const hasFood = Number(b.restaurantCharges) > 0;
-                    if (hasRoom && hasFood) balanceLabel = " (R&F)";
-                    else if (hasRoom) balanceLabel = " (Room)";
-                    else if (hasFood) balanceLabel = " (Food)";
-                  }
-
-                  const displayStatus = totalAmountForBalance <= paidAmount ? "paid" : "pending";
-
-                  return (
-                    <tr
-                      key={b.id}
-                      style={{
-                        borderBottom: "1px solid rgba(184,134,11,0.07)",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#FFFFFF")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "white")
-                      }
-                    >
-                      <td className="px-4 py-3">
-                        <div
-                          className="font-medium text-sm"
-                          style={{ color: "#1F2937" }}
-                        >
-                          {guestName}
+                    return (
+                      <div key={b.id} className="p-4 active:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="font-bold text-gray-900">{guestName}</div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              {utilFormatDate(b.createdAt)} · Room {roomNumber}
+                            </div>
+                          </div>
+                          {statusBadge(displayStatus as any)}
                         </div>
-                        <div className="text-xs" style={{ color: "#9CA3AF" }}>
-                          {utilFormatDate(b.createdAt)}
+                        
+                        <div className="flex items-center justify-between text-[11px] mb-4">
+                          <div className="bg-gray-50 px-2 py-1 rounded">
+                            <span className="text-gray-400 font-medium">TOTAL: </span>
+                            <span className="text-gray-900 font-bold">{utilFormatCurrency(totalAmount)}</span>
+                          </div>
+                          <div className="bg-green-50 px-2 py-1 rounded">
+                            <span className="text-green-600/70 font-medium">PAID: </span>
+                            <span className="text-green-700 font-bold">{utilFormatCurrency(paidAmount)}</span>
+                          </div>
+                          <div className={`${balance > 0 ? "bg-red-50" : "bg-green-50"} px-2 py-1 rounded`}>
+                            <span className={`${balance > 0 ? "text-red-500" : "text-green-600"} font-medium uppercase text-[9px] tracking-wider`}>Balance: </span>
+                            <span className={`${balance > 0 ? "text-red-700" : "text-green-700"} font-bold`}>{utilFormatCurrency(balance)}</span>
+                          </div>
                         </div>
-                        <div className="text-xs" style={{ color: "#9CA3AF" }}>
-                          Plan: {plan}
-                        </div>
-                      </td>
-                      <td
-                        className="px-4 py-3 text-sm font-semibold"
-                        style={{ color: DARKGOLD }}
-                      >
-                        Room {String(roomNumber)}
-                      </td>
-                      {isAdmin && (
-                        <td
-                          className="px-4 py-3 text-xs"
-                          style={{ color: "#6B7280" }}
-                        >
-                          {hotelName}
-                        </td>
-                      )}
-                      <td className="px-4 py-3 text-sm">
-                        {utilFormatCurrency(bill.roomCharges)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {utilFormatCurrency(bill.restaurantCharges)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {utilFormatCurrency(bill.miscCharges)}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {utilFormatCurrency(bill.taxAmount)}
-                      </td>
-                      <td
-                        className="px-4 py-3 text-sm font-bold"
-                        style={{ color: GOLD }}
-                      >
-                        {utilFormatCurrency(bill.totalAmount)}
-                      </td>
-                      <td
-                        className="px-4 py-3 text-sm"
-                        style={{ color: "#16a34a" }}
-                      >
-                        {utilFormatCurrency(bill.paidAmount)}
-                      </td>
-                      <td
-                        className="px-4 py-3 text-sm font-bold"
-                        style={{ color: balance > 0 ? "#dc2626" : "#16a34a" }}
-                      >
-                        {utilFormatCurrency(balance)}
-                        {balanceLabel && (
-                          <span className="text-[10px] ml-1 opacity-80">{balanceLabel}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">{statusBadge(displayStatus as any)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-50">
                           <button
                             onClick={() => {
                               const booking = bookings.find(bk => bk.id === b.bookingId);
-                              if (booking) {
-                                setPreviewBooking(booking);
-                              } else {
-                                alert("Original booking details not found for this bill.");
-                              }
+                              if (booking) setPreviewBooking(booking);
                             }}
-                            className="p-1.5 rounded-lg transition-colors"
-                            style={{ color: "#3b82f6" }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.background = "#eff6ff")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.background = "transparent")
-                            }
+                            className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-blue-600 border border-blue-100 shadow-md flex items-center gap-2 active:scale-95 transition-all"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4 h-4" /> VIEW
                           </button>
                           {isAdmin && (
                             <button
                               onClick={() => setEditingBill(bill)}
-                              className="p-1.5 rounded-lg transition-colors"
-                              style={{ color: GOLD }}
-                              onMouseEnter={(e) =>
-                              (e.currentTarget.style.background =
-                                "rgba(221, 215, 204,0.1)")
-                              }
-                              onMouseLeave={(e) =>
-                              (e.currentTarget.style.background =
-                                "transparent")
-                              }
+                              className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-amber-600 border border-amber-100 shadow-md flex items-center gap-2 active:scale-95 transition-all"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-4 h-4" /> EDIT
                             </button>
                           )}
                         </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ) : (
+              <table className="w-full" id="bills-table">
+                <thead>
+                  <tr style={{ background: "#FFFFFF" }}>
+                    {[
+                      "Guest",
+                      "Room",
+                      isAdmin ? "Hotel" : null,
+                      "Room Charges",
+                      "Restaurant",
+                      "Misc",
+                      "Tax",
+                      "Total",
+                      "Paid",
+                      "Balance",
+                      "Status",
+                      "Actions",
+                    ]
+                      .filter(Boolean)
+                      .map((col) => (
+                        <th
+                          key={col!}
+                          className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider"
+                          style={{
+                            color: "#A8832D",
+                            borderBottom: "2px solid #E5E1DA",
+                          }}
+                        >
+                          {col}
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((bill) => {
+                    const b = bill as any;
+                    const booking = bookings.find(bk => bk.id === b.bookingId);
+                    const guestName = booking?.guestName || b.guestName || "Unknown Guest";
+                    const roomNumber = booking?.room?.roomNumber || booking?.roomId?.slice(-4) || b.roomNumber || "N/A";
+                    const plan = booking?.plan || b.booking?.plan || "EP";
+
+                    const hotelName = hotels.find(
+                      (h) => h.id === b.hotelId,
+                    )?.name;
+
+                    const totalAmount = Number(b.totalAmount || 0);
+                    const paidAmount = Number(b.paidAmount || 0);
+                    const balance = Math.max(0, totalAmount - paidAmount);
+
+                    let balanceLabel = "";
+                    if (balance > 0) {
+                      const hasRoom = Number(b.roomCharges) > 0;
+                      const hasFood = Number(b.restaurantCharges) > 0;
+                      if (hasRoom && hasFood) balanceLabel = " (R&F)";
+                      else if (hasRoom) balanceLabel = " (Room)";
+                      else if (hasFood) balanceLabel = " (Food)";
+                    }
+
+                    let displayStatus = "pending";
+                    if (balance <= 0 && paidAmount > 0) {
+                      displayStatus = "paid";
+                    } else if (paidAmount > 0) {
+                      displayStatus = "partial";
+                    }
+
+                    return (
+                      <tr
+                        key={b.id}
+                        style={{
+                          borderBottom: "1px solid rgba(184,134,11,0.07)",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#FFFFFF")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "white")
+                        }
+                      >
+                        <td className="px-4 py-3">
+                          <div
+                            className="font-medium text-sm"
+                            style={{ color: "#1F2937" }}
+                          >
+                            {guestName}
+                          </div>
+                          <div className="text-xs" style={{ color: "#9CA3AF" }}>
+                            {utilFormatDate(b.createdAt)}
+                          </div>
+                          <div className="text-xs" style={{ color: "#9CA3AF" }}>
+                            Plan: {plan}
+                          </div>
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm font-semibold"
+                          style={{ color: DARKGOLD }}
+                        >
+                          Room {String(roomNumber)}
+                        </td>
+                        {isAdmin && (
+                          <td
+                            className="px-4 py-3 text-xs"
+                            style={{ color: "#6B7280" }}
+                          >
+                            {hotelName}
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-sm">
+                          {utilFormatCurrency(bill.roomCharges)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {utilFormatCurrency(bill.restaurantCharges)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {utilFormatCurrency(bill.miscCharges)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {utilFormatCurrency(bill.taxAmount)}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm font-bold"
+                          style={{ color: GOLD }}
+                        >
+                          {utilFormatCurrency(totalAmount)}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm"
+                          style={{ color: "#16a34a" }}
+                        >
+                          {utilFormatCurrency(paidAmount)}
+                        </td>
+                        <td
+                          className="px-4 py-3 text-sm font-bold"
+                          style={{ color: balance > 0 ? "#dc2626" : "#16a34a" }}
+                        >
+                          {utilFormatCurrency(balance)}
+                          {balanceLabel && (
+                            <span className="text-[10px] ml-1 opacity-80">{balanceLabel}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">{statusBadge(displayStatus as any)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                const booking = bookings.find(bk => bk.id === b.bookingId);
+                                if (booking) {
+                                  setPreviewBooking(booking);
+                                } else {
+                                  alert("Original booking details not found for this bill.");
+                                }
+                              }}
+                              className="p-1.5 rounded-lg transition-colors"
+                              style={{ color: "#3b82f6" }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.background = "#eff6ff")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.background = "transparent")
+                              }
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingBill(bill)}
+                                className="p-1.5 rounded-lg transition-colors"
+                                style={{ color: GOLD }}
+                                onMouseEnter={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(221, 215, 204,0.1)")
+                                }
+                                onMouseLeave={(e) =>
+                                (e.currentTarget.style.background =
+                                  "transparent")
+                                }
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={11}
+                        className="px-4 py-12 text-center text-sm"
+                        style={{ color: "#9CA3AF" }}
+                      >
+                        No bills found
                       </td>
                     </tr>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={11}
-                      className="px-4 py-12 text-center text-sm"
-                      style={{ color: "#9CA3AF" }}
-                    >
-                      No bills found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 

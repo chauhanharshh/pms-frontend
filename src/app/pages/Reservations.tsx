@@ -25,6 +25,7 @@ const emptyBooking = (hotelId: string): Omit<Booking, "id"> => ({
   children: 0,
   totalAmount: 0,
   advanceAmount: 0,
+  roomPrice: 0,
   status: "pending",
   source: "reservation",
   idProof: "",
@@ -91,27 +92,25 @@ export function Reservations() {
   const handleRoomSelect = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return;
-    const nights = form.checkOutDate
-      ? calculateRoomDays(form.checkInDate, form.checkOutDate)
-      : 1;
     setForm((f) => ({
       ...f,
       roomId,
       roomNumber: room.roomNumber,
-      totalAmount: Number(room.basePrice) * nights,
+      // Manual entry required - do not auto-fill roomPrice or totalAmount
     }));
   };
 
-  const recalcTotal = (checkIn: string, checkOut: string) => {
+  const recalcTotal = (checkIn: string, checkOut: string, price?: number) => {
     const room = rooms.find((r) => r.id === form.roomId);
     if (!room || !checkIn || !checkOut) return;
     const nights = calculateRoomDays(checkIn, checkOut);
-    setForm((f) => ({ ...f, totalAmount: Number(room.basePrice) * nights }));
+    const p = price !== undefined ? price : ((form as any).roomPrice || 0);
+    setForm((f) => ({ ...f, totalAmount: p * nights }));
   };
 
   const handleSave = async () => {
-    if (!form.guestName || !form.roomId || !form.checkOutDate) {
-      alert("Please fill in all required fields (Guest Name, Room, and Check-out Date)");
+    if (!form.guestName || !form.roomId || !form.checkOutDate || !form.roomPrice) {
+      alert("Please fill in all required fields (Guest Name, Room, Room Price, and Check-out Date)");
       return;
     }
 
@@ -533,10 +532,30 @@ export function Reservations() {
                     <option value="">-- Choose room --</option>
                     {availableRooms.map((r) => (
                       <option key={r.id} value={r.id}>
-                        Room {r.roomNumber} — {r.roomType?.name} (₹{r.basePrice}/night)
+                        Room {r.roomNumber} — {r.roomType?.name}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    style={{ color: DARKGOLD }}
+                  >
+                    Room Price (Manual Entry)
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2.5 rounded-lg outline-none"
+                    style={{ border: "2px solid #E5E1DA" }}
+                    value={(form as any).roomPrice || ""}
+                    onChange={(e) => {
+                      const newPrice = parseFloat(e.target.value) || 0;
+                      setForm(f => ({ ...f, roomPrice: newPrice } as any));
+                      recalcTotal(form.checkInDate, form.checkOutDate, newPrice);
+                    }}
+                    placeholder="Enter manual price..."
+                  />
                 </div>
                 <div>
                   <label

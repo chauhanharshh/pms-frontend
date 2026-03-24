@@ -8,6 +8,7 @@ import { TopNavbar } from "./TopNavbar";
 import { usePMS } from "../contexts/PMSContext";
 import { QRScannerModal } from "../components/QRScannerModal";
 import { QRScanResultModal } from "../components/QRScanResultModal";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 interface AppLayoutProps {
   title: string;
@@ -61,6 +62,13 @@ export function AppLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 1024px)");
+
+  useEffect(() => {
+    // Close mobile menu on route change
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (loading) return;
@@ -131,29 +139,52 @@ export function AppLayout({
   if (requiredRole === "hotel" && !isHotelRole(user.role)) return null;
   if (requiredRole === "superadmin" && !isSuperAdminRole(user.role)) return null;
 
+  const SidebarComponent = user.role === "admin" ? AdminSidebar : HotelSidebar;
+
   return (
     <div
       className="flex h-full overflow-hidden"
       style={{ background: "#FAF7F2" }}
     >
-      {user.role === "admin" ? (
-        <AdminSidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((prev) => !prev)}
-        />
-      ) : (
-        <HotelSidebar
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <SidebarComponent
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((prev) => !prev)}
         />
       )}
+
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <>
+          {/* Backdrop */}
+          {mobileMenuOpen && (
+            <div 
+              className="fixed inset-0 bg-black/50 z-[100] transition-opacity duration-300"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
+          {/* Sidebar Drawer */}
+          <div 
+            className={`fixed top-0 bottom-0 left-0 z-[101] transition-transform duration-300 ease-in-out ${
+              mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <SidebarComponent
+              collapsed={false}
+              onToggle={() => setMobileMenuOpen(false)}
+            />
+          </div>
+        </>
+      )}
+
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <TopNavbar title={title} />
+        <TopNavbar title={title} onMenuClick={isMobile ? () => setMobileMenuOpen(true) : undefined} />
         <main
           className="flex-1 overflow-y-auto"
           style={{
             background: "var(--background)",
-            padding: "24px",
+            padding: isMobile ? "12px" : "24px",
           }}
         >
           {children}

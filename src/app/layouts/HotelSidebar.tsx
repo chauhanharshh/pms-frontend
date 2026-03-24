@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   Users,
   QrCode,
+  X,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -417,19 +418,23 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
         )}
         <button
           onClick={onToggle}
-          className="ml-auto flex-shrink-0 w-6 h-6 rounded flex items-center justify-center transition-colors no-drag"
-          style={{ color: "#FFFFFF", WebkitAppRegion: "no-drag" } as any}
+          className="ml-auto flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors no-drag"
+          style={{ 
+            color: "#FFFFFF", 
+            WebkitAppRegion: "no-drag",
+            background: "rgba(255,255,255,0.05)" 
+          } as any}
           onMouseEnter={(e) =>
-            (e.currentTarget.style.backgroundColor = "rgba(221, 215, 204,0.1)")
+            (e.currentTarget.style.backgroundColor = "rgba(221, 215, 204,0.15)")
           }
           onMouseLeave={(e) =>
-            (e.currentTarget.style.backgroundColor = "transparent")
+            (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")
           }
         >
           {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           ) : (
-            <ChevronLeft className="w-4 h-4" />
+            <X className="w-5 h-5" />
           )}
         </button>
       </div>

@@ -148,9 +148,6 @@ function RoomPicker({
             <div className="text-xs mt-0.5" style={{ color: "#6B7280" }}>
               Floor {r.floor} · {r.roomType?.name || "Standard"}
             </div>
-            <div className="text-xs font-semibold mt-1" style={{ color: GOLD }}>
-              {formatCurrency(Number(r.basePrice))}/night
-            </div>
             <div className="text-xs" style={{ color: "#9CA3AF" }}>
               Max {r.maxOccupancy} guests
             </div>
@@ -232,12 +229,7 @@ export function CheckIn() {
   // Seed customRoomRate when a room is selected; user can override in payment step
   const handleRoomSelect = (roomId: string) => {
     setSelectedRoomId(roomId);
-    const room = rooms.find((r) => r.id === roomId);
-    if (room) {
-      const baseRate = Number(room.basePrice);
-      setCustomRoomRate(baseRate);
-      setRoomRateInput(String(baseRate));
-    }
+    // Do not auto-populate customRoomRate from room.basePrice
   };
 
   const nights =
@@ -247,7 +239,7 @@ export function CheckIn() {
         `${form.checkOutDate}T${form.checkOutTime || "12:00"}`,
       )
       : 1;
-  const roomRate = customRoomRate > 0 ? customRoomRate : (selectedRoom ? Number(selectedRoom.basePrice) : 0);
+  const roomRate = customRoomRate > 0 ? customRoomRate : (checkInType === "reservation" ? Number(bookings.find(b => b.id === reservationId)?.roomPrice || 0) : 0);
   const roomCharge = roomRate * nights;
   const taxInfo = calculateRoomTax(roomRate, nights);
   const gst = taxInfo.amount;
@@ -275,7 +267,8 @@ export function CheckIn() {
         checkOutDate: booking.checkOutDate,
         checkInTime: actualCheckInTime,
         checkOutTime: booking.checkOutTime || hotel?.checkOutTime || "11:00",
-      });
+        roomPrice: Number(booking.roomPrice || 0),
+      } as any);
       showSuccess(
         `✓ ${booking.guestName} checked in to Room ${booking.room?.roomNumber || ""}`,
       );
@@ -604,7 +597,7 @@ export function CheckIn() {
                       Guest Full Name *
                     </label>
                     <input
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.guestName}
                       onChange={(e) => f("guestName", e.target.value)}
@@ -619,7 +612,7 @@ export function CheckIn() {
                       Phone *
                     </label>
                     <input
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.guestPhone}
                       onChange={(e) => f("guestPhone", e.target.value)}
@@ -635,7 +628,7 @@ export function CheckIn() {
                     </label>
                     <input
                       type="email"
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.guestEmail}
                       onChange={(e) => f("guestEmail", e.target.value)}
@@ -649,7 +642,7 @@ export function CheckIn() {
                       Address
                     </label>
                     <input
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.addressLine}
                       onChange={(e) => f("addressLine", e.target.value)}
@@ -664,7 +657,7 @@ export function CheckIn() {
                       ID Proof
                     </label>
                     <input
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.idProof}
                       onChange={(e) => f("idProof", e.target.value)}
@@ -690,7 +683,7 @@ export function CheckIn() {
                           type="number"
                           min={1}
                           max={10}
-                          className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                          className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                           style={{ border: `2px solid ${BORDER}` }}
                           value={form.adults}
                           onChange={(e) => f("adults", +e.target.value)}
@@ -707,7 +700,7 @@ export function CheckIn() {
                           type="number"
                           min={0}
                           max={10}
-                          className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                          className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                           style={{ border: `2px solid ${BORDER}` }}
                           value={form.children}
                           onChange={(e) => f("children", +e.target.value)}
@@ -724,7 +717,7 @@ export function CheckIn() {
                     </label>
                     <input
                       type="date"
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.checkInDate}
                       onChange={(e) => f("checkInDate", e.target.value)}
@@ -739,7 +732,7 @@ export function CheckIn() {
                     </label>
                     <input
                       type="time"
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.checkInTime}
                       onChange={(e) => f("checkInTime", e.target.value)}
@@ -753,7 +746,7 @@ export function CheckIn() {
                       Plan
                     </label>
                     <select
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.plan || "EP"}
                       onChange={(e) => f("plan", e.target.value)}
@@ -773,7 +766,7 @@ export function CheckIn() {
                     </label>
                     <input
                       type="date"
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.checkOutDate}
                       onChange={(e) => f("checkOutDate", e.target.value)}
@@ -788,7 +781,7 @@ export function CheckIn() {
                     </label>
                     <input
                       type="time"
-                      className="w-full px-3 py-2.5 rounded-lg outline-none text-sm"
+                      className="w-full px-3 py-3 rounded-lg outline-none text-sm"
                       style={{ border: `2px solid ${BORDER}` }}
                       value={form.checkOutTime}
                       onChange={(e) => f("checkOutTime", e.target.value)}

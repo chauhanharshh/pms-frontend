@@ -436,6 +436,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   };
 
   const roomRate = firstPositiveNumber(
+    booking?.roomPrice,
     booking?.roomRate,
     booking?.ratePerNight,
     booking?.customRate,
@@ -780,7 +781,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
     >
-      <div className="w-full max-w-4xl flex justify-end gap-3 mb-2">
+      <div className="w-full max-w-4xl flex flex-wrap justify-end gap-2 mb-2 px-2">
         <button
           onClick={handlePrint}
           className="bg-white text-gray-800 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-gray-50 transition-colors"
@@ -803,7 +804,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
       <div
         className="w-full max-w-4xl rounded-sm overflow-hidden bg-white shadow-2xl animate-in fade-in zoom-in duration-300"
-        style={{ height: "85vh" }}
+        style={{ height: "calc(100vh - 120px)" }}
       >
         <iframe
           srcDoc={getInvoiceHtml()}

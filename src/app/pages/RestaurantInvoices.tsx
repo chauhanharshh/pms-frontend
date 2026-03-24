@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import api from "../services/api";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { printHtml } from "../utils/print";
 
 export default function RestaurantInvoices() {
@@ -46,6 +47,7 @@ export default function RestaurantInvoices() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { payRestaurantInvoice, hotels } = usePMS();
+    const isMobile = useMediaQuery("(max-width: 1024px)");
     const invoicesPath = user?.role === "admin" ? "/admin/restaurant/invoices" : "/hotel/restaurant/invoices";
     const GOLD = "var(--accent-color, #C6A75E)";
     const DARKGOLD = "var(--primary, #A8832D)";
@@ -370,248 +372,339 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
         <AppLayout title="Restaurant Invoices">
             <div className="space-y-6">
                 {/* Stats Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-sm">Total Invoices</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{invoices.length}</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Total Bills</p>
+                        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{invoices.length}</h3>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-sm">Amount Collected</p>
-                        <h3 className="text-2xl font-bold text-emerald-600">
+                    <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Collected</p>
+                        <h3 className="text-lg sm:text-2xl font-bold text-emerald-600 mt-1">
                             ₹{invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
                         </h3>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-sm">Pending Amount</p>
-                        <h3 className="text-2xl font-bold text-amber-600">
+                    <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Pending</p>
+                        <h3 className="text-lg sm:text-2xl font-bold text-amber-600 mt-1">
                             ₹{invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
                         </h3>
                     </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-sm">Cancelled</p>
-                        <h3 className="text-2xl font-bold text-red-600">{invoices.filter(i => i.status === 'cancelled').length}</h3>
+                    <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
+                        <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Cancelled</p>
+                        <h3 className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{invoices.filter(i => i.status === 'cancelled').length}</h3>
                     </div>
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Search by Guest Name, Company, Invoice No, Date..."
-                            className="w-full pl-10 pr-10 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm transition-all"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        {searchQuery.trim() && (
-                            <button
-                                type="button"
-                                onClick={() => setSearchQuery("")}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1"
-                                aria-label="Clear search"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <select
-                                className="pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm appearance-none cursor-pointer"
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                            >
-                                <option value="all">All Status</option>
-                                <option value="paid">Paid</option>
-                                <option value="issued">Issued</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
-                        </div>
-                        <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <input
-                                type="date"
-                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm cursor-pointer"
-                                value={dateFilter}
-                                onChange={(e) => setDateFilter(e.target.value)}
+                                type="text"
+                                placeholder="Search guest, bill, KOT…"
+                                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm transition-all"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
+                            {searchQuery.trim() && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1 sm:w-40">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                                <select
+                                    className="w-full pl-10 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm appearance-none cursor-pointer"
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                >
+                                    <option value="all">All Status</option>
+                                    <option value="paid">Paid</option>
+                                    <option value="issued">Issued</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div className="relative flex-1 sm:w-44">
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                                <input
+                                    type="date"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm cursor-pointer"
+                                    value={dateFilter}
+                                    onChange={(e) => setDateFilter(e.target.value)}
+                                />
+                            </div>
+                            {!isMobile && (
+                                <button
+                                    onClick={fetchInvoices}
+                                    className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition-all font-medium text-sm whitespace-nowrap"
+                                >
+                                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                    Refresh
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    {isMobile && (
                         <button
                             onClick={fetchInvoices}
-                            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-all font-medium text-sm"
-                            title="Refresh Invoices"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition-all font-medium text-sm"
                         >
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                            Refresh
+                            Refresh Invoices
                         </button>
-                    </div>
+                    )}
                 </div>
 
                 {/* Invoices Table */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Export/Print Buttons */}
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px' }}>
-                        <button
-                            onClick={() => exportToCSV(invoices, 'restaurant-invoices')}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '8px 16px',
-                                background: '#ffffff',
-                                border: '1px solid #B8860B',
-                                borderRadius: '8px',
-                                color: '#B8860B',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            📥 Export CSV
-                        </button>
-                        <button
-                            onClick={() => printTable('restaurant-invoices-table', 'Restaurant Invoices')}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '8px 16px',
-                                background: '#B8860B',
-                                border: 'none',
-                                borderRadius: '8px',
-                                color: '#ffffff',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            🖨️ Print
-                        </button>
-                    </div>
+                    {!isMobile && (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginBottom: '12px', marginTop: '8px', paddingRight: '16px' }}>
+                            <button
+                                onClick={() => exportToCSV(invoices, 'restaurant-invoices')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '8px 16px',
+                                    background: '#ffffff',
+                                    border: '1px solid #B8860B',
+                                    borderRadius: '8px',
+                                    color: '#B8860B',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                📥 Export CSV
+                            </button>
+                            <button
+                                onClick={() => printTable('restaurant-invoices-table', 'Restaurant Invoices')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '8px 16px',
+                                    background: '#B8860B',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    color: '#ffffff',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                🖨️ Print
+                            </button>
+                        </div>
+                    )}
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse" id="restaurant-invoices-table">
-                            <thead>
-                                <tr className="bg-gray-50/50 border-b border-gray-100">
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">KOT No</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Steward</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
+                        {isMobile ? (
+                            <div className="divide-y divide-gray-100">
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                                <p className="text-gray-500 text-sm">Loading invoices...</p>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <div className="py-12 text-center text-sm text-gray-400">
+                                        Loading invoices...
+                                    </div>
                                 ) : filteredInvoices.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
-                                            <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="bg-gray-100 p-4 rounded-full">
-                                                    <FileText className="w-8 h-8 text-gray-400" />
-                                                </div>
-                                                <p className="text-gray-500">{searchQuery.trim() ? "No invoices found for your search" : "No invoices found"}</p>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <div className="py-12 text-center text-sm text-gray-400">
+                                        No invoices found
+                                    </div>
                                 ) : (
                                     filteredInvoices.map((inv) => {
                                         const status = getStatusStyle(inv.status);
                                         const isLinked = !!inv.restaurantOrder?.bookingId;
-
                                         return (
-                                            <tr
-                                                key={inv.id}
-                                                className="hover:bg-gray-50/50 transition-colors group"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-semibold text-gray-900">{inv.invoiceNumber}</span>
-                                                        <span className="text-[10px] text-gray-400 uppercase tracking-tighter">Source: {inv.source || 'POS'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-sm font-medium text-gray-600">
-                                                        {inv.restaurantOrder?.kotHistory?.[0]?.kotNumber || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm text-gray-900">{format(new Date(inv.invoiceDate), 'dd MMM yyyy')}</span>
-                                                        <span className="text-xs text-gray-400 italic">Created: {format(new Date(inv.createdAt), 'hh:mm a')}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-gray-900">{inv.restaurantOrder?.stewardName || inv.restaurantOrder?.guestName || "N/A"}</span>
-                                                            {isLinked && (
-                                                                <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight">Linked</span>
-                                                            )}
+                                            <div key={inv.id} className="p-4 active:bg-gray-50 transition-colors">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div>
+                                                        <div className="font-bold text-gray-900">{inv.restaurantOrder?.stewardName || inv.restaurantOrder?.guestName || "Walk-in Guest"}</div>
+                                                        <div className="text-[11px] text-gray-500 mt-0.5 font-mono uppercase tracking-wider">
+                                                            {inv.invoiceNumber} · Table {inv.restaurantOrder?.tableNumber || "N/A"}
                                                         </div>
-                                                        <span className="text-xs text-gray-500">
-                                                            Table: {inv.restaurantOrder?.tableNumber || "N/A"}
-                                                            {inv.restaurantOrder?.room?.roomNumber && ` • Room: ${inv.restaurantOrder.room.roomNumber}`}
-                                                        </span>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="font-bold text-gray-900">₹{Number(inv.totalAmount).toLocaleString()}</span>
-                                                </td>
-                                                <td className="px-6 py-4">
                                                     <div
-                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                                                        className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase flex items-center gap-1"
                                                         style={{ backgroundColor: status.bg, color: status.text }}
                                                     >
                                                         {status.icon}
-                                                        {inv.status.toUpperCase()}
+                                                        {inv.status}
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2 justify-end">
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                                    <div className="bg-gray-50 p-2 rounded-lg">
+                                                        <div className="text-[10px] text-gray-400 font-medium uppercase mb-1">Bill Date</div>
+                                                        <div className="text-[11px] text-gray-700 font-bold">
+                                                            {format(new Date(inv.invoiceDate), 'dd MMM yyyy')}
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-amber-50/50 p-2 rounded-lg text-right">
+                                                        <div className="text-[10px] text-amber-600/70 font-medium uppercase mb-1">Amount</div>
+                                                        <div className="text-[13px] text-amber-700 font-bold">
+                                                            ₹{Number(inv.totalAmount).toLocaleString()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-50">
+                                                    <button
+                                                        onClick={() => handlePrintClick(inv)}
+                                                        className="p-3 text-gray-500 hover:text-primary transition-colors hover:bg-white rounded-xl border border-gray-200 shadow-sm active:scale-95"
+                                                    >
+                                                        <Printer className="w-5 h-5" />
+                                                    </button>
+                                                    {inv.status === 'issued' && (
                                                         <button
-                                                            onClick={() => handlePrintClick(inv)}
-                                                            className="p-2 text-gray-400 hover:text-primary transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
-                                                            title="Print Invoice"
+                                                            onClick={() => setShowPayModal(inv)}
+                                                            className="px-5 py-3 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 flex items-center gap-2"
+                                                            style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
                                                         >
-                                                            <Printer className="w-4 h-4" />
+                                                            <CreditCard className="w-4 h-4" /> PAY NOW
                                                         </button>
-                                                        {inv.status === 'issued' && (
-                                                            <button
-                                                                onClick={() => setShowPayModal(inv)}
-                                                                className="px-3 py-1.5 text-white rounded text-xs font-bold transition-all shadow-sm"
-                                                                style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
-                                                            >
-                                                                PAY
-                                                            </button>
-                                                        )}
-                                                        {inv.status !== 'paid' && inv.status !== 'cancelled' && (
-                                                            <button
-                                                                onClick={() => navigate(`${invoicesPath}/${inv.id}/edit`)}
-                                                                className="p-2 text-gray-400 hover:text-amber-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
-                                                                title="Edit Invoice"
-                                                            >
-                                                                <Edit className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                    )}
+                                                    {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                                                        <button
+                                                            onClick={() => navigate(`${invoicesPath}/${inv.id}/edit`)}
+                                                            className="p-3 text-amber-600 hover:bg-amber-50 rounded-xl border border-amber-100 shadow-sm transition-all active:scale-95"
+                                                        >
+                                                            <Edit className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         );
                                     })
                                 )}
-                            </tbody>
-                        </table>
+                            </div>
+                        ) : (
+                            <table className="w-full text-left border-collapse" id="restaurant-invoices-table">
+                                <thead>
+                                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">KOT No</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Steward</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={7} className="px-6 py-12 text-center">
+                                                <div className="flex flex-col items-center justify-center space-y-3">
+                                                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                                    <p className="text-gray-500 text-sm">Loading invoices...</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : filteredInvoices.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="px-6 py-12 text-center">
+                                                <div className="flex flex-col items-center justify-center space-y-3">
+                                                    <div className="bg-gray-100 p-4 rounded-full">
+                                                        <FileText className="w-8 h-8 text-gray-400" />
+                                                    </div>
+                                                    <p className="text-gray-500">{searchQuery.trim() ? "No invoices found for your search" : "No invoices found"}</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredInvoices.map((inv) => {
+                                            const status = getStatusStyle(inv.status);
+                                            const isLinked = !!inv.restaurantOrder?.bookingId;
+
+                                            return (
+                                                <tr
+                                                    key={inv.id}
+                                                    className="hover:bg-gray-50/50 transition-colors group"
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-semibold text-gray-900">{inv.invoiceNumber}</span>
+                                                            <span className="text-[10px] text-gray-400 uppercase tracking-tighter">Source: {inv.source || 'POS'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm font-medium text-gray-600">
+                                                            {inv.restaurantOrder?.kotHistory?.[0]?.kotNumber || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm text-gray-900">{format(new Date(inv.invoiceDate), 'dd MMM yyyy')}</span>
+                                                            <span className="text-xs text-gray-400 italic">Created: {format(new Date(inv.createdAt), 'hh:mm a')}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-medium text-gray-900">{inv.restaurantOrder?.stewardName || inv.restaurantOrder?.guestName || "N/A"}</span>
+                                                                {isLinked && (
+                                                                    <span className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight">Linked</span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs text-gray-500">
+                                                                Table: {inv.restaurantOrder?.tableNumber || "N/A"}
+                                                                {inv.restaurantOrder?.room?.roomNumber && ` • Room: ${inv.restaurantOrder.room.roomNumber}`}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="font-bold text-gray-900">₹{Number(inv.totalAmount).toLocaleString()}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                                                            style={{ backgroundColor: status.bg, color: status.text }}
+                                                        >
+                                                            {status.icon}
+                                                            {inv.status.toUpperCase()}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2 justify-end">
+                                                            <button
+                                                                onClick={() => handlePrintClick(inv)}
+                                                                className="p-2 text-gray-400 hover:text-primary transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
+                                                                title="Print Invoice"
+                                                            >
+                                                                <Printer className="w-4 h-4" />
+                                                            </button>
+                                                            {inv.status === 'issued' && (
+                                                                <button
+                                                                    onClick={() => setShowPayModal(inv)}
+                                                                    className="px-3 py-1.5 text-white rounded text-xs font-bold transition-all shadow-sm"
+                                                                    style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
+                                                                >
+                                                                    PAY
+                                                                </button>
+                                                            )}
+                                                            {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                                                                <button
+                                                                    onClick={() => navigate(`${invoicesPath}/${inv.id}/edit`)}
+                                                                    className="p-2 text-gray-400 hover:text-amber-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
+                                                                    title="Edit Invoice"
+                                                                >
+                                                                    <Edit className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>

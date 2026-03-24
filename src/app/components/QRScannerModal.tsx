@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { QrCode, X } from "lucide-react";
+import { QrCode, X, Camera } from "lucide-react";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 export function QRScannerModal({
   isOpen,
@@ -12,6 +13,7 @@ export function QRScannerModal({
   onScanSuccess: (data: string) => void;
 }) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
     let scanner: Html5Qrcode | null = null;
@@ -19,14 +21,18 @@ export function QRScannerModal({
     if (isOpen) {
       const startScanner = async () => {
         try {
+          // Adjust QR box size based on device
+          const qrBoxSize = isMobile ? 220 : 250;
+
           scanner = new Html5Qrcode("qr-reader");
           scannerRef.current = scanner;
 
           await scanner.start(
             { facingMode: "environment" },
             {
-              fps: 10,
-              qrbox: { width: 250, height: 250 },
+              fps: 15, // Slightly higher FPS for smoother scanning
+              qrbox: { width: qrBoxSize, height: qrBoxSize },
+              aspectRatio: 1.0,
             },
             (decodedText) => {
               if (scanner) {
@@ -38,16 +44,13 @@ export function QRScannerModal({
                 });
               }
             },
-            (errorMessage) => {
-              // Silently ignore scan errors
-            }
+            () => {}
           );
         } catch (err) {
           console.error("Failed to start scanner:", err);
         }
       };
 
-      // Small timeout to ensure DOM element exists
       const timer = setTimeout(startScanner, 300);
 
       return () => {
@@ -57,34 +60,65 @@ export function QRScannerModal({
         }
       };
     }
-  }, [isOpen, onScanSuccess]);
+  }, [isOpen, onScanSuccess, isMobile]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4">
-      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl">
-        <div className="p-4 border-b flex items-center justify-between" style={{ background: "#F9FAFB" }}>
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/90 ${isMobile ? '' : 'p-4'}`}>
+      <div className={`bg-white overflow-hidden relative shadow-2xl transition-all duration-300 ${isMobile ? 'w-full h-full' : 'rounded-2xl w-full max-w-md'}`}>
+        {/* Header */}
+        <div className={`p-4 border-b flex items-center justify-between ${isMobile ? 'pt-10' : ''}`} style={{ background: "#F9FAFB" }}>
           <div className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" style={{ color: "#C6A75E" }} />
-            <h3 className="font-bold text-gray-800" style={{ fontFamily: "Times New Roman, serif" }}>Scan Booking QR</h3>
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <QrCode className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 leading-none">QR Scanner</h3>
+              <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-tighter">Scan Check-In Code</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-400" />
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
+          >
+            <X className="w-6 h-6 text-gray-400" />
           </button>
         </div>
-        <div className="p-6">
-          <div id="qr-reader" className="overflow-hidden rounded-xl border-2 border-dashed border-gray-200" />
-          <p className="text-center text-xs text-gray-500 mt-4 px-4">
-            Point your camera at the guest's booking QR code.
-          </p>
+
+        {/* Scanner View */}
+        <div className={`flex flex-col items-center justify-center ${isMobile ? 'h-[calc(100%-180px)]' : 'p-8'}`}>
+          <div className="relative w-full max-w-[300px] aspect-square">
+             {/* Corner Accents */}
+             <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-amber-500 rounded-tl-lg z-10"></div>
+             <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-amber-500 rounded-tr-lg z-10"></div>
+             <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-lg z-10"></div>
+             <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-amber-500 rounded-br-lg z-10"></div>
+
+             <div id="qr-reader" className="w-full h-full overflow-hidden rounded-xl bg-black border-2 border-amber-100/20 shadow-inner" />
+          </div>
+          
+          <div className="mt-8 px-6 text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold uppercase mb-3">
+              <Camera className="w-3 h-3" />
+              Live Scanner Enabled
+            </div>
+            <p className="text-sm text-gray-600 font-medium">
+              Align the QR code within the frame
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Check-in will start automatically upon successful scan
+            </p>
+          </div>
         </div>
-        <div className="p-4 bg-gray-50 border-t flex justify-end">
+
+        {/* Footer/Action */}
+        <div className={`absolute bottom-0 left-0 right-0 p-6 bg-white border-t flex flex-col gap-3 ${isMobile ? 'pb-10' : ''}`}>
           <button 
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+            className="w-full py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm shadow-sm active:scale-[0.98] transition-all"
           >
-            Cancel
+            CLOSE SCANNER
           </button>
         </div>
       </div>

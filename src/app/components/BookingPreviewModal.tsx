@@ -4,6 +4,7 @@ import { calculateStayDays, isLateCheckout } from "../utils/stayCalculation";
 import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car } from "lucide-react";
 import { resolveBrandName } from "../utils/branding";
 import { QRCodeSVG } from "qrcode.react";
+import { calculateRoomTax } from "../utils/tax";
 
 const T = {
     gold: "#C6A75E",
@@ -71,7 +72,8 @@ export function BookingPreviewModal({
         return 0;
     };
     const roomRate = firstPositiveNumber(
-        booking.roomRate,
+        booking.roomPrice,
+        (booking as any).roomRate,
         (booking as any).ratePerNight,
         (booking as any).customRate,
         (booking as any).pricePerNight,
@@ -79,8 +81,9 @@ export function BookingPreviewModal({
         (room as any)?.price,
     );
     const baseAmount = roomRate * nights;
-    const gstRate = Number((booking as any)?.room?.taxRate ?? (room as any)?.taxRate ?? 18);
-    const gstAmount = (baseAmount * gstRate) / 100;
+    const taxInfo = calculateRoomTax(roomRate, nights);
+    const gstRate = taxInfo.rate;
+    const gstAmount = taxInfo.amount;
     const totalRoomRent = baseAmount + gstAmount;
     const advancePaid = firstPositiveNumber((booking as any)?.bill?.paidAmount, booking.advanceAmount);
     const currentBalance = totalRoomRent - advancePaid;
@@ -143,7 +146,7 @@ export function BookingPreviewModal({
                 `}
             </style>
             <div
-                className="w-full max-w-2xl lg:max-w-[700px] max-h-[90vh] flex flex-col bg-white rounded-xl overflow-hidden shadow-2xl print:shadow-none print:max-w-none print:rounded-none print:max-h-none print:overflow-visible print:block"
+                className="w-full max-w-2xl lg:max-w-[700px] max-h-[92vh] flex flex-col bg-white rounded-xl overflow-hidden shadow-2xl print:shadow-none print:max-w-none print:rounded-none print:max-h-none print:overflow-visible print:block"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header - Hidden on Print */}
@@ -175,12 +178,12 @@ export function BookingPreviewModal({
 
                 {/* Printable Area */}
                 <div id="booking-preview-printable" className="p-5 md:p-6 space-y-5 bg-white text-gray-800 overflow-y-auto print:overflow-visible relative">
-                    {/* QR Code Overlay (Hidden on Desktop, Showing top-right in printable area) */}
-                    <div className="absolute top-6 right-6 flex flex-col items-center gap-1">
-                        <div className="p-2 bg-white border rounded-lg shadow-sm" style={{ borderColor: T.border }}>
-                            <QRCodeSVG value={qrData} size={80} level="M" />
+                    {/* QR Code Overlay (Hidden on Mobile Search, Showing top-right in printable area) */}
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6 flex flex-col items-center gap-1 scale-[0.8] md:scale-100 origin-top-right">
+                        <div className="p-1.5 bg-white border rounded-lg shadow-sm" style={{ borderColor: T.border }}>
+                            <QRCodeSVG value={qrData} size={isLateCheckout(booking.checkOutTime || "") ? 60 : 80} level="M" />
                         </div>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Booking QR</span>
+                        <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-widest font-bold">Booking QR</span>
                     </div>
 
 
@@ -197,7 +200,7 @@ export function BookingPreviewModal({
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 print:grid-cols-2">
 
                         {/* Guest Info */}
                         <div className="space-y-4">
@@ -291,7 +294,7 @@ export function BookingPreviewModal({
 
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 print:grid-cols-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 print:grid-cols-2">
 
                         {/* Travel & Other Details */}
                         <div className="space-y-4">
@@ -329,7 +332,7 @@ export function BookingPreviewModal({
                                 <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider pb-2 border-b" style={{ color: T.darkGold, borderColor: T.border }}>
                                     <Calendar className="w-4 h-4" /> Financial Summary
                                 </h3>
-                                <div className="bg-gray-50 rounded-xl border border-[#E8DCC8] p-4 print:bg-transparent print:border-none print:p-0">
+                                <div className="bg-gray-50 rounded-xl border border-[#E8DCC8] p-3 md:p-4 print:bg-transparent print:border-none print:p-0">
                                     <div className="flex justify-between text-sm text-gray-600 pb-2">
                                         <span>Room Rate</span>
                                         <span>{formatCurrency(roomRate)}/night</span>
