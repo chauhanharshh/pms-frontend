@@ -30,7 +30,8 @@ export function SacHsnReport() {
             cgst: acc.cgst + Number(row.totalCgst || 0),
             sgst: acc.sgst + Number(row.totalSgst || 0),
             igst: acc.igst + Number(row.totalIgst || 0),
-        }), { taxable: 0, cgst: 0, sgst: 0, igst: 0 });
+            gst: acc.gst + (Number(row.totalCgst || 0) + Number(row.totalSgst || 0) + Number(row.totalIgst || 0)),
+        }), { taxable: 0, cgst: 0, sgst: 0, igst: 0, gst: 0 });
     }, [data]);
 
     const exportToCsv = () => {
@@ -43,6 +44,7 @@ export function SacHsnReport() {
             "Total CGST": r.totalCgst,
             "Total SGST": r.totalSgst,
             "Total IGST": r.totalIgst,
+            "Total GST": Number(r.totalCgst || 0) + Number(r.totalSgst || 0) + Number(r.totalIgst || 0),
         }));
         
         // Add Total Row to Export
@@ -54,6 +56,7 @@ export function SacHsnReport() {
             "Total CGST": totals.cgst as any,
             "Total SGST": totals.sgst as any,
             "Total IGST": totals.igst as any,
+            "Total GST": totals.gst as any,
         });
 
         exportToCSV(dataToExport, "sac_hsn_summary");
@@ -78,18 +81,19 @@ export function SacHsnReport() {
                                     <th className="px-4 py-3 text-right">Total CGST</th>
                                     <th className="px-4 py-3 text-right">Total SGST</th>
                                     <th className="px-4 py-3 text-right">Total IGST</th>
+                                    <th className="px-4 py-3 text-right">Total GST</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-8 text-center">
+                                        <td colSpan={8} className="px-4 py-8 text-center">
                                             <div className="inline-block w-6 h-6 rounded-full border-2 border-[#C6A75E] border-t-transparent animate-spin" />
                                         </td>
                                     </tr>
                                 ) : data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                        <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                                             No records found
                                         </td>
                                     </tr>
@@ -103,6 +107,7 @@ export function SacHsnReport() {
                                             <td className="px-4 py-3 text-right text-gray-500">{formatCurrency(row.totalCgst)}</td>
                                             <td className="px-4 py-3 text-right text-gray-500">{formatCurrency(row.totalSgst)}</td>
                                             <td className="px-4 py-3 text-right text-gray-500">{formatCurrency(row.totalIgst)}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(Number(row.totalCgst || 0) + Number(row.totalSgst || 0) + Number(row.totalIgst || 0))}</td>
                                         </tr>
                                     ))
                                 )}
@@ -114,6 +119,7 @@ export function SacHsnReport() {
                                         <td className="px-4 py-3 text-right">{formatCurrency(totals.cgst)}</td>
                                         <td className="px-4 py-3 text-right">{formatCurrency(totals.sgst)}</td>
                                         <td className="px-4 py-3 text-right">{formatCurrency(totals.igst)}</td>
+                                        <td className="px-4 py-3 text-right">{formatCurrency(totals.gst)}</td>
                                     </tr>
                                 )}
                             </tbody>

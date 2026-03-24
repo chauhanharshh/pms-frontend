@@ -24,6 +24,7 @@ interface AdminFormState {
   email: string;
   maxHotels: number;
   isActive: boolean;
+  role: string;
 }
 
 const DEFAULT_FORM: AdminFormState = {
@@ -34,6 +35,7 @@ const DEFAULT_FORM: AdminFormState = {
   email: "",
   maxHotels: 1,
   isActive: true,
+  role: "admin",
 };
 
 function isSuperAdminRole(role?: string) {
@@ -101,6 +103,7 @@ export function SuperAdminPanel() {
       email: admin.email || "",
       maxHotels: Math.max(1, Number(admin.maxHotels || 1)),
       isActive: admin.isActive,
+      role: admin.role || "admin",
     });
     setShowForm(true);
   };
@@ -127,6 +130,7 @@ export function SuperAdminPanel() {
           email: form.email || null,
           maxHotels: Math.max(1, Number(form.maxHotels || 1)),
           isActive: form.isActive,
+          role: form.role,
         });
         setAdmins((prev) => prev.map((a) => (a.id === editingId ? res.data.data : a)));
       } else {
@@ -138,6 +142,7 @@ export function SuperAdminPanel() {
           email: form.email || null,
           maxHotels: Math.max(1, Number(form.maxHotels || 1)),
           isActive: form.isActive,
+          role: form.role,
         });
         setAdmins((prev) => [res.data.data, ...prev]);
       }
@@ -178,7 +183,7 @@ export function SuperAdminPanel() {
 
   const deleteAdmin = async (admin: AdminAccount) => {
     const confirmed = window.confirm(
-      `Delete admin account \"${admin.username}\"? This action cannot be undone.`
+      `Delete admin account "${admin.username}"? This action cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -306,6 +311,7 @@ export function SuperAdminPanel() {
                   <th className="px-4 py-3">Username</th>
                   <th className="px-4 py-3">Hotels</th>
                   <th className="px-4 py-3">Max Allowed</th>
+                  <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -313,7 +319,7 @@ export function SuperAdminPanel() {
               <tbody>
                 {isFetching ? (
                   <tr>
-                    <td className="px-4 py-6" colSpan={6}>
+                    <td className="px-4 py-6" colSpan={7}>
                       <div className="flex items-center justify-center text-sm text-gray-500 gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> Loading admin accounts...
                       </div>
@@ -321,7 +327,7 @@ export function SuperAdminPanel() {
                   </tr>
                 ) : admins.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={6}>
+                    <td className="px-4 py-6 text-sm text-gray-500 text-center" colSpan={7}>
                       No admin accounts found.
                     </td>
                   </tr>
@@ -332,6 +338,11 @@ export function SuperAdminPanel() {
                       <td className="px-4 py-3 text-sm text-gray-700">{admin.username}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{Number(admin.hotelsCount || 0)}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{Math.max(1, Number(admin.maxHotels || 1))}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="capitalize font-medium text-gray-600">
+                          {admin.role === "restaurant_admin" ? "Restaurant Admin" : "Full Admin"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-sm">
                         <span
                           className="px-2 py-1 rounded-full text-xs font-medium"
@@ -451,7 +462,18 @@ export function SuperAdminPanel() {
                   className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E]"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Access Role *</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                  className="w-full rounded-lg border border-[#E5E1DA] px-3 py-2 outline-none focus:border-[#C6A75E] bg-white"
+                >
+                  <option value="admin">Standard Admin (Full Access)</option>
+                  <option value="restaurant_admin">Restaurant Admin (Restricted)</option>
+                </select>
+              </div>
+              <div className="flex items-end pb-2">
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                   <input
                     type="checkbox"

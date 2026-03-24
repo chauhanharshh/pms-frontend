@@ -549,7 +549,19 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
 
   let sections = ADMIN_SECTIONS;
 
-  if (!restaurantEnabled) {
+  if (user?.role === "restaurant_admin") {
+    sections = sections.filter((s) => s.title === "Restaurant" || s.title === "GST Reports (Admin)");
+    // Further filter GST reports if needed
+    sections = sections.map(s => {
+      if (s.title === "GST Reports (Admin)") {
+        return {
+          ...s,
+          items: s.items.filter(item => item.label === "Restaurant GST" || item.label === "SAC/HSN Summary")
+        };
+      }
+      return s;
+    });
+  } else if (!restaurantEnabled) {
     sections = sections
       .filter((s) => s.title !== "Restaurant")
       .map((s) => {

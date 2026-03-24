@@ -19,11 +19,11 @@ interface AppLayoutProps {
 // Backend returns: admin | hotel_manager | hotel_user | restaurant_staff
 // Frontend treats these as hotel-shell roles, with restaurant_staff restricted to restaurant routes only.
 function isHotelRole(role: string) {
-  return ["admin", "hotel_manager", "hotel_staff", "restaurant_staff", "hotel"].includes(role);
+  return ["admin", "hotel_manager", "hotel_staff", "restaurant_staff", "hotel", "restaurant_admin"].includes(role);
 }
 
 function isRestaurantOnlyRole(role: string) {
-  return role === "restaurant_staff";
+  return role === "restaurant_staff" || role === "restaurant_admin";
 }
 
 function isRestaurantRoute(pathname: string) {
@@ -139,7 +139,7 @@ export function AppLayout({
   if (requiredRole === "hotel" && !isHotelRole(user.role)) return null;
   if (requiredRole === "superadmin" && !isSuperAdminRole(user.role)) return null;
 
-  const SidebarComponent = user.role === "admin" ? AdminSidebar : HotelSidebar;
+  const SidebarComponent = (user.role === "admin" || user.role === "restaurant_admin") ? AdminSidebar : HotelSidebar;
 
   return (
     <div

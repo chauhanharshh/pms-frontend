@@ -6,7 +6,7 @@ export interface AuthUser {
   username: string;
   fullName: string;
   email?: string | null;
-  role: "super_admin" | "admin" | "hotel_manager" | "hotel_user" | "restaurant_staff";
+  role: "super_admin" | "admin" | "hotel_manager" | "hotel_user" | "restaurant_staff" | "restaurant_admin";
   maxHotels?: number | null;
   hotelId?: string | null;
   hotel?: { id: string; name: string; brandName?: string | null; logoUrl?: string | null } | null;
@@ -89,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (
       newUser.role === 'hotel_manager' ||
       newUser.role === 'hotel_staff' ||
-      newUser.role === 'restaurant_staff'
+      newUser.role === 'restaurant_staff' ||
+      newUser.role === 'restaurant_admin'
     ) {
       try {
         const res = await api.post(
@@ -103,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (res.data.adminId && res.data.licenseKey) {
             localStorage.setItem(`license_${res.data.adminId}`, res.data.licenseKey);
           }
-          window.location.href = '/hotel/dashboard';
+          window.location.href = newUser.role === 'restaurant_admin' ? '/hotel/restaurant/rooms' : '/hotel/dashboard';
         } else {
           // License not valid → show message and logout:
           logout();
@@ -112,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         // API failed → allow login (offline mode):
         console.error('License check failed:', error);
-        window.location.href = '/hotel/dashboard';
+        window.location.href = newUser.role === 'restaurant_admin' ? '/hotel/restaurant/rooms' : '/hotel/dashboard';
       }
       return;
     }
