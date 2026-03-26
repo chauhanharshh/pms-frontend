@@ -115,6 +115,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       invoiceLine2Size: (hotel as any)?.invoiceLine2Size || 16,
       invoiceHotelNameColor: (hotel as any)?.invoiceHotelNameColor === "#000000" ? "#C6A75E" : ((hotel as any)?.invoiceHotelNameColor || "#C6A75E"),
       invoiceHeaderColor: (hotel as any)?.invoiceHeaderColor || "#000000",
+      showInvoiceWatermark: (hotel as any)?.showInvoiceWatermark ?? true,
     };
   }, [hotel, invoice]);
 
@@ -571,9 +572,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       .replace(/"/g, "&quot;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-    const hasLogoWatermark = safeLogoAttr.trim().length > 0;
-
-    const watermarkHtml = hasLogoWatermark
+    const hasLogo = safeLogoAttr.trim().length > 0;
+    const showWatermark = hasLogo && hotelFields.showInvoiceWatermark;
+    const watermarkHtml = showWatermark
       ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${safeLogoAttr}" alt="watermark" onerror="handleLogoError(this)" /></div>`
       : "";
 
@@ -696,7 +697,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           ${watermarkHtml}
           <div class="invoice-content">
           <div class="text-center" style="margin-bottom: 20px;">
-            ${hasLogoWatermark ? `<div style="margin-bottom: 12px;"><img src="${safeLogoAttr}" style="max-height: 70px; width: auto; object-fit: contain;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
+            ${hasLogo ? `<div style="margin-bottom: 12px;"><img src="${safeLogoAttr}" style="max-height: 70px; width: auto; object-fit: contain;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
             <div class="hotel-name" style="color: ${hotelFields.invoiceHotelNameColor};">${hotelFields.name}</div>
             ${hotelFields.invoiceShowCustomLines ? `
             <div class="hotel-info" style="font-weight: bold; margin-bottom: 2px; color: ${hotelFields.invoiceHeaderColor}; font-size: ${hotelFields.invoiceLine1Size || 14}px;">${hotelFields.invoiceLine1}</div>

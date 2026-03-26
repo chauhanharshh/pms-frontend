@@ -27,6 +27,7 @@ export function Settings() {
     invoiceLine2Size: currentHotel?.invoiceLine2Size ?? 16,
     invoiceHotelNameColor: currentHotel?.invoiceHotelNameColor || "#000000",
     invoiceHeaderColor: currentHotel?.invoiceHeaderColor || "#000000",
+    showInvoiceWatermark: currentHotel?.showInvoiceWatermark ?? true,
   });
   const [saving, setSaving] = useState(false);
   const [showFinancialSummary, setShowFinancialSummary] = useState<boolean>(() => {
@@ -63,6 +64,7 @@ export function Settings() {
         invoiceLine2Size: Number(settings.invoiceLine2Size),
         invoiceHotelNameColor: settings.invoiceHotelNameColor,
         invoiceHeaderColor: settings.invoiceHeaderColor,
+        showInvoiceWatermark: settings.showInvoiceWatermark,
       };
       
       await api.put(`/hotels/${currentHotelId}`, payload);
@@ -417,6 +419,26 @@ export function Settings() {
                   >
                     <div
                       className={`absolute top-1 w-5 h-5 bg-[white] rounded-full shadow-md transition-transform duration-300 ${settings.invoiceShowCustomLines ? "translate-x-7" : "translate-x-1"}`}
+                    />
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 bg-[white] rounded-xl border border-[#E8DCC8]">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">Invoice Watermark</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Show logo watermark on paid invoices
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`relative w-14 h-7 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${settings.showInvoiceWatermark ? "bg-[#B8860B]" : "bg-gray-300"}`}
+                    onClick={() => setSettings({ ...settings, showInvoiceWatermark: !settings.showInvoiceWatermark })}
+                    aria-label="Toggle invoice watermark"
+                    style={{ boxShadow: settings.showInvoiceWatermark ? "0 0 8px rgba(184, 134, 11, 0.5)" : "none" }}
+                  >
+                    <div
+                      className={`absolute top-1 w-5 h-5 bg-[white] rounded-full shadow-md transition-transform duration-300 ${settings.showInvoiceWatermark ? "translate-x-7" : "translate-x-1"}`}
                     />
                   </button>
                 </div>

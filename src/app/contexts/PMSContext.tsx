@@ -49,6 +49,7 @@ export interface Hotel {
   invoiceLine2Size?: number | null;
   invoiceHotelNameColor?: string | null;
   invoiceHeaderColor?: string | null;
+  showInvoiceWatermark?: boolean | null;
 }
 
 export interface SystemSettings {
