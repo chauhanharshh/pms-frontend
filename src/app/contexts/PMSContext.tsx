@@ -529,9 +529,9 @@ interface PMSContextType {
   updateLiability: (id: string, updates: Partial<Liability>) => Promise<void>;
   addLiabilityPayment: (id: string, payment: any) => Promise<void>;
   deleteLiability: (id: string) => Promise<void>;
-  
+
   cancelBooking: (id: string) => Promise<void>;
-  
+
   // QR Scanner Global State
   isQRScannerOpen: boolean;
   setIsQRScannerOpen: (open: boolean) => void;
@@ -604,7 +604,11 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     if (!silent) setIsLoading(true);
     if (!silent) setError(null);
     try {
-      const hotelsRes = await api.get(`/hotels`);
+      // Fixed: Restaurant Staff now gets all admin hotels (same as Boss Mode)
+      const adminIdParam = (user.role === 'restaurant_staff' || user.role === 'restaurant_admin') && user.hotel?.adminId 
+        ? `?adminId=${user.hotel.adminId}` 
+        : "";
+      const hotelsRes = await api.get(`/hotels${adminIdParam}`);
       let fetchedHotels: Hotel[] = hotelsRes.data?.data || [];
 
       // For hotel-role users, list endpoint can return an empty array even when a valid hotelId exists.
@@ -632,7 +636,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
       const effectiveHotelId = currentHotelId || (user.role === "admin" ? null : user.hotelId);
       const consolidatedQp = effectiveHotelId ? `?hotelId=${effectiveHotelId}` : "";
-      const isAdminConsolidated = user.role === "admin" && !currentHotelId;
+      const isConsolidatedFetch = (user.role === "admin" && !currentHotelId) || 
+                                    ((user.role === "restaurant_staff" || user.role === "restaurant_admin") && fetchedHotels.length > 1);
 
       const uniqueById = <T extends { id: string }>(items: T[]) =>
         Array.from(new Map(items.map((item) => [item.id, item])).values());
@@ -652,7 +657,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         return uniqueById(merged);
       };
 
-      if (isAdminConsolidated) {
+      if (isConsolidatedFetch) {
         const [
           users,
           roomsData,
@@ -1191,15 +1196,20 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     setRestaurantItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // ── RESTAURANT ORDERS ─────────────────────────────────────────────
   const addOrder = async (order: any) => {
-    const res = await api.post("/restaurant/orders", order);
+    const passedHotelId = order.hotelId || currentHotelId || user?.hotelId || undefined; // Fixed: use explicitly passed hotelId not activeHotel/loggedIn hotel
+    const config = passedHotelId ? { headers: { 'X-Hotel-ID': passedHotelId } } : {};
+    const query = passedHotelId ? `?hotelId=${passedHotelId}` : '';
+    const res = await api.post(`/restaurant/orders${query}`, order, config);
     setRestaurantOrders((prev) => [...prev, res.data.data]);
     return res.data.data;
   };
 
   const updateOrder = async (id: string, updates: any) => {
-    const res = await api.put(`/restaurant/orders/${id}`, updates);
+    const passedHotelId = updates.hotelId || currentHotelId || user?.hotelId || undefined; // Fixed: use explicitly passed hotelId not activeHotel/loggedIn hotel
+    const config = passedHotelId ? { headers: { 'X-Hotel-ID': passedHotelId } } : {};
+    const query = passedHotelId ? `?hotelId=${passedHotelId}` : '';
+    const res = await api.put(`/restaurant/orders/${id}${query}`, updates, config);
     setRestaurantOrders((prev) => prev.map((o) => (o.id === id ? res.data.data : o)));
   };
 
@@ -1344,27 +1354,47 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     return res.data.data;
   };
 
-  const getCheckedInRooms = async (hotelId?: string) => {
+  const getCheckedInRooms = useCallback(async (hotelId?: string) => {
     const response = await api.get(`/restaurant/checked-in-rooms`, {
       params: { hotelId },
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        // Fixed: use selectedHotelId instead of loggedIn hotelId
+        // Send X-Hotel-ID so the backend honours the requested hotel before boss-mode check
+        ...(hotelId ? { 'X-Hotel-ID': hotelId } : {}),
       }
     });
     return response.data.data;
-  };
+  }, [token]);
 
-  const refreshRestaurantKOTs = async (status?: string, hotelId?: string) => {
-    const params = new URLSearchParams();
-    if (status) params.append("status", status);
-    if (hotelId) params.append("hotelId", hotelId);
-    
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const res = await api.get(`/restaurant/kots${query}`);
-    const next = res.data?.data || [];
-    setRestaurantKOTs(next);
-    return next;
-  };
+  const isFetchingKOTsRef = useRef(false);
+
+  const refreshRestaurantKOTs = useCallback(async (status?: string, hotelId?: string) => {
+    // Fixed: guard against concurrent calls that caused infinite polling loop
+    if (isFetchingKOTsRef.current) return [];
+    isFetchingKOTsRef.current = true;
+    try {
+      const params = new URLSearchParams();
+      if (status) params.append("status", status);
+      
+      const adminId = user?.hotel?.adminId || (user as any)?.adminId;
+      if (adminId) params.append("adminId", adminId);
+
+      // Fixed: don't send hotelId when 'All Hotels' selected — was causing 500
+      if (hotelId && hotelId !== 'all') {
+        params.append("hotelId", hotelId);
+      }
+
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const config = (hotelId && hotelId !== 'all') ? { headers: { 'X-Hotel-ID': hotelId } } : {};
+      const res = await api.get(`/restaurant/kots${query}`, config);
+      const next = res.data?.data || [];
+      setRestaurantKOTs(next);
+      return next;
+    } finally {
+      isFetchingKOTsRef.current = false;
+    }
+  }, []);
 
 
   const clearRestaurantKOTsForRoom = (roomId: string) => {
@@ -1377,12 +1407,12 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const getKOTs = async (status?: string, hotelId?: string) => {
+  const getKOTs = useCallback(async (status?: string, hotelId?: string) => {
     const allKOTs = await refreshRestaurantKOTs(status, hotelId);
     if (!status) return allKOTs;
     const normalized = String(status).toUpperCase();
     return allKOTs.filter((kot: any) => String(kot?.status || "").toUpperCase() === normalized);
-  };
+  }, [refreshRestaurantKOTs]);
 
   const updateKOT = async (id: string, updates: any) => {
     const res = await api.put(`/restaurant/kots/${id}`, updates);
@@ -1395,8 +1425,10 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     await refreshRestaurantKOTs();
   };
 
-  const deleteKOT = async (id: string) => {
-    await api.delete(`/restaurant/kots/${id}`);
+  const deleteKOT = async (id: string, hotelId?: string) => {
+    const headers: any = {};
+    if (hotelId) headers["X-Hotel-ID"] = hotelId;
+    await api.delete(`/restaurant/kots/${id}`, { headers });
     setRestaurantKOTs((prev) => prev.filter((k) => k.id !== id));
     await refreshRestaurantKOTs();
   };

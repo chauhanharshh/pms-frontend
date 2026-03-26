@@ -80,7 +80,7 @@ export function QRScannerModal({
           </div>
           <button 
             onClick={onClose} 
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors" // Removed: active scale animation for instant click response
           >
             <X className="w-6 h-6 text-gray-400" />
           </button>
@@ -116,7 +116,7 @@ export function QRScannerModal({
         <div className={`absolute bottom-0 left-0 right-0 p-6 bg-white border-t flex flex-col gap-3 ${isMobile ? 'pb-10' : ''}`}>
           <button 
             onClick={onClose}
-            className="w-full py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm shadow-sm active:scale-[0.98] transition-all"
+            className="w-full py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm shadow-sm transition-all" // Removed: active scale animation for instant click response
           >
             CLOSE SCANNER
           </button>

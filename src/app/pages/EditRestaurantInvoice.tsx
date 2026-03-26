@@ -303,7 +303,7 @@ export default function EditRestaurantInvoice() {
                             <button
                                 onClick={handleSave}
                                 disabled={saving || cart.length === 0}
-                                className="w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-bold shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:scale-100"
+                                className="w-full flex items-center justify-center gap-2 py-4 text-white rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:scale-100" // Removed: active scale animation for instant click response
                                 style={{
                                     background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})`,
                                     boxShadow: `0 10px 15px -3px rgba(198, 167, 94, 0.2)`

@@ -213,7 +213,7 @@ function TableModal({
           <button
             disabled={!form.name}
             onClick={() => form.name && onSave(form)}
-            className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg disabled:opacity-40 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg disabled:opacity-40 transition-all hover:scale-[1.02]" // Removed: active scale animation for instant click response
             style={{
               background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})`,
               boxShadow: `0 4px 12px rgba(198, 167, 94, 0.3)`,
@@ -322,7 +322,7 @@ export default function RestaurantTableManagement() {
                 setEditingTable(undefined);
                 setShowModal(true);
               }}
-              className="px-5 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold text-white shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+              className="px-5 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold text-white shadow-xl hover:scale-[1.02] transition-all" // Removed: active scale animation for instant click response
               style={{
                 background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})`,
                 boxShadow: `0 6px 20px rgba(198, 167, 94, 0.4)`,

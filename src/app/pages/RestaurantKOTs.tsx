@@ -28,6 +28,8 @@ export default function RestaurantKOTs() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [dateFilter, setDateFilter] = useState("");
+    const [selectedHotelFilter, setSelectedHotelFilter] = useState(""); // Added: Hotel column and hotel filter for KOTs page
+
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [kotToPreview, setKotToPreview] = useState<any>(null);
     const [isPrinting, setIsPrinting] = useState(false);
@@ -42,7 +44,9 @@ export default function RestaurantKOTs() {
     const fetchKOTs = async () => {
         try {
             setLoading(true);
-            const hotelId = user?.hotelId || undefined;
+            // If user has multi-hotel access, use 'all' for x-hotel-id to see everything
+            const isBossMode = user?.role === 'admin' || user?.role === 'super_admin' || hotels.some(h => h.posBossMode);
+            const hotelId = selectedHotelFilter || (isBossMode ? 'all' : user?.hotelId);
             await refreshRestaurantKOTs(undefined, hotelId);
         } catch (err) {
             console.error("Failed to fetch KOTs:", err);
@@ -54,7 +58,7 @@ export default function RestaurantKOTs() {
 
     useEffect(() => {
         fetchKOTs();
-    }, [statusFilter]);
+    }, [statusFilter, selectedHotelFilter]);
 
     useEffect(() => {
         const handleKotsUpdated = () => {
@@ -73,7 +77,9 @@ export default function RestaurantKOTs() {
             (kot.order?.stewardName || kot.order?.guestName || "").toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === "all" || String(kot.status || "").toUpperCase() === statusFilter.toUpperCase();
         const matchesDate = !dateFilter || format(new Date(kot.printedAt), 'yyyy-MM-dd') === dateFilter;
-        return matchesSearch && matchesStatus && matchesDate;
+        // Added: Hotel column and hotel filter for KOTs page
+        const matchesHotel = !selectedHotelFilter || kot.hotelId === selectedHotelFilter || kot.order?.hotelId === selectedHotelFilter;
+        return matchesSearch && matchesStatus && matchesDate && matchesHotel;
     });
 
     const getStatusStyle = (status: string) => {
@@ -108,10 +114,10 @@ export default function RestaurantKOTs() {
         }
     };
 
-    const handleDelete = async (kotId: string) => {
+    const handleDelete = async (kot: any) => {
         if (!confirm("Are you sure you want to delete/cancel this KOT?")) return;
         try {
-            await deleteKOT(kotId);
+            await deleteKOT(kot.id, kot.hotelId);
             await refreshRestaurantKOTs();
             window.dispatchEvent(new CustomEvent("restaurant:kots-updated"));
         } catch (err) {
@@ -126,10 +132,10 @@ export default function RestaurantKOTs() {
     };
 
     const printThermalKOT = (kot: any) => {
-                const tableNumber = kot.order?.tableNumber || "N/A";
-                const roomNumber = kot.order?.room?.roomNumber || "-";
-                const orderType = kot.order?.room?.roomNumber ? "Room Service" : "Dine-in";
-                const printedAt = kot.printedAt || kot.createdAt;
+        const tableNumber = kot.order?.tableNumber || "N/A";
+        const roomNumber = kot.order?.room?.roomNumber || "-";
+        const orderType = kot.order?.room?.roomNumber ? "Room Service" : "Dine-in";
+        const printedAt = kot.printedAt || kot.createdAt;
 
         const getKotHtml = () => `
         <html>
@@ -246,6 +252,22 @@ export default function RestaurantKOTs() {
                         />
                     </div>
                     <div className="flex gap-4 w-full md:w-auto">
+                        {/* Added: Hotel column and hotel filter for KOTs page */}
+                        <div className="relative flex-1 md:flex-initial">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <select
+                                className="w-full pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm appearance-none cursor-pointer"
+                                value={selectedHotelFilter}
+                                onChange={(e) => setSelectedHotelFilter(e.target.value)}
+                            >
+                                <option value="">All Hotels</option>
+                                {hotels.map(hotel => (
+                                    <option key={hotel.id} value={hotel.id}>
+                                        {hotel.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="relative flex-1 md:flex-initial">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <select
@@ -319,6 +341,8 @@ export default function RestaurantKOTs() {
                                 <tr className="bg-gray-50/50 border-b border-gray-100">
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">KOT No</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                                    {/* Added: Hotel column and hotel filter for KOTs page */}
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Hotel</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Table / Room</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Steward</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Created By</th>
@@ -329,13 +353,15 @@ export default function RestaurantKOTs() {
                             <tbody className="divide-y divide-gray-50">
                                 {loading && filteredKOTs.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                        {/* Added: Hotel column and hotel filter for KOTs page (colSpan 7->8) */}
+                                        <td colSpan={8} className="px-6 py-12 text-center">
                                             {/* Removed loading message */}
                                         </td>
                                     </tr>
                                 ) : filteredKOTs.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                        {/* Added: Hotel column and hotel filter for KOTs page (colSpan 7->8) */}
+                                        <td colSpan={8} className="px-6 py-12 text-center">
                                             <div className="flex flex-col items-center justify-center space-y-3">
                                                 <div className="bg-gray-100 p-4 rounded-full">
                                                     <ClipboardList className="w-8 h-8 text-gray-400" />
@@ -357,6 +383,10 @@ export default function RestaurantKOTs() {
                                                         <span>{format(new Date(kot.printedAt), 'dd MMM yyyy')}</span>
                                                         <span className="text-gray-400 text-xs italic">{format(new Date(kot.printedAt), 'hh:mm a')}</span>
                                                     </div>
+                                                </td>
+                                                {/* Added: Hotel column and hotel filter for KOTs page */}
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                                    {kot.hotel?.name || kot.hotelName || kot.order?.hotel?.name || hotels.find(h => h.id === (kot.hotelId || kot.order?.hotelId))?.name || 'N/A'}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col text-sm">
@@ -398,21 +428,40 @@ export default function RestaurantKOTs() {
                                                             <>
                                                                 <button
                                                                     onClick={() => handleConvert(kot)}
-                                                                    className="px-3 py-1.5 text-white rounded text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:brightness-110 active:scale-95"
+                                                                    className="px-3 py-1.5 text-white rounded text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:brightness-110" // Removed: active scale animation for instant click response
                                                                     style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
                                                                 >
                                                                     <Receipt className="w-3 h-3" />
                                                                     BILL
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => navigate(`${roleBase}/restaurant/kots/${kot.id}/edit`)}
+                                                                    onClick={() => navigate(`${roleBase}/restaurant/pos`, {
+                                                                        state: {
+                                                                            mode: 'modify',
+                                                                            kotId: kot.id,
+                                                                            hotelId: kot.hotelId,
+                                                                            tableNumber: kot.order?.tableNumber,
+                                                                            roomId: kot.order?.roomId,
+                                                                            stewardId: kot.order?.stewardId,
+                                                                            bookingId: kot.order?.bookingId,
+                                                                            guestName: kot.order?.guestName,
+                                                                            stewardName: kot.order?.stewardName,
+                                                                            items: kot.items.map((i: any) => ({
+                                                                                menuItemId: i.menuItemId,
+                                                                                itemName: i.itemName,
+                                                                                quantity: i.quantity,
+                                                                                price: i.price,
+                                                                                itemTotal: i.quantity * i.price
+                                                                            }))
+                                                                        }
+                                                                    })}
                                                                     className="p-2 text-gray-400 hover:text-amber-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
                                                                     title="Edit KOT"
                                                                 >
                                                                     <Edit className="w-4 h-4" />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleDelete(kot.id)}
+                                                                    onClick={() => handleDelete(kot)}
                                                                     className="p-2 text-gray-400 hover:text-red-600 transition-colors hover:bg-white rounded-lg border border-transparent hover:border-gray-100"
                                                                     title="Cancel KOT"
                                                                 >

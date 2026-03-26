@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Hotel, RestaurantOrder, RestaurantOrderItem as OrderItem } from "../contexts/PMSContext";
@@ -37,6 +37,8 @@ const RECEIPT_DASH = "- - - - - - - - - - - - - -";
 
 export function RestaurantPOS() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const incomingRoomId = location.state?.roomId;
   const { user, setCurrentHotelId } = useAuth();
   const {
     restaurantCategories,
@@ -73,35 +75,38 @@ export function RestaurantPOS() {
       return paramId || storedId || (hotels[0]?.id || "");
     }
 
-    // If not admin, we MUST stay within our authorized hotel unless Boss Mode is on
-    // But even then, initial load should probably be the user's primary hotel
-    return user?.hotelId || "";
+    // Fixed: if a hotelId was explicitly passed via URL (e.g. from Room Selector clicking
+    // a room on a different hotel), honour it. Otherwise fall back to user's own hotel.
+    return paramId || user?.hotelId || "";
   };
 
   const [selectedHotelId, setSelectedHotelId] = useState<string>(getInitialHotelId());
 
+  // Fixed: Restaurant Staff now gets all admin hotels (same as Boss Mode)
+  const availableHotels = hotels;
+
   // Safety check: ensure selectedHotelId is actually in the hotels list
   useEffect(() => {
-    if (!hotels.length) return;
+    if (!availableHotels.length) return;
 
-    const isAuthorized = hotels.some(h => h.id === selectedHotelId);
+    const isAuthorized = availableHotels.some(h => h.id === selectedHotelId);
     if (!isAuthorized && !isBossAdmin) {
       // If not authorized and not boss admin, force to user's hotel
       setSelectedHotelId(user?.hotelId || "");
     } else if (!isAuthorized && isBossAdmin) {
       // If admin but hotel is missing (e.g. deleted), pick first available
-      setSelectedHotelId(hotels[0]?.id || "");
+      setSelectedHotelId(availableHotels[0]?.id || "");
     }
-  }, [hotels, selectedHotelId, user?.hotelId, isBossAdmin]);
+  }, [availableHotels, selectedHotelId, user?.hotelId, isBossAdmin]);
 
   // Auto-select first hotel for admin if none selected
   useEffect(() => {
-    if (isBossAdmin && !selectedHotelId && hotels.length > 0) {
-      setSelectedHotelId(hotels[0].id);
+    if (isBossAdmin && !selectedHotelId && availableHotels.length > 0) {
+      setSelectedHotelId(availableHotels[0].id);
     }
-  }, [hotels, isBossAdmin, selectedHotelId]);
+  }, [availableHotels, isBossAdmin, selectedHotelId]);
 
-  const activeHotel = hotels.find(h => h.id === selectedHotelId) as Hotel | undefined
+  const activeHotel = availableHotels.find(h => h.id === selectedHotelId) as Hotel | undefined
     || { id: "", name: isBossAdmin ? "All Hotels (Consolidated)" : "Unknown Hotel" } as Hotel;
 
 
@@ -118,27 +123,45 @@ export function RestaurantPOS() {
   const [addItemSearch, setAddItemSearch] = useState("");
   const [addItemQty, setAddItemQty] = useState(1);
   const quantityInputRef = useRef<HTMLInputElement | null>(null);
+  // Added: keyboard navigation for search dropdown
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const addButtonRef = useRef<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [showItemSuggestions, setShowItemSuggestions] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [cart, setCart] = useState<any[]>([]);
   const [discount, setDiscount] = useState(0);
   const [kotNote, setKotNote] = useState("");
+  const [mode, setMode] = useState<'create' | 'modify'>(location.state?.mode || 'create'); // Added: Modify KOT mode
+  const [modifyingKotId, setModifyingKotId] = useState<string | null>(location.state?.kotId || null); // Added: Modify KOT mode
 
   // Customer/Order Details
-  const [tableNumber, setTableNumber] = useState("");
-  const [roomId, setRoomId] = useState("");
+  const [tableNumber, setTableNumber] = useState(location.state?.tableNumber || "");
+  const [roomId, setRoomId] = useState(location.state?.roomId || "");
   const [bookingId, setBookingId] = useState("");
   const [guestName, setGuestName] = useState("");
   const [stewardName, setStewardName] = useState("");
   const [stewardId, setStewardId] = useState("");
-  const [roomNumber, setRoomNumber] = useState("");
+  const [roomNumber, setRoomNumber] = useState(location.state?.roomNumber || "");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [stewards, setStewards] = useState<any[]>([]);
 
   // Data State
   const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
-  const [allRooms, setAllRooms] = useState<any[]>([]);
+  const [allHotelsRooms, setAllHotelsRooms] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  // Fixed: derive allRooms from context (stable memo) instead of state set inside useEffect
+  //        so that `rooms` reference churn doesn't trigger a re-fetch loop
+  const allRooms = useMemo(
+    () => rooms.filter((r: any) => r.hotelId === selectedHotelId),
+    [rooms, selectedHotelId]
+  );
+  
+  // Fixed: use selectedHotelId instead of loggedIn hotelId for stewards
+  const stewardsToDisplay = useMemo(() => {
+    return stewards.filter((s: any) => s.hotelId === selectedHotelId);
+  }, [stewards, selectedHotelId]);
+
   const [showKOTPreview, setShowKOTPreview] = useState(false);
   const [kotToPreview, setKotToPreview] = useState<any>(null);
   const [showBillPreview, setShowBillPreview] = useState(false);
@@ -155,22 +178,70 @@ export function RestaurantPOS() {
     setBillToPreview(null);
   };
 
-  // Fetch active rooms on mount or hotel change
+  // Used only to debounce duplicate calls within the same render cycle
+  const isFetchingRoomsRef = useRef(false);
+
+  // Fixed: re-fetch rooms when selectedHotel changes
+  // Fixed: reset ref at effect entry so hotel switches always trigger a fresh fetch.
+  //        Previously the ref could be true from a prior hotel's in-flight request,
+  //        causing the new hotel's rooms to be silently skipped.
   useEffect(() => {
-    getCheckedInRooms(selectedHotelId).then(setCheckedInRooms).catch(console.error);
-    if (activeHotel?.showAllRooms) {
-      setAllRooms(rooms.filter(r => r.hotelId === selectedHotelId));
+    // Reset so hotel changes are never blocked by a previous in-flight call
+    isFetchingRoomsRef.current = false;
+
+    if (isFetchingRoomsRef.current) {
+      console.log('[DEBUG] Skipping duplicate room/steward fetch for hotel:', selectedHotelId);
+      return; // guard: prevent duplicate calls in same tick
+    }
+    isFetchingRoomsRef.current = true;
+
+    // Clear stale rooms immediately so dropdown shows "Select Room" for new hotel
+    setCheckedInRooms([]);
+    setAllHotelsRooms([]);
+    
+    // Only clear selection if we ARE NOT arriving from an explicit room navigation
+    if (!location.state?.roomId && !location.state?.tableNumber) {
+        setRoomId("");
+        setRoomNumber("");
+        setTableNumber("");
     }
 
-    // Fetch stewards
+    console.log('[DEBUG] Fetching checked-in rooms for hotel:', selectedHotelId);
+    getCheckedInRooms(selectedHotelId)
+      .then(data => {
+        console.log('[DEBUG] Rooms fetch result for hotel', selectedHotelId, ':', data);
+        setCheckedInRooms(data);
+      })
+      .catch(err => {
+        console.error('[DEBUG] Error fetching rooms for hotel', selectedHotelId, err);
+      })
+      .finally(() => { isFetchingRoomsRef.current = false; });
+
     if (selectedHotelId) {
-      api.get(`/stewards?hotelId=${selectedHotelId}`)
-        .then(res => setStewards(res.data.data || []))
+      api.get("/restaurant/rooms", { params: { hotelId: selectedHotelId } })
+        .then(res => setAllHotelsRooms(res.data?.data || []))
         .catch(console.error);
+    }
+
+    // Fixed: use selectedHotelId instead of loggedIn hotelId — send X-Hotel-ID header
+    // so the backend returns rooms for the selected hotel, not the logged-in user's hotel
+    if (selectedHotelId) {
+      console.log('[DEBUG] Fetching stewards for hotel:', selectedHotelId);
+      api.get(`/stewards?hotelId=${selectedHotelId}`, {
+        headers: { 'X-Hotel-ID': selectedHotelId }
+      })
+        .then(res => {
+          console.log('[DEBUG] Stewards fetch result for hotel', selectedHotelId, ':', res.data.data);
+          setStewards(res.data.data || []);
+        })
+        .catch(err => {
+          console.error('[DEBUG] Error fetching stewards for hotel', selectedHotelId, err);
+        });
     } else {
+      console.log('[DEBUG] No hotel selected, clearing stewards');
       setStewards([]);
     }
-  }, [selectedHotelId, getCheckedInRooms, activeHotel?.showAllRooms, rooms]);
+  }, [selectedHotelId, getCheckedInRooms]);
 
   // Boss Mode: fetch categories and menu items directly when hotel is switched
   const [localCategories, setLocalCategories] = useState<any[]>([]);
@@ -189,6 +260,22 @@ export function RestaurantPOS() {
       setBossMenuLoaded(true);
     }).catch(console.error);
   }, [selectedHotelId, isBossAdmin]);
+
+  // Added: Modify KOT mode — pre-fill state when mode is 'modify'
+  useEffect(() => {
+    if (location.state?.mode === 'modify' && location.state.items) {
+      setMode('modify');
+      setModifyingKotId(location.state.kotId);
+      setSelectedHotelId(location.state.hotelId);
+      setTableNumber(location.state.tableNumber || "");
+      setRoomId(location.state.roomId || null);
+      setStewardId(location.state.stewardId || "");
+      setStewardName(location.state.stewardName || "");
+      setBookingId(location.state.bookingId || null);
+      setGuestName(location.state.guestName || "");
+      setCart(location.state.items);
+    }
+  }, [location.state]);
 
   // Use direct API data for Boss Mode, context data for normal mode
   // FIXED: Using a more robust filter and fallback
@@ -271,6 +358,33 @@ export function RestaurantPOS() {
     }
   }, [searchParams, checkedInRooms, allRooms, activeHotel?.showAllRooms, setSearchParams]);
 
+  useEffect(() => {
+    // Fixed: auto-select room passed from room card click
+    const baseRooms = activeHotel?.showAllRooms ? (allHotelsRooms.length > 0 ? allHotelsRooms : allRooms) : checkedInRooms;
+    const normalize = (id: any) => (id ? String(id).replace(/-/g, '').toLowerCase() : '');
+    const normSelectedHotelId = normalize(selectedHotelId);
+    const roomsToDisplay = baseRooms.filter(room => normalize(room.hotelId || selectedHotelId) === normSelectedHotelId);
+
+    if (incomingRoomId && roomsToDisplay.length > 0 && !isFetchingRoomsRef.current) {
+      const match = roomsToDisplay.find(r => r.id === incomingRoomId);
+      if (match) {
+        setRoomId(match.id);
+        setRoomNumber(match.roomNumber || "");
+        setTableNumber(""); // Clear table if room selected
+        
+        const currentBooking = match.bookings?.find((b: any) => b.status === "checked_in") || checkedInRooms.find(cr => cr.id === match.id)?.bookings?.find((b: any) => b.status === "checked_in");
+        setBookingId(currentBooking?.id || "");
+        setGuestName(currentBooking?.guest?.name || "");
+        
+        // Clear from location state to prevent forcing selection on subsequent renders
+        navigate(location.pathname + location.search, { 
+          replace: true, 
+          state: { ...location.state, roomId: undefined } 
+        });
+      }
+    }
+  }, [incomingRoomId, checkedInRooms, allHotelsRooms, allRooms, activeHotel?.showAllRooms, selectedHotelId, location.pathname, location.search, location.state, navigate]);
+
   const filteredItems = useMemo(() => {
     // In Boss Mode, use directly-fetched items for the selected hotel
     // FIXED: Ensure we check against selectedHotelId even in normal mode
@@ -326,6 +440,21 @@ export function RestaurantPOS() {
       })
       .slice(0, 25);
   }, [addItemOptions, addItemSearch, itemCodeMap]);
+
+  // Added: keyboard navigation for search dropdown — reset highlight on query change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [addItemSearch]);
+
+  // Added: keyboard navigation for search dropdown — auto-scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0) {
+      const highlighted = document.querySelector(
+        `[data-item-index="${highlightedIndex}"]`
+      );
+      highlighted?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
 
   const resolveAddItemFromQuery = (query: string) => {
     const q = query.trim().toLowerCase();
@@ -508,6 +637,70 @@ export function RestaurantPOS() {
     setBillToPreview(null);
   };
 
+  // Added: Modify KOT mode — handle existing KOT update
+  const handleUpdateKOT = async () => {
+    if (cart.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+    if (!modifyingKotId) {
+      toast.error("KOT ID is missing. Cannot update.");
+      return;
+    }
+    if (!selectedHotelId) {
+      toast.error("Hotel context is missing");
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      // Changed: api.put instead of api.patch as PUT is already standard in the routes
+      const response = await api.put(`/restaurant/kots/${modifyingKotId}`, {
+        hotelId: selectedHotelId,
+        tableNumber: tableNumber || undefined,
+        roomId: roomId || undefined,
+        stewardId: stewardId || undefined,
+        stewardName: stewardName || undefined,
+        bookingId: bookingId || undefined,
+        guestName: guestName || undefined,
+        items: cart.map(item => ({
+          menuItemId: item.menuItemId,
+          itemName: item.itemName,
+          quantity: item.quantity,
+          price: item.price,
+          specialNote: item.specialNote || ""
+        }))
+      });
+
+      const updatedKOT = response.data.data;
+      toast.success("KOT updated successfully!");
+      
+      // Added: Modify KOT flow — show preview of the updated KOT with print option
+      const selectedRoom = checkedInRooms.find(r => r.id === roomId);
+      const previewData = {
+        ...updatedKOT,
+        items: updatedKOT.orderItems || updatedKOT.items,
+        order: {
+          tableNumber: updatedKOT.tableNumber || tableNumber,
+          guestName: updatedKOT.guestName || guestName,
+          stewardName: updatedKOT.stewardName || stewardName,
+          room: selectedRoom ? { roomNumber: selectedRoom.roomNumber } : updatedKOT.order?.room,
+        },
+        printedAt: new Date().toISOString()
+      };
+
+      setKotToPreview(previewData);
+      setShowKOTPreview(true);
+      
+      // Note: We don't navigate away yet so the user can see/print the preview.
+      // They can navigate away manually after printing.
+    } catch (e: any) {
+      console.error("Failed to update KOT:", e);
+      toast.error(e.response?.data?.message || e.message || "Failed to update KOT");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleGenerateKOT = async () => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
@@ -550,7 +743,7 @@ export function RestaurantPOS() {
     setIsProcessing(true);
     try {
       const orderData = {
-        hotelId: selectedHotelId,
+        hotelId: selectedHotelId || currentHotelId, // Fixed: KOT now created under selectedHotelId not loggedIn hotelId
         items: cart,
         discount,
         guestName: guestName || "Walk-in",
@@ -606,7 +799,7 @@ export function RestaurantPOS() {
       // If it's a draft, we need to finalize it first
       if (invoice?.id === "draft") {
         const orderData = {
-          hotelId: selectedHotelId,
+          hotelId: selectedHotelId || currentHotelId, // Fixed: KOT now created under selectedHotelId not loggedIn hotelId
           items: cart,
           discount,
           guestName: guestName || "Walk-in",
@@ -748,7 +941,7 @@ export function RestaurantPOS() {
       // If it's a draft, we need to save the order and generate the real KOT first
       if (kot.id === "draft") {
         const orderData = {
-          hotelId: selectedHotelId,
+          hotelId: selectedHotelId || currentHotelId, // Fixed: KOT now created under selectedHotelId not loggedIn hotelId
           bookingId: bookingId || null,
           roomId: roomId || null,
           tableNumber,
@@ -1048,7 +1241,7 @@ export function RestaurantPOS() {
           >
             <ChevronRight className="w-4 h-4 rotate-180" />
           </button>
-          <div className="text-[15px] font-semibold">Restaurant Billing</div>
+          <div className="text-[15px] font-semibold">{mode === 'modify' ? 'Modify KOT' : 'Restaurant Billing'}</div>
         </div>
       </div>
 
@@ -1056,7 +1249,7 @@ export function RestaurantPOS() {
         <div className="border border-[#9f9f9f] bg-[#f8f5eb] p-3 space-y-3 min-h-full">
           <div className="space-y-0">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-              {(isBossAdmin || systemSettings?.enableRestaurantMultiHotel) && hotels.length > 0 && (
+              {(isBossAdmin || systemSettings?.enableRestaurantMultiHotel) && availableHotels.length > 0 && (
                 <div>
                   <label className="block text-[11px] mb-1">Hotel</label>
                   <select
@@ -1074,7 +1267,7 @@ export function RestaurantPOS() {
                     }}
                     className="w-full h-8 px-2 border border-[#8f8f8f] bg-white text-[12px]"
                   >
-                    {hotels.map((h) => (
+                    {availableHotels.map((h) => (
                       <option key={h.id} value={h.id}>{h.name}</option>
                     ))}
                   </select>
@@ -1134,7 +1327,7 @@ export function RestaurantPOS() {
                       return;
                     }
 
-                    const roomsToSearch = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
+                    const roomsToSearch = activeHotel?.showAllRooms ? (allHotelsRooms.length > 0 ? allHotelsRooms : allRooms) : checkedInRooms;
                     const room = roomsToSearch.find(r => r.id === rid);
                     if (room) {
                       const currentBooking = room.bookings?.find((b: any) => b.status === "checked_in") || checkedInRooms.find(cr => cr.id === room.id)?.bookings?.find((b: any) => b.status === "checked_in");
@@ -1148,7 +1341,26 @@ export function RestaurantPOS() {
                 >
                   <option value="">Select Room</option>
                   {(() => {
-                    const roomsToDisplay = activeHotel?.showAllRooms ? allRooms : checkedInRooms;
+                    // Fixed: filter by selectedHotelId not loggedIn hotelId, normalize for dashes/type
+                    const normalize = (id: any) => (id ? String(id).replace(/-/g, '').toLowerCase() : '');
+                    const normSelectedHotelId = normalize(selectedHotelId);
+                    const baseRoomsForDropdown = activeHotel?.showAllRooms ? (allHotelsRooms.length > 0 ? allHotelsRooms : allRooms) : checkedInRooms;
+                    const roomsToDisplay = baseRoomsForDropdown.filter(
+                      room => {
+                        const roomHId = room.hotelId || selectedHotelId;
+                        const normRoomHotelId = normalize(roomHId);
+                        // Debug log for normalization
+                        console.log('[DEBUG] Comparing normalized hotelIds:', {
+                          roomId: room.id,
+                          roomHotelId: room.hotelId,
+                          selectedHotelId,
+                          normRoomHotelId,
+                          normSelectedHotelId
+                        });
+                        return normRoomHotelId === normSelectedHotelId;
+                      }
+                    );
+                    console.log('[DEBUG] Room dropdown roomsToDisplay:', roomsToDisplay);
                     return roomsToDisplay.map((r) => {
                       const currentBooking = r.bookings?.find((b: any) => b.status === "checked_in") || checkedInRooms.find(cr => cr.id === r.id)?.bookings?.find((b: any) => b.status === "checked_in");
                       const guestDisplay = currentBooking?.guest?.name || "Vacant";
@@ -1175,10 +1387,10 @@ export function RestaurantPOS() {
                   className="w-full h-8 px-2 border border-[#8f8f8f] bg-white text-[12px]"
                 >
                   <option value="">Select Steward</option>
-                  {stewards.length === 0 ? (
+                  {stewardsToDisplay.length === 0 ? (
                     <option value="" disabled>No steward configured</option>
                   ) : (
-                    stewards.map((s: any) => (
+                    stewardsToDisplay.map((s: any) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))
                   )}
@@ -1191,6 +1403,7 @@ export function RestaurantPOS() {
                 <label className="block text-[11px] mb-1">Search Item</label>
                 <div className="relative">
                   <input
+                    ref={searchInputRef}
                     type="text"
                     placeholder="Select item"
                     value={addItemSearch}
@@ -1202,27 +1415,61 @@ export function RestaurantPOS() {
                       setShowItemSuggestions(true);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      // Added: keyboard navigation for search dropdown
+                      if (e.key === 'ArrowDown') {
                         e.preventDefault();
-                        if (resolveAddItemFromQuery(addItemSearch)) {
+                        setHighlightedIndex(prev =>
+                          prev < filteredAddItemOptions.length - 1 ? prev + 1 : prev
+                        );
+                        return;
+                      }
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+                        return;
+                      }
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (highlightedIndex >= 0 && filteredAddItemOptions[highlightedIndex]) {
+                          const item = filteredAddItemOptions[highlightedIndex];
+                          setAddItemSearch(toAddItemLabel(item));
+                          setSearchQuery(item.itemName);
+                          setShowItemSuggestions(false);
+                          setHighlightedIndex(-1);
+                          setTimeout(() => quantityInputRef.current?.focus(), 50);
+                        } else if (resolveAddItemFromQuery(addItemSearch)) {
                           handleAddFromSearch();
                         }
+                        return;
+                      }
+                      if (e.key === 'Escape') {
+                        setHighlightedIndex(-1);
+                        setAddItemSearch('');
+                        setSearchQuery('');
+                        return;
                       }
                     }}
                     className="w-full h-8 px-2 border border-[#8f8f8f] bg-[#ffffff] text-[12px] text-[#1a1a1a]"
                   />
                   {showItemSuggestions && filteredAddItemOptions.length > 0 && (
                     <div className="absolute left-0 right-0 top-full z-20 max-h-56 overflow-auto border border-[#ccc] bg-[#ffffff] text-[#333]">
-                      {filteredAddItemOptions.map((item) => (
+                      {filteredAddItemOptions.map((item, index) => (
                         <button
                           key={item.id}
                           type="button"
+                          data-item-index={index}
+                          onMouseEnter={() => setHighlightedIndex(index)}
                           onMouseDown={() => {
                             setAddItemSearch(toAddItemLabel(item));
                             setSearchQuery(item.itemName);
                             setShowItemSuggestions(false);
                           }}
                           className="w-full text-left px-2.5 py-1.5 text-[12px] hover:bg-[#e8e4d4]"
+                          style={{
+                            backgroundColor: index === highlightedIndex
+                              ? 'var(--highlight-color, #e8f4e8)'
+                              : 'transparent',
+                          }}
                         >
                           {toAddItemLabel(item)}
                         </button>
@@ -1242,11 +1489,15 @@ export function RestaurantPOS() {
                   onFocus={() => quantityInputRef.current?.select()}
                   onChange={(e) => setAddItemQty(Math.max(1, Number(e.target.value) || 1))}
                   onKeyDown={(e) => {
+                    // Added: keyboard navigation for search dropdown
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      if (resolveAddItemFromQuery(addItemSearch)) {
-                        handleAddFromSearch();
-                      }
+                      addButtonRef.current?.click();
+                      setTimeout(() => {
+                        searchInputRef.current?.focus();
+                        setAddItemSearch('');
+                        setSearchQuery('');
+                      }, 50);
                     }
                   }}
                   className="w-full h-8 px-2 border border-[#8f8f8f] bg-white text-[12px]"
@@ -1256,6 +1507,7 @@ export function RestaurantPOS() {
               <div>
                 <label className="block text-[11px] mb-1">&nbsp;</label>
                 <button
+                  ref={addButtonRef}
                   onClick={handleAddFromSearch}
                   className="w-full h-8 px-3 border border-[#8d8d8d] bg-[#f5f5f5] text-[12px]"
                 >
@@ -1330,10 +1582,10 @@ export function RestaurantPOS() {
           <div className="flex flex-wrap justify-end gap-2">
             <button
               disabled={isProcessing || cart.length === 0}
-              onClick={handleGenerateKOT}
+              onClick={mode === 'modify' ? handleUpdateKOT : handleGenerateKOT}
               className="h-9 px-4 border border-[#8d8d8d] bg-[#f5f5f5] text-[12px] font-semibold disabled:opacity-50"
             >
-              Generate KOT
+              {mode === 'modify' ? 'Update KOT' : 'Generate KOT'}
             </button>
             <button
               disabled={isProcessing || cart.length === 0}

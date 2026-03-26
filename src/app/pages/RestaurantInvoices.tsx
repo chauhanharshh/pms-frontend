@@ -38,6 +38,7 @@ export default function RestaurantInvoices() {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [dateFilter, setDateFilter] = useState("");
+    const [selectedHotelFilter, setSelectedHotelFilter] = useState(""); // Added: Hotel column and hotel filter for Restaurant Invoices
     const [showPayModal, setShowPayModal] = useState<any>(null);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [invoiceToPreview, setInvoiceToPreview] = useState<any>(null);
@@ -56,7 +57,17 @@ export default function RestaurantInvoices() {
     const fetchInvoices = async () => {
         try {
             setLoading(true);
-            const res = await api.get("/restaurant/invoices");
+            const adminId = user?.hotel?.adminId || (user as any)?.adminId;
+            const params: any = {};
+            if (adminId) params.adminId = adminId;
+
+            // Fixed: don't send hotelId when 'All Hotels' selected — was causing 500
+            if (selectedHotelFilter && selectedHotelFilter !== 'all') {
+                params.hotelId = selectedHotelFilter;
+            }
+            
+            // Fixed: fetch all admin invoices, filter by selected hotel
+            const res = await api.get("/restaurant/invoices", { params });
             setInvoices(res.data.data);
         } catch (err) {
             console.error("Failed to fetch restaurant invoices:", err);
@@ -109,7 +120,9 @@ export default function RestaurantInvoices() {
             safeDateSearchText(inv?.createdAt).includes(query);
         const matchesStatus = statusFilter === "all" || inv.status === statusFilter;
         const matchesDate = !dateFilter || inv.invoiceDate.startsWith(dateFilter);
-        return matchesSearch && matchesStatus && matchesDate;
+        // Fixed: fetch all admin invoices, filter by selected hotel
+        const matchesHotel = !selectedHotelFilter || String(inv.hotelId) === String(selectedHotelFilter);
+        return matchesSearch && matchesStatus && matchesDate && matchesHotel;
     });
 
     const getStatusStyle = (status: string) => {
@@ -396,23 +409,23 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Total Bills</p>
-                        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{invoices.length}</h3>
+                        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{filteredInvoices.length}</h3>
                     </div>
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Collected</p>
                         <h3 className="text-lg sm:text-2xl font-bold text-emerald-600 mt-1">
-                            ₹{invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
+                            ₹{filteredInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
                         </h3>
                     </div>
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Pending</p>
                         <h3 className="text-lg sm:text-2xl font-bold text-amber-600 mt-1">
-                            ₹{invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
+                            ₹{filteredInvoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
                         </h3>
                     </div>
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Cancelled</p>
-                        <h3 className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{invoices.filter(i => i.status === 'cancelled').length}</h3>
+                        <h3 className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{filteredInvoices.filter(i => i.status === 'cancelled').length}</h3>
                     </div>
                 </div>
 
@@ -450,6 +463,22 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                     <option value="paid">Paid</option>
                                     <option value="issued">Issued</option>
                                     <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            {/* Added: Hotel column and hotel filter for Restaurant Invoices */}
+                            <div className="relative flex-1 sm:w-44">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                                <select
+                                    className="w-full pl-10 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm appearance-none cursor-pointer"
+                                    value={selectedHotelFilter}
+                                    onChange={(e) => setSelectedHotelFilter(e.target.value)}
+                                >
+                                    <option value="">All Hotels</option>
+                                    {hotels.map(hotel => (
+                                        <option key={hotel.id} value={hotel.id}>
+                                            {hotel.name}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="relative flex-1 sm:w-44">
@@ -588,14 +617,14 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-50">
                                                     <button
                                                         onClick={() => handlePrintClick(inv)}
-                                                        className="p-3 text-gray-500 hover:text-primary transition-colors hover:bg-white rounded-xl border border-gray-200 shadow-sm active:scale-95"
+                                                        className="p-3 text-gray-500 hover:text-primary transition-colors hover:bg-white rounded-xl border border-gray-200 shadow-sm" // Removed: active scale animation for instant click response
                                                     >
                                                         <Printer className="w-5 h-5" />
                                                     </button>
                                                     {inv.status === 'issued' && (
                                                         <button
                                                             onClick={() => setShowPayModal(inv)}
-                                                            className="px-5 py-3 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 flex items-center gap-2"
+                                                            className="px-5 py-3 text-white rounded-xl text-sm font-bold transition-all shadow-md flex items-center gap-2" // Removed: active scale animation for instant click response
                                                             style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
                                                         >
                                                             <CreditCard className="w-4 h-4" /> PAY NOW
@@ -604,7 +633,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                                     {inv.status !== 'paid' && inv.status !== 'cancelled' && (
                                                         <button
                                                             onClick={() => navigate(`${invoicesPath}/${inv.id}/edit`)}
-                                                            className="p-3 text-amber-600 hover:bg-amber-50 rounded-xl border border-amber-100 shadow-sm transition-all active:scale-95"
+                                                            className="p-3 text-amber-600 hover:bg-amber-50 rounded-xl border border-amber-100 shadow-sm transition-all" // Removed: active scale animation for instant click response
                                                         >
                                                             <Edit className="w-5 h-5" />
                                                         </button>
@@ -622,6 +651,8 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</th>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">KOT No</th>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                                        {/* Added: Hotel column and hotel filter for Restaurant Invoices */}
+                                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Hotel</th>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Steward</th>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                                         <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -631,7 +662,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                 <tbody className="divide-y divide-gray-50">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={7} className="px-6 py-12 text-center">
+                                            <td colSpan={8} className="px-6 py-12 text-center">
                                                 <div className="flex flex-col items-center justify-center space-y-3">
                                                     <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                                                     <p className="text-gray-500 text-sm">Loading invoices...</p>
@@ -640,7 +671,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                         </tr>
                                     ) : filteredInvoices.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="px-6 py-12 text-center">
+                                            <td colSpan={8} className="px-6 py-12 text-center">
                                                 <div className="flex flex-col items-center justify-center space-y-3">
                                                     <div className="bg-gray-100 p-4 rounded-full">
                                                         <FileText className="w-8 h-8 text-gray-400" />
@@ -675,6 +706,12 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                                             <span className="text-sm text-gray-900">{format(new Date(inv.invoiceDate), 'dd MMM yyyy')}</span>
                                                             <span className="text-xs text-gray-400 italic">Created: {format(new Date(inv.createdAt), 'hh:mm a')}</span>
                                                         </div>
+                                                    </td>
+                                                    {/* Added: Hotel column and hotel filter for Restaurant Invoices */}
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            {inv.hotel?.name || inv.hotelName || 'N/A'}
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col">
@@ -784,7 +821,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                             <button
                                 disabled={isPaying}
                                 onClick={handlePay}
-                                className="w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-widest shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+                                className="w-full py-4 rounded-xl text-white font-black text-sm uppercase tracking-widest shadow-lg transition-all disabled:opacity-50" // Removed: active scale animation for instant click response
                                 style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
                             >
                                 {isPaying ? 'Processing...' : 'Complete Settlement'}

@@ -635,14 +635,14 @@ export function Bills() {
                               const booking = bookings.find(bk => bk.id === b.bookingId);
                               if (booking) setPreviewBooking(booking);
                             }}
-                            className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-blue-600 border border-blue-100 shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                            className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-blue-600 border border-blue-100 shadow-md flex items-center gap-2 transition-all" // Removed: active scale animation for instant click response
                           >
                             <Eye className="w-4 h-4" /> VIEW
                           </button>
                           {isAdmin && (
                             <button
                               onClick={() => setEditingBill(bill)}
-                              className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-amber-600 border border-amber-100 shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                              className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-amber-600 border border-amber-100 shadow-md flex items-center gap-2 transition-all" // Removed: active scale animation for instant click response
                             >
                               <Edit3 className="w-4 h-4" /> EDIT
                             </button>

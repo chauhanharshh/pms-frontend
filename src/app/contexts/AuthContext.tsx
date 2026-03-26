@@ -9,7 +9,7 @@ export interface AuthUser {
   role: "super_admin" | "admin" | "hotel_manager" | "hotel_user" | "restaurant_staff" | "restaurant_admin";
   maxHotels?: number | null;
   hotelId?: string | null;
-  hotel?: { id: string; name: string; brandName?: string | null; logoUrl?: string | null } | null;
+  hotel?: { id: string; name: string; adminId?: string | null; brandName?: string | null; logoUrl?: string | null } | null;
 }
 
 interface AuthContextType {

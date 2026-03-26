@@ -791,7 +791,7 @@ export function BookingsPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => setPreviewBooking(b)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+                              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm" // Removed: active scale animation for instant click response
                               style={{ 
                                 background: "white", 
                                 color: DARKGOLD,
@@ -803,7 +803,7 @@ export function BookingsPage() {
                             {(b.status === "pending" || b.status === "confirmed") && (
                               <button
                                 onClick={() => handleCancelBooking(b.id, b.guestName)}
-                                className="p-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all active:scale-95 shadow-sm border border-red-100"
+                                className="p-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all shadow-sm border border-red-100" // Removed: active scale animation for instant click response
                                 title="Cancel Booking"
                               >
                                 <XCircle className="w-5 h-5" />

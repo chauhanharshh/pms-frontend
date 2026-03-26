@@ -579,7 +579,7 @@ export function DayClosingPage() {
                                 <button onClick={() => setShowCloseModal(false)} className="flex-1 py-3 rounded-xl text-sm font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50">Cancel</button>
                                 <button
                                     onClick={() => handleCloseDay()}
-                                    className="flex-1 py-3 rounded-xl text-sm font-bold text-white shadow-lg active:scale-95 transition-transform"
+                                    className="flex-1 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-transform" // Removed: active scale animation for instant click response
                                     style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
                                 >
                                     Confirm Closing
@@ -696,7 +696,7 @@ export function DayClosingPage() {
                                 </div>
                             </div>
                             <div className="p-6 bg-gray-50">
-                                <button onClick={() => setShowPendingModal(false)} className="w-full py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-transform active:scale-[0.98]" style={{ background: "linear-gradient(135deg, #64748b, #475569)" }}>Close Window</button>
+                                <button onClick={() => setShowPendingModal(false)} className="w-full py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-transform" style={{ background: "linear-gradient(135deg, #64748b, #475569)" }}>Close Window</button> // Removed: active scale animation for instant click response
                             </div>
                         </div>
                     </div>

@@ -19,7 +19,8 @@ const readStoredList = (key: string) => {
 
 export function RestaurantRoomSelector() {
     const { user } = useAuth();
-    const { getCheckedInRooms, getKOTs, hotels, systemSettings, rooms, clearRestaurantKOTsForRoom, restaurantTables } = usePMS();
+    const { getCheckedInRooms, getKOTs, hotels, updateHotel, systemSettings, rooms, clearRestaurantKOTsForRoom, restaurantTables } = usePMS();
+
     const navigate = useNavigate();
     const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
     const [allHotelsRooms, setAllHotelsRooms] = useState<any[]>([]);
@@ -33,6 +34,9 @@ export function RestaurantRoomSelector() {
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: any } | null>(null);
     const [refreshTick, setRefreshTick] = useState(0);
     const clickTimersRef = useRef<Record<string, number>>({});
+    // Fixed: ref guards to stop infinite polling loop on network failure
+    const isFetchingRef = useRef(false);
+    const hasFetchErrorRef = useRef(false);
     const currentHotelId = user?.hotelId || "";
     const visibleHotels = useMemo(() => {
         const role = String(user?.role || "");
@@ -56,6 +60,9 @@ export function RestaurantRoomSelector() {
     const isPosBossMode = currentUserHotel?.posBossMode === true;
     const isBossAdmin = user?.role === "admin" || isPosBossMode;
 
+    // Fixed: Restaurant Staff now gets all admin hotels (same as Boss Mode)
+    const availableHotels = visibleHotels;
+
     const [activeSelectorHotelId, setActiveSelectorHotelId] = useState<string | undefined>(currentHotelId);
     const [isUpdatingShowRooms, setIsUpdatingShowRooms] = useState(false);
 
@@ -63,7 +70,7 @@ export function RestaurantRoomSelector() {
         if (!activeSelectorHotelId || isUpdatingShowRooms) return;
         setIsUpdatingShowRooms(true);
         try {
-            await api.put(`/hotels/${activeSelectorHotelId}`, { showAllRooms: newValue });
+            await updateHotel(activeSelectorHotelId, { showAllRooms: newValue });
             // Refresh parent state or just reload data
             handleRefresh();
         } catch (err) {
@@ -75,19 +82,22 @@ export function RestaurantRoomSelector() {
     };
 
     // Auto-select first hotel if user has no assigned hotel and multi-hotel is on or boss mode is active
+    // Fixed: only auto-select on initial mount (when undefined), NOT on explicit empty string (consolidated)
     useEffect(() => {
-        if (!activeSelectorHotelId && visibleHotels.length > 0 && (systemSettings?.enableRestaurantMultiHotel || isBossAdmin)) {
-            setActiveSelectorHotelId(visibleHotels[0].id);
-        } else if (!activeSelectorHotelId) {
-            setActiveSelectorHotelId(user?.hotelId);
+        if (activeSelectorHotelId === undefined) {
+            if (availableHotels.length > 0 && (systemSettings?.enableRestaurantMultiHotel || isBossAdmin)) {
+                setActiveSelectorHotelId(availableHotels[0].id);
+            } else {
+                setActiveSelectorHotelId(user?.hotelId || "");
+            }
         }
-    }, [activeSelectorHotelId, visibleHotels, systemSettings, user?.hotelId, isBossAdmin]);
+    }, [availableHotels, systemSettings, user?.hotelId, isBossAdmin]);
 
     // Derived active hotel details
-    const activeHotel = visibleHotels.find((h) => h.id === activeSelectorHotelId) || { name: user?.role === "admin" ? "All Hotels (Consolidated)" : "Unknown Hotel", showAllRooms: false } as Hotel;
-    const showAllRooms = activeHotel?.showAllRooms === true;
-    const posBossMode = activeHotel?.posBossMode === true || (activeHotel?.id === currentHotelId && isPosBossMode);
-    const isAllHotelsMode = showAllRooms && posBossMode;
+    const activeHotel = activeSelectorHotelId
+        ? availableHotels.find((h) => String(h.id) === String(activeSelectorHotelId))
+        : { name: isBossAdmin ? "All Hotels (Consolidated)" : "Unknown Hotel", showAllRooms: false } as Hotel;
+
 
     const currentHotelRooms = useMemo(() => {
         return rooms
@@ -101,91 +111,125 @@ export function RestaurantRoomSelector() {
             }));
     }, [rooms, activeSelectorHotelId]);
 
-    const allContextRooms = useMemo(() => {
-        return rooms
-            .filter((r: any) => !activeSelectorHotelId || r.hotelId === activeSelectorHotelId)
-            .map((r: any) => ({
-                id: r.id,
-                roomNumber: r.roomNumber,
-                bookings: r.bookings || [],
-                status: r.status,
-                hotelId: r.hotelId,
-            }));
-    }, [rooms, activeSelectorHotelId]);
-
     const getRestaurantRooms = useCallback(() => {
-        // CASE 1: Both enabled -> show ALL rooms of ALL hotels
-        if (showAllRooms && posBossMode) {
-            return allHotelsRooms.length > 0 ? allHotelsRooms : allContextRooms;
-        }
+        // Use allHotelsRooms if it has data, otherwise fallback to context rooms
+        const roomsToFilter = allHotelsRooms.length > 0 ? allHotelsRooms : currentHotelRooms;
 
-        // CASE 2: Only POS Boss Mode ON -> checked-in/occupied rooms of current selected hotel
-        if (posBossMode && !showAllRooms) {
-            return currentHotelRooms.filter((r: any) => {
-                const status = String(r?.status || "").toLowerCase();
-                return status === "occupied" || status === "checked-in" || status === "checked_in";
+        return roomsToFilter.filter((r: any) => {
+            // BUG 2 FIX: Look up the showAllRooms setting for THIS room's hotel
+            const hotelIdStr = String(r.hotelId || "");
+            const roomHotel = availableHotels.find(h => String(h.id) === hotelIdStr);
+            const hotelShowAll = roomHotel ? roomHotel.showAllRooms === true : false;
+
+            // IF showAllRooms is enabled for this hotel -> show all rooms
+            if (hotelShowAll) return true;
+
+
+
+            // IF showAllRooms is disabled -> ONLY show checked-in/occupied rooms
+            const roomStatus = String(r?.status || "").toLowerCase();
+            const hasCheckedInBooking = r.bookings?.some((b: any) => {
+                const bStatus = String(b.status || "").toLowerCase();
+                return bStatus === "checked_in" || bStatus === "checked-in" || bStatus === "occupied";
             });
-        }
 
-        // CASE 3: Normal mode -> all rooms of current selected hotel
-        return currentHotelRooms;
-    }, [showAllRooms, posBossMode, allHotelsRooms, allContextRooms, currentHotelRooms]);
+            // If it has a checked-in booking, it must be visible
+            if (hasCheckedInBooking) return true;
+
+            // Otherwise, only show if status itself is occupied/checked-in
+            return roomStatus === "occupied" || roomStatus === "checked-in" || roomStatus === "checked_in";
+        });
+
+    }, [allHotelsRooms, currentHotelRooms, visibleHotels]);
+
+    const showAllRooms = activeHotel?.showAllRooms === true;
+
+
 
     const filteredRooms = useMemo(() => getRestaurantRooms(), [getRestaurantRooms]);
 
     const roomGroups = useMemo(() => {
-        const hotelName = activeHotel?.name || "Rooms";
-        const selectedHotelRooms = filteredRooms.filter(
-            (room: any) => !activeSelectorHotelId || room.hotelId === activeSelectorHotelId
-        );
-        return [{ hotelId: activeSelectorHotelId || "", hotelName, rooms: selectedHotelRooms }];
-    }, [activeHotel?.name, activeSelectorHotelId, filteredRooms]);
+        if (activeSelectorHotelId) {
+            const hotelName = activeHotel?.name || "Rooms";
+            const selectedHotelRooms = filteredRooms.filter(
+                (room: any) => String(room.hotelId) === String(activeSelectorHotelId)
+            );
+            return [{ hotelId: activeSelectorHotelId, hotelName, rooms: selectedHotelRooms }];
+        }
+
+        // Consolidated View - Group by Hotel
+        const groups: any[] = [];
+        availableHotels.forEach(hotel => {
+            const hotelRooms = filteredRooms.filter(r => String(r.hotelId) === String(hotel.id));
+            if (hotelRooms.length > 0) {
+                groups.push({
+                    hotelId: hotel.id,
+                    hotelName: hotel.name,
+                    rooms: hotelRooms
+                });
+            }
+        });
+        return groups;
+    }, [activeHotel?.name, activeSelectorHotelId, filteredRooms, availableHotels]);
 
     const tableHotelGroups = useMemo(() => {
-        const hotelsToProcess = activeSelectorHotelId 
-            ? visibleHotels.filter(h => h.id === activeSelectorHotelId)
-            : (isAllHotelsMode ? visibleHotels : []);
-        
+        const hotelsToProcess = activeSelectorHotelId
+            ? availableHotels.filter(h => String(h.id) === String(activeSelectorHotelId))
+            : availableHotels;
+
         return hotelsToProcess.map(h => ({
             hotelId: h.id,
             hotelName: h.name,
             tables: restaurantTables.filter(t => String(t.hotelId) === String(h.id) && t.isActive)
         })).filter(group => group.tables.length > 0);
-    }, [activeSelectorHotelId, visibleHotels, restaurantTables, isAllHotelsMode]);
+    }, [activeSelectorHotelId, availableHotels, restaurantTables]);
 
-    useEffect(() => {
+    // Fixed: useCallback so fetchRoomAndKotData identity is stable across renders
+    const fetchRoomAndKotData = useCallback(async () => {
+        // Fixed: skip if a request is already in-flight
+        if (isFetchingRef.current) return;
+        // Fixed: halt loop on network failure; only manual Refresh resets this
+        if (hasFetchErrorRef.current) return;
+
+        isFetchingRef.current = true;
         let isMounted = true;
 
-        const fetchRoomAndKotData = async () => {
+        try {
+            // Fixed: use 'all' sentinel for consolidated view
+            const fetchHotelId = activeSelectorHotelId || 'all';
+
+            // Fixed: separated fetches — room display works even if KOT fetch fails
             try {
-                const [roomData, openKots] = await Promise.all([
-                    getCheckedInRooms(activeSelectorHotelId),
-                    getKOTs("OPEN"),
-                ]);
+                const roomData = await getCheckedInRooms(fetchHotelId);
+                if (isMounted) setCheckedInRooms(roomData);
+            } catch (err) {
+                console.error('Room fetch failed:', err);
+                hasFetchErrorRef.current = true; // stop re-triggering on failure
+            }
 
-                if (!isMounted) return;
-
-                setCheckedInRooms(roomData);
-
-                if (showAllRooms && posBossMode && activeSelectorHotelId) {
-                    const response = await api.get("/rooms", { params: { hotelId: activeSelectorHotelId } });
-                    if (!isMounted) return;
+            try {
+                // Fetch all rooms from all hotels if 'all' is selected
+                const response = await api.get("/restaurant/rooms", { params: { hotelId: fetchHotelId } });
+                if (isMounted) {
                     const selectedHotelRooms = (response?.data?.data || []).map((r: any) => ({
                         id: r.id,
                         roomNumber: r.roomNumber,
                         bookings: r.bookings || [],
                         status: r.status,
-                        hotelId: r.hotelId || r.hotel?.id || activeSelectorHotelId,
+                        hotelId: r.hotelId || r.hotel?.id || (activeSelectorHotelId || r.hotelId),
                     }));
                     setAllHotelsRooms(selectedHotelRooms);
-                } else {
-                    setAllHotelsRooms([]);
                 }
+            } catch (err) {
+                console.error('Hotel rooms fetch failed:', err);
+            }
+
+            try {
+                // Fixed: use selectedHotelId for KOT matching, show red for OPEN KOTs
+                const openKots = await getKOTs("OPEN", fetchHotelId);
+                if (!isMounted) return;
 
                 const relevantKots = (openKots || []).filter((kot: any) => {
-                    if (showAllRooms && posBossMode) {
-                        return true;
-                    }
                     return !activeSelectorHotelId || kot.hotelId === activeSelectorHotelId;
                 });
 
@@ -214,23 +258,26 @@ export function RestaurantRoomSelector() {
                 localStorage.setItem("kotRooms", JSON.stringify(kotTokens));
                 setKotRooms(kotTokens);
             } catch (err) {
-                console.error(err);
+                console.error('KOT fetch failed:', err);
+                hasFetchErrorRef.current = true; // stop re-triggering on failure
             }
-        };
-
-        fetchRoomAndKotData();
-
-        return () => {
+        } finally {
+            isFetchingRef.current = false;
             isMounted = false;
-        };
-    }, [activeSelectorHotelId, getCheckedInRooms, getKOTs, showAllRooms, posBossMode, refreshTick]);
+        }
+    }, [activeSelectorHotelId, getCheckedInRooms, getKOTs]);
+
+    useEffect(() => {
+        // Fixed: reset error guard when hotel changes or user manually refreshes (refreshTick)
+        hasFetchErrorRef.current = false;
+        fetchRoomAndKotData();
+    }, [activeSelectorHotelId, refreshTick, fetchRoomAndKotData]);
 
     useEffect(() => {
         const syncKotRooms = async () => {
             try {
                 const openKots = await getKOTs("OPEN");
                 const relevantKots = (openKots || []).filter((kot: any) => {
-                    if (showAllRooms && posBossMode) return true;
                     return !activeSelectorHotelId || kot.hotelId === activeSelectorHotelId;
                 });
 
@@ -263,7 +310,8 @@ export function RestaurantRoomSelector() {
         return () => {
             window.removeEventListener("restaurant:kots-updated", handleKotsUpdated as EventListener);
         };
-    }, [activeSelectorHotelId, getKOTs, showAllRooms, posBossMode]);
+    // Fixed: removed showAllRooms — it doesn't affect which KOTs are fetched, only UI filtering
+    }, [activeSelectorHotelId, getKOTs]);
 
     useEffect(() => {
         const loadBilledRooms = () => {
@@ -322,10 +370,18 @@ export function RestaurantRoomSelector() {
             params.set("roomId", String(item?.id || ""));
         }
 
-        navigate(`${getPosPath()}?${params.toString()}`);
+        navigate(`${getPosPath()}?${params.toString()}`, {
+            state: {
+                hotelId: targetHotelId,
+                roomId: item?.isTable ? undefined : String(item?.id || ""),
+                roomNumber: String(item?.tableId || item?.roomNumber || "").trim(),
+            }
+        });
     };
 
     const handleRefresh = () => {
+        // Fixed: reset error guard so the next fetch attempt is allowed
+        hasFetchErrorRef.current = false;
         setRefreshTick((prev) => prev + 1);
         setKotRooms(readStoredList("kotRooms"));
         setBilledRooms(readStoredList("billedRooms"));
@@ -553,18 +609,21 @@ export function RestaurantRoomSelector() {
 
                         {/* Multi-Hotel Selection Dropdown */}
                         <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 mr-4 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-                                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Show All Rooms</span>
-                                <button
-                                    onClick={() => handleToggleShowAllRooms(!showAllRooms)}
-                                    disabled={isUpdatingShowRooms}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showAllRooms ? "bg-[#C6A75E]" : "bg-slate-300"} ${isUpdatingShowRooms ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                                >
-                                    <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllRooms ? "translate-x-6" : "translate-x-1"}`}
-                                    />
-                                </button>
-                            </div>
+                            {user?.role !== "restaurant_staff" && activeSelectorHotelId && (
+
+                                <div className="flex items-center gap-2 mr-4 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Show All Rooms</span>
+                                    <button
+                                        onClick={() => handleToggleShowAllRooms(!showAllRooms)}
+                                        disabled={isUpdatingShowRooms}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showAllRooms ? "bg-[#C6A75E]" : "bg-slate-300"} ${isUpdatingShowRooms ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllRooms ? "translate-x-6" : "translate-x-1"}`}
+                                        />
+                                    </button>
+                                </div>
+                            )}
 
                             <button
                                 onClick={handleRefresh}
@@ -575,7 +634,7 @@ export function RestaurantRoomSelector() {
                                 Refresh
                             </button>
 
-                            {(isBossAdmin || systemSettings?.enableRestaurantMultiHotel) && visibleHotels.length > 0 && (
+                            {(isBossAdmin || systemSettings?.enableRestaurantMultiHotel) && availableHotels.length > 0 && (
                                 <div className="relative group">
                                     <select
                                         value={activeSelectorHotelId || ""}
@@ -583,8 +642,11 @@ export function RestaurantRoomSelector() {
                                         className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm rounded-xl font-medium cursor-pointer hover:border-[#C6A75E] transition-colors focus:outline-none focus:ring-2 focus:ring-[#C6A75E]/20"
                                         style={{ fontFamily: "'Inter', sans-serif" }}
                                     >
-                                        <option value="" disabled>Select Hotel</option>
-                                        {visibleHotels.map((hotel) => (
+                                        {/* BUG 1 FIX: Add All Hotels option for Boss Admins/Multi-Hotel staff */}
+                                        {isBossAdmin && <option value="">All Hotels (Consolidated)</option>}
+                                        {(!isBossAdmin && !systemSettings?.enableRestaurantMultiHotel) && <option value="" disabled>Select Hotel</option>}
+
+                                        {availableHotels.map((hotel: Hotel) => (
                                             <option key={hotel.id} value={hotel.id}>
                                                 {hotel.name}
                                             </option>
@@ -610,14 +672,15 @@ export function RestaurantRoomSelector() {
                                         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Tables</h2>
                                         <div className="space-y-5">
                                             {tableHotelGroups.map((hotelGroup) => (
-                                                <div key={`tables-${hotelGroup.hotelId}`}>
-                                                    {isAllHotelsMode && (
-                                                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                                                            {hotelGroup.hotelName}
+                                                <div key={`tables-${hotelGroup.hotelId}`} className="mb-6 last:mb-0">
+                                                    {!activeSelectorHotelId && (
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <div className="h-4 w-1 bg-[#C6A75E] rounded-full" />
+                                                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{hotelGroup.hotelName}</h3>
                                                         </div>
                                                     )}
                                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                                        {hotelGroup.tables.map((t) => {
+                                                        {hotelGroup.tables.map((t: any) => {
                                                             const tableId = t.name;
                                                             const table = {
                                                                 id: `table:${hotelGroup.hotelId}:${tableId}`,
@@ -629,8 +692,9 @@ export function RestaurantRoomSelector() {
                                                             };
                                                             const hasOpenKOT = isCardKotCut(table) || tablesWithOpenKOT.has(`${hotelGroup.hotelId}:${tableId}`);
                                                             const isBilled = isCardBilled(table);
-                                                            const cardColor = isBilled ? "#FFD700" : hasOpenKOT ? "#FF4444" : "#22C55E";
-                                                            const cardBg = isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : "bg-white border-slate-200 hover:border-[#C6A75E]";
+                                                            // Fixed: use selectedHotelId for KOT matching, show red for OPEN KOTs
+                                                            const cardColor = hasOpenKOT ? "#FF4444" : isBilled ? "#FFD700" : "#22C55E";
+                                                            const cardBg = hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : "bg-white border-slate-200 hover:border-[#C6A75E]";
 
                                                             return (
                                                                 <button
@@ -675,18 +739,20 @@ export function RestaurantRoomSelector() {
                                         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Rooms</h2>
                                         <div className="space-y-5">
                                             {roomGroups.map((group) => (
-                                                <div key={`rooms-${group.hotelId}`}>
-                                                    {isAllHotelsMode && (
-                                                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                                                            {group.hotelName}
+                                                <div key={`rooms-${group.hotelId}`} className="mb-6 last:mb-0">
+                                                    {!activeSelectorHotelId && (
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <div className="h-4 w-1 bg-[#C6A75E] rounded-full" />
+                                                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{group.hotelName}</h3>
                                                         </div>
                                                     )}
                                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                                        {group.rooms.map((room) => {
+                                                        {group.rooms.map((room: any) => {
                                                             const hasOpenKOT = roomsWithOpenKOT.has(room.id);
                                                             const isBilled = isCardBilled(room);
-                                                            const cardColor = isBilled ? "#FFD700" : hasOpenKOT ? "#FF4444" : "#22C55E";
-                                                            const cardBg = isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : "bg-white border-slate-200 hover:border-[#C6A75E]";
+                                                            // Fixed: use selectedHotelId for KOT matching, show red for OPEN KOTs
+                                                            const cardColor = hasOpenKOT ? "#FF4444" : isBilled ? "#FFD700" : "#22C55E";
+                                                            const cardBg = hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : "bg-white border-slate-200 hover:border-[#C6A75E]";
 
                                                             return (
                                                                 <button

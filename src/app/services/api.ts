@@ -26,7 +26,8 @@ api.interceptors.request.use((config) => {
     }
     // Attach hotel context header for admin switching
     const hotelId = localStorage.getItem('pms_hotel_ctx');
-    if (hotelId) {
+    if (hotelId && !config.headers['X-Hotel-ID']) {
+        // Only set if not already present; allows explicit overrides for cross-hotel POS
         config.headers['X-Hotel-ID'] = hotelId;
     }
     return config;

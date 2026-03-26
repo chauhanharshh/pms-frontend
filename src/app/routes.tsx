@@ -128,7 +128,7 @@ function getDefaultRouteForRole(role: string) {
 // Only admin/hotel_manager can access this page:
 function ProtectedLicenseRoute({ children }: { children: any }) {
   const { user, token, loading } = useAuth();
-  const navigate = typeof window !== 'undefined' ? (window as any).navigate || ((url: string) => { window.location.href = url; }) : () => {};
+  const navigate = typeof window !== 'undefined' ? (window as any).navigate || ((url: string) => { window.location.href = url; }) : () => { };
 
   if (loading) {
     return (
@@ -151,9 +151,14 @@ function ProtectedLicenseRoute({ children }: { children: any }) {
 }
 
 function RestaurantProtectedRoute({ children }: { children: any }) {
+  const { user } = useAuth();
   const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
 
-  if (!restaurantEnabled) {
+  // If user is restaurant-only role, they MUST be allowed to stay in restaurant routes
+  // to avoid infinite loops with AppLayout.tsx which forces them there.
+  const isRestaurantOnly = user?.role === "restaurant_staff" || user?.role === "restaurant_admin";
+
+  if (!restaurantEnabled && !isRestaurantOnly) {
     return <Navigate to="/hotel/dashboard" replace />;
   }
 

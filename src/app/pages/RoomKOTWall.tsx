@@ -352,7 +352,6 @@ export function RoomKOTWall() {
     const netPayable = subtotal + serviceCharge;
 
     try {
-      setIsGeneratingBill(true);
       const roomIdForBilledState = baseKot?.order?.roomId || baseKot?.order?.room?.id;
       const roomNumberForBilledState = baseKot?.order?.room?.roomNumber || queryRoomNumber;
       const tableNumberForBilledState = baseKot?.order?.tableNumber || queryTableNumber || tableNumberFilter;
@@ -416,7 +415,7 @@ export function RoomKOTWall() {
         toast.error(apiMessage || error?.message || "Failed to generate bill");
       }
     } finally {
-      setIsGeneratingBill(false);
+      // isGeneratingBill removed for speed/UX preference
     }
   };
 
@@ -461,8 +460,28 @@ export function RoomKOTWall() {
       return;
     }
 
-    const returnTo = `${location.pathname}${location.search}`;
-    navigate(`${roleBase}/restaurant/kots/${kotId}/edit?returnTo=${encodeURIComponent(returnTo)}`);
+    // Added: Modify KOT — navigate to POS UI in modify mode
+    navigate(user?.role === "admin" ? "/admin/restaurant/pos" : "/hotel/restaurant/pos", {
+      state: {
+        mode: 'modify',
+        kotId: kot.id,
+        hotelId: kot.hotelId,
+        tableNumber: kot.order?.tableNumber,
+        roomId: kot.order?.roomId,
+        stewardId: kot.order?.stewardId,
+        bookingId: kot.order?.bookingId,
+        guestName: kot.order?.guestName,
+        stewardName: kot.order?.stewardName,
+        items: (kot.items || []).map((it: any) => ({
+          menuItemId: it.menuItemId,
+          itemName: it.itemName,
+          quantity: it.quantity,
+          price: it.price,
+          itemTotal: Number(it.quantity || 0) * Number(it.price || 0),
+          specialNote: it.specialNote || ""
+        }))
+      }
+    });
   };
 
   const selectedKots = useMemo(
@@ -987,10 +1006,10 @@ export function RoomKOTWall() {
             </button>
             <button
               onClick={handleGenerateBill}
-              disabled={isGeneratingBill || selectedOpenKotCount === 0}
+              disabled={selectedOpenKotCount === 0}
               className="h-9 px-4 bg-[#d9c58f] hover:bg-[#ceb97f] text-black text-[13px] font-bold"
             >
-              {isGeneratingBill ? "Generating..." : "Generate Bill"}
+              Generate Bill
             </button>
             <button
               onClick={handleExit}

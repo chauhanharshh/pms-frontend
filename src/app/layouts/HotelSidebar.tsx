@@ -588,45 +588,48 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           </div>
         ))}
-        <button
-          onClick={() => navigate("/hotel/settings")}
-          title="Settings"
-          className={
-            collapsed
-              ? "w-full flex items-center justify-center p-2 rounded-lg transition-all duration-200"
-              : "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all duration-200"
-          }
-          style={{
-            background: isActive("/hotel/settings")
-              ? "rgba(255,255,255,0.06)"
-              : "transparent",
-            color: isActive("/hotel/settings") ? "#C6A75E" : "#D6D3CE",
-            borderLeft: isActive("/hotel/settings")
-              ? "3px solid #C6A75E"
-              : "3px solid transparent",
-            fontWeight: isActive("/hotel/settings") ? 600 : 400,
-          }}
-          onMouseEnter={(e) => {
-            if (!isActive("/hotel/settings")) {
-              e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
+        {/* Hide Settings for restaurant_staff (H4U) */}
+        {!isRestaurantOnlyUser && (
+          <button
+            onClick={() => navigate("/hotel/settings")}
+            title="Settings"
+            className={
+              collapsed
+                ? "w-full flex items-center justify-center p-2 rounded-lg transition-all duration-200"
+                : "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all duration-200"
             }
-          }}
-          onMouseLeave={(e) => {
-            if (!isActive("/hotel/settings")) {
-              e.currentTarget.style.backgroundColor = "transparent";
-            }
-          }}
-        >
-          <span
             style={{
-              color: isActive("/hotel/settings") ? "var(--accent-color, #C6A75E)" : "#D6D3CE",
-              flexShrink: 0,
+              background: isActive("/hotel/settings")
+                ? "rgba(255,255,255,0.06)"
+                : "transparent",
+              color: isActive("/hotel/settings") ? "#C6A75E" : "#D6D3CE",
+              borderLeft: isActive("/hotel/settings")
+                ? "3px solid #C6A75E"
+                : "3px solid transparent",
+              fontWeight: isActive("/hotel/settings") ? 600 : 400,
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive("/hotel/settings")) {
+                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive("/hotel/settings")) {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }
             }}
           >
-            <SettingsIcon className="w-4 h-4" />
-          </span>
-          {!collapsed && <span className="truncate">Settings</span>}
-        </button>
+            <span
+              style={{
+                color: isActive("/hotel/settings") ? "var(--accent-color, #C6A75E)" : "#D6D3CE",
+                flexShrink: 0,
+              }}
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </span>
+            {!collapsed && <span className="truncate">Settings</span>}
+          </button>
+        )}
       </div>
 
       {/* User Info + Logout */}

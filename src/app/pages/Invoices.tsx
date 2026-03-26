@@ -556,7 +556,7 @@ export function Invoices() {
                           {inv.status !== "paid" && (
                             <button
                               onClick={() => setPayTarget(inv)}
-                              className="bg-green-600 px-5 py-3 rounded-xl text-sm font-bold text-white shadow-md flex items-center gap-2 active:scale-95 transition-all"
+                              className="bg-green-600 px-5 py-3 rounded-xl text-sm font-bold text-white shadow-md flex items-center gap-2 transition-all" // Removed: active scale animation for instant click response
                             >
                               <CreditCard className="w-4 h-4" /> PAY NOW
                             </button>
@@ -583,7 +583,7 @@ export function Invoices() {
                                 },
                               } as any);
                             }}
-                            className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-blue-600 border border-blue-100 shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+                            className="bg-white px-5 py-3 rounded-xl text-sm font-bold text-blue-600 border border-blue-100 shadow-sm flex items-center gap-2 transition-all" // Removed: active scale animation for instant click response
                           >
                             <Eye className="w-4 h-4" /> VIEW
                           </button>

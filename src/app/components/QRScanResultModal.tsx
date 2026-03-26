@@ -132,7 +132,7 @@ export const QRScanResultModal: React.FC<QRScanResultModalProps> = ({
           <button
             onClick={handleConfirm}
             disabled={isConfirmingQRCheckIn}
-            className="flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
+            className="flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" // Removed: active scale animation for instant click response
             style={{
               background: `linear-gradient(135deg, ${T.gold}, ${T.darkGold})`,
             }}
