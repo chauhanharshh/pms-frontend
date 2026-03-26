@@ -40,6 +40,7 @@ function isRestaurantRoute(pathname: string) {
     "/hotel/restaurant/kot-wall",
     "/hotel/restaurant/invoices",
     "/hotel/restaurant/day-closing",
+    "/hotel/restaurant/tables",
   ];
 
   return allowedPrefixes.some((prefix) => pathname.startsWith(prefix));

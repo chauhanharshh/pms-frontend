@@ -50,6 +50,8 @@ export interface Hotel {
   invoiceHotelNameColor?: string | null;
   invoiceHeaderColor?: string | null;
   showInvoiceWatermark?: boolean | null;
+  restaurantRoomCardColor?: string | null;
+  restaurantRoomCardTextColor?: string | null;
 }
 
 export interface SystemSettings {
@@ -608,8 +610,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     if (!silent) setError(null);
     try {
       // Fixed: Restaurant Staff now gets all admin hotels (same as Boss Mode)
-      const adminIdParam = (user.role === 'restaurant_staff' || user.role === 'restaurant_admin') && user.hotel?.adminId 
-        ? `?adminId=${user.hotel.adminId}` 
+      const adminIdParam = (user.role === 'restaurant_staff' || user.role === 'restaurant_admin') && user.hotel?.adminId
+        ? `?adminId=${user.hotel.adminId}`
         : "";
       const hotelsRes = await api.get(`/hotels${adminIdParam}`);
       let fetchedHotels: Hotel[] = hotelsRes.data?.data || [];
@@ -639,8 +641,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
       const effectiveHotelId = currentHotelId || (user.role === "admin" ? null : user.hotelId);
       const consolidatedQp = effectiveHotelId ? `?hotelId=${effectiveHotelId}` : "";
-      const isConsolidatedFetch = (user.role === "admin" && !currentHotelId) || 
-                                    ((user.role === "restaurant_staff" || user.role === "restaurant_admin") && fetchedHotels.length > 1);
+      const isConsolidatedFetch = (user.role === "admin" && !currentHotelId) ||
+        ((user.role === "restaurant_staff" || user.role === "restaurant_admin") && fetchedHotels.length > 1);
 
       const uniqueById = <T extends { id: string }>(items: T[]) =>
         Array.from(new Map(items.map((item) => [item.id, item])).values());
@@ -1023,15 +1025,15 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const walkInCheckIn = async (data: any): Promise<{ booking: Booking; bill: Bill }> => {
     const res = await api.post("/bookings/walk-in", data);
     const { booking, bill } = res.data.data;
-    
+
     // Targeted state updates instead of fetchAll() 
     setBookings(prev => [...prev, booking]);
     setBills(prev => [...prev, bill]);
     setRooms(prev => prev.map(r => r.id === booking.roomId ? { ...r, status: 'occupied' } : r));
-    
+
     // Silent refresh for everything else (stats, etc.)
     fetchAll(true);
-    
+
     return { booking, bill };
   };
 
@@ -1039,12 +1041,12 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     if (updates.status === "checked_in") {
       const res = await api.put(`/bookings/${id}/check-in`, updates);
       const { booking, bill } = res.data.data;
-      
+
       // Targeted state updates instead of fetchAll()
       setBookings((prev) => prev.map((b) => (b.id === id ? booking : b)));
       if (bill) setBills(prev => [...prev, bill]);
       setRooms(prev => prev.map(r => r.id === booking.roomId ? { ...r, status: 'occupied' } : r));
-      
+
       // Silent refresh for context sync
       fetchAll(true);
     } else if (updates.status === "checked_out") {
@@ -1203,19 +1205,54 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   // ── RESTAURANT ITEMS ─────────────────────────────────────────────
   const addItem = async (item: any) => {
-    const res = await api.post("/restaurant/menu", item);
-    setRestaurantItems((prev) => [...prev, res.data.data]);
-    return res.data.data;
+    try {
+      const hId = item.hotelId || currentHotelId || user?.hotelId;
+      const config = hId ? { params: { hotelId: hId } } : {};
+      const res = await api.post("/restaurant/menu", item, config);
+      setRestaurantItems((prev) => [...prev, res.data.data]);
+      toast.success("Item added successfully");
+      await fetchAll(true);
+      return res.data.data;
+    } catch (error: any) {
+      console.error("Add item error:", error);
+      toast.error(error.response?.data?.message || "Failed to add item");
+      throw error;
+    }
   };
 
   const updateItem = async (id: string, updates: Partial<RestaurantItem>) => {
-    const res = await api.put(`/restaurant/menu/${id}`, updates);
-    setRestaurantItems((prev) => prev.map((i) => (i.id === id ? res.data.data : i)));
+    try {
+      // Find the item first if hotelId is not in updates
+      const existingItem = restaurantItems.find(i => i.id === id);
+      const hId = updates.hotelId || existingItem?.hotelId || currentHotelId || user?.hotelId;
+      const config = hId ? { params: { hotelId: hId } } : {};
+      
+      const res = await api.put(`/restaurant/menu/${id}`, updates, config);
+      setRestaurantItems((prev) => prev.map((i) => (i.id === id ? res.data.data : i)));
+      toast.success("Item updated successfully");
+      await fetchAll(true);
+    } catch (error: any) {
+      console.error("Update item error:", error);
+      toast.error(error.response?.data?.message || "Failed to update item");
+      throw error;
+    }
   };
 
   const deleteItem = async (id: string) => {
-    await api.delete(`/restaurant/menu/${id}`);
-    setRestaurantItems((prev) => prev.filter((i) => i.id !== id));
+    try {
+      const existingItem = restaurantItems.find(i => i.id === id);
+      const hId = existingItem?.hotelId || currentHotelId || user?.hotelId;
+      const config = hId ? { params: { hotelId: hId } } : {};
+
+      await api.delete(`/restaurant/menu/${id}`, config);
+      setRestaurantItems((prev) => prev.filter((i) => i.id !== id));
+      toast.success("Item deleted successfully");
+      await fetchAll(true);
+    } catch (error: any) {
+      console.error("Delete item error:", error);
+      toast.error(error.response?.data?.message || "Failed to delete item");
+      throw error;
+    }
   };
 
   const addOrder = async (order: any) => {
@@ -1409,7 +1446,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     try {
       const params = new URLSearchParams();
       if (status) params.append("status", status);
-      
+
       const adminId = user?.hotel?.adminId || (user as any)?.adminId;
       if (adminId) params.append("adminId", adminId);
 
@@ -1419,7 +1456,7 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       }
 
       const query = params.toString() ? `?${params.toString()}` : "";
-      
+
       // Fixed: send 'all' if no specific hotelId to trigger consolidated view in middleware
       const config = { headers: { 'X-Hotel-ID': (hotelId && hotelId !== 'all') ? hotelId : 'all' } };
       const res = await api.get(`/restaurant/kots${query}`, config);

@@ -321,7 +321,7 @@ export function RestaurantRoomSelector() {
         return () => {
             window.removeEventListener("restaurant:kots-updated", handleKotsUpdated as EventListener);
         };
-    // Fixed: removed showAllRooms — it doesn't affect which KOTs are fetched, only UI filtering
+        // Fixed: removed showAllRooms — it doesn't affect which KOTs are fetched, only UI filtering
     }, [activeSelectorHotelId, getKOTs]);
 
     useEffect(() => {
@@ -679,73 +679,93 @@ export function RestaurantRoomSelector() {
 
                             return (
                                 <div className="space-y-6">
-                                    <section>
-                                        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Tables</h2>
-                                        <div className="space-y-5">
-                                            {tableHotelGroups.map((hotelGroup) => (
-                                                <div key={`tables-${hotelGroup.hotelId}`} className="mb-6 last:mb-0">
-                                                    {!activeSelectorHotelId && (
-                                                        <div className="flex items-center gap-2 mb-3">
-                                                            <div className="h-4 w-1 bg-[#C6A75E] rounded-full" />
-                                                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{hotelGroup.hotelName}</h3>
-                                                        </div>
-                                                    )}
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                                        {hotelGroup.tables.map((t: any) => {
-                                                            const tableId = t.name;
-                                                            const table = {
-                                                                id: `table:${hotelGroup.hotelId}:${tableId}`,
-                                                                tableId,
-                                                                roomNumber: tableId,
-                                                                status: "vacant",
-                                                                isTable: true,
-                                                                hotelId: hotelGroup.hotelId,
-                                                            };
-                                                            const hasOpenKOT = isCardKotCut(table) || tablesWithOpenKOT.has(`${hotelGroup.hotelId}:${tableId}`);
-                                                            const isBilled = isCardBilled(table);
-                                                            // Fixed: use selectedHotelId for KOT matching, show red for OPEN KOTs
-                                                            const cardColor = hasOpenKOT ? "#FF4444" : isBilled ? "#FFD700" : "#22C55E";
-                                                            const cardBg = hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : "bg-white border-slate-200 hover:border-[#C6A75E]";
+                                    {(() => {
+                                        const totalTables = tableHotelGroups.reduce((acc, g) => acc + g.tables.length, 0);
+                                        if (totalTables === 0) return null;
 
-                                                            return (
-                                                                <button
-                                                                    key={table.id}
-                                                                    onClick={() => handleRoomCardClick(table)}
-                                                                    onDoubleClick={() => handleRoomCardDoubleClick(table)}
-                                                                    onContextMenu={(e) => handleContextMenu(e, table)}
-                                                                    className={`group rounded-xl p-5 border hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden ${cardBg}`}
-                                                                >
-                                                                    <div className="absolute top-0 left-0 w-full h-1 transition-colors" style={{ backgroundColor: cardColor }} />
-
-                                                                    <div className="flex justify-between items-start mt-1">
-                                                                        <div>
-                                                                            <p className="text-2xl font-bold text-slate-800">Table {table.roomNumber}</p>
-                                                                        </div>
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${isBilled ? "bg-yellow-100 border border-yellow-300" : hasOpenKOT ? "bg-red-100 border border-red-200" : "bg-green-50 border border-green-100"}`}>
-                                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cardColor }} />
-                                                                        </div>
+                                        return (
+                                            <section>
+                                                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Tables</h2>
+                                                <div className="space-y-5">
+                                                    {tableHotelGroups.map((hotelGroup) => (
+                                                        hotelGroup.tables.length > 0 && (
+                                                            <div key={`tables-${hotelGroup.hotelId}`} className="mb-6 last:mb-0">
+                                                                {!activeSelectorHotelId && (
+                                                                    <div className="flex items-center gap-2 mb-3">
+                                                                        <div className="h-4 w-1 bg-[#C6A75E] rounded-full" />
+                                                                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{hotelGroup.hotelName}</h3>
                                                                     </div>
+                                                                )}
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                                                    {hotelGroup.tables.map((t: any) => {
+                                                                        const tableId = t.name;
+                                                                        const table = {
+                                                                            id: `table:${hotelGroup.hotelId}:${tableId}`,
+                                                                            tableId,
+                                                                            roomNumber: tableId,
+                                                                            status: "vacant",
+                                                                            isTable: true,
+                                                                            hotelId: hotelGroup.hotelId,
+                                                                        };
+                                                                        const hasOpenKOT = isCardKotCut(table) || tablesWithOpenKOT.has(`${hotelGroup.hotelId}:${tableId}`);
+                                                                        const isBilled = isCardBilled(table);
+                                                                        
+                                                                        // Custom Colors from Hotel
+                                                                        const cardHotel = availableHotels.find(h => String(h.id) === String(hotelGroup.hotelId));
+                                                                        const customBg = cardHotel?.restaurantRoomCardColor || "#0781b6";
+                                                                        const customText = cardHotel?.restaurantRoomCardTextColor || "#ffffff";
 
-                                                                    <div className="mt-2 pt-3 border-t border-slate-100">
-                                                                        <p className="text-sm font-semibold text-slate-700 truncate">
-                                                                            <span className="text-slate-500 font-medium">Guest:</span> Walk-in
-                                                                        </p>
-                                                                    </div>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {tableHotelGroups.length === 0 && (
-                                                <div className="py-12 bg-white rounded-xl border border-dashed border-slate-200 text-center">
-                                                    <p className="text-slate-400 font-medium">No active restaurant tables found for this hotel.</p>
-                                                    <p className="text-xs text-slate-400">Manage tables in Restaurant -&gt; Table Management</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </section>
+                                                                        // Determine final colors based on priority: Open KOT (Red) > Billed (Yellow) > Default
+                                                                        let finalBg = customBg;
+                                                                        let finalText = customText;
+                                                                        let statusIndicatorColor = "#22C55E";
 
+                                                                        if (hasOpenKOT) {
+                                                                            finalBg = "#ef4444"; // Red-500
+                                                                            finalText = "#ffffff";
+                                                                            statusIndicatorColor = "#ffffff";
+                                                                        } else if (isBilled) {
+                                                                            finalBg = "#facc15"; // Yellow-400
+                                                                            finalText = "#000000";
+                                                                            statusIndicatorColor = "#b45309"; // Amber-700
+                                                                        }
+
+                                                                        return (
+                                                                            <button
+                                                                                key={table.id}
+                                                                                onClick={() => handleRoomCardClick(table)}
+                                                                                onDoubleClick={() => handleRoomCardDoubleClick(table)}
+                                                                                onContextMenu={(e) => handleContextMenu(e, table)}
+                                                                                className={`group rounded-xl p-5 border-none hover:shadow-lg transition-all text-left flex flex-col gap-3 relative overflow-hidden`}
+                                                                                style={{ 
+                                                                                    backgroundColor: finalBg,
+                                                                                }}
+                                                                            >
+                                                                                <div className="flex justify-between items-start mt-1">
+                                                                                    <div>
+                                                                                        <p className="text-2xl font-bold" style={{ color: finalText }}>Table {table.roomNumber}</p>
+                                                                                    </div>
+                                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1`} style={{ backgroundColor: finalText + "22", border: `1px solid ${finalText}44` }}>
+                                                                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusIndicatorColor }} />
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="mt-2 pt-3 border-t" style={{ borderColor: finalText + "22" }}>
+                                                                                    <p className="text-sm font-semibold truncate" style={{ color: finalText }}>
+                                                                                        <span className="opacity-60 font-medium">Guest:</span> Walk-in
+                                                                                    </p>
+                                                                                </div>
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        );
+                                    })()}
                                     <section>
                                         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">Rooms</h2>
                                         <div className="space-y-5">
@@ -761,9 +781,26 @@ export function RestaurantRoomSelector() {
                                                         {group.rooms.map((room: any) => {
                                                             const hasOpenKOT = roomsWithOpenKOT.has(room.id);
                                                             const isBilled = isCardBilled(room);
-                                                            // Fixed: use selectedHotelId for KOT matching, show red for OPEN KOTs
-                                                            const cardColor = hasOpenKOT ? "#FF4444" : isBilled ? "#FFD700" : "#22C55E";
-                                                            const cardBg = hasOpenKOT ? "bg-red-50 border-red-200 hover:border-red-300" : isBilled ? "bg-yellow-200 border-yellow-400 hover:border-yellow-500" : "bg-white border-slate-200 hover:border-[#C6A75E]";
+                                                            
+                                                            // Custom Colors from Hotel
+                                                            const cardHotel = availableHotels.find(h => String(h.id) === String(room.hotelId));
+                                                            const customBg = cardHotel?.restaurantRoomCardColor || "#0781b6";
+                                                            const customText = cardHotel?.restaurantRoomCardTextColor || "#ffffff";
+
+                                                            // Determine final colors based on priority: Open KOT (Red) > Billed (Yellow) > Default
+                                                            let finalBg = customBg;
+                                                            let finalText = customText;
+                                                            let statusIndicatorColor = "#22C55E";
+
+                                                            if (hasOpenKOT) {
+                                                                finalBg = "#ef4444"; // Red-500
+                                                                finalText = "#ffffff";
+                                                                statusIndicatorColor = "#ffffff";
+                                                            } else if (isBilled) {
+                                                                finalBg = "#facc15"; // Yellow-400
+                                                                finalText = "#000000";
+                                                                statusIndicatorColor = "#b45309"; // Amber-700
+                                                            }
 
                                                             return (
                                                                 <button
@@ -771,22 +808,23 @@ export function RestaurantRoomSelector() {
                                                                     onClick={() => handleRoomCardClick(room)}
                                                                     onDoubleClick={() => handleRoomCardDoubleClick(room)}
                                                                     onContextMenu={(e) => handleContextMenu(e, room)}
-                                                                    className={`group rounded-xl p-5 border hover:shadow-md transition-all text-left flex flex-col gap-3 relative overflow-hidden ${cardBg}`}
+                                                                    className={`group rounded-xl p-5 border-none hover:shadow-lg transition-all text-left flex flex-col gap-3 relative overflow-hidden`}
+                                                                    style={{ 
+                                                                        backgroundColor: finalBg,
+                                                                    }}
                                                                 >
-                                                                    <div className="absolute top-0 left-0 w-full h-1 transition-colors" style={{ backgroundColor: cardColor }} />
-
                                                                     <div className="flex justify-between items-start mt-1">
                                                                         <div>
-                                                                            <p className="text-2xl font-bold text-slate-800">Room {room.roomNumber}</p>
+                                                                            <p className="text-2xl font-bold" style={{ color: finalText }}>Room {room.roomNumber}</p>
                                                                         </div>
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${isBilled ? "bg-yellow-100 border border-yellow-300" : hasOpenKOT ? "bg-red-100 border border-red-200" : "bg-green-50 border border-green-100"}`}>
-                                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cardColor }} />
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1`} style={{ backgroundColor: finalText + "22", border: `1px solid ${finalText}44` }}>
+                                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusIndicatorColor }} />
                                                                         </div>
                                                                     </div>
 
-                                                                    <div className="mt-2 pt-3 border-t border-slate-100">
-                                                                        <p className="text-sm font-semibold text-slate-700 truncate">
-                                                                            <span className="text-slate-500 font-medium">Guest:</span> {room.bookings?.[0]?.guest?.name || room.bookings?.[0]?.guestName || "No Guest"}
+                                                                    <div className="mt-2 pt-3 border-t" style={{ borderColor: finalText + "22" }}>
+                                                                        <p className="text-sm font-semibold truncate" style={{ color: finalText }}>
+                                                                            <span className="opacity-60 font-medium">Guest:</span> {room.bookings?.[0]?.guest?.name || room.bookings?.[0]?.guestName || "No Guest"}
                                                                         </p>
                                                                     </div>
                                                                 </button>

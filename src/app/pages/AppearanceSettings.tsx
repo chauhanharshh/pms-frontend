@@ -42,6 +42,8 @@ export function AppearanceSettings() {
     const [hotelAccent, setHotelAccent] = useState("#C6A75E");
     const [roomStatusColors, setRoomStatusColors] = useState<RoomStatusColors>(() => getRoomStatusColors());
     const [kotWallColors, setKotWallColors] = useState<KotWallColors>(() => getKotWallColors());
+    const [restRoomCardColor, setRestRoomCardColor] = useState("#0781b6");
+    const [restRoomCardTextColor, setRestRoomCardTextColor] = useState("#ffffff");
 
     const [message, setMessage] = useState({ text: "", type: "" });
     const [showFinancialSummary, setShowFinancialSummary] = useState<boolean>(() => {
@@ -70,6 +72,8 @@ export function AppearanceSettings() {
                 setHotelSidebar(hotel.sidebarColor || globalSidebar);
                 setHotelHeader(hotel.headerColor || globalHeader);
                 setHotelAccent(hotel.accentColor || globalAccent);
+                setRestRoomCardColor(hotel.restaurantRoomCardColor || "#0781b6");
+                setRestRoomCardTextColor(hotel.restaurantRoomCardTextColor || "#ffffff");
             }
         }
     }, [selectedHotelId, hotels, globalSidebar, globalHeader, globalAccent]);
@@ -113,6 +117,8 @@ export function AppearanceSettings() {
                     sidebarColor: hotelSidebar,
                     headerColor: hotelHeader,
                     accentColor: hotelAccent,
+                    restaurantRoomCardColor: restRoomCardColor,
+                    restaurantRoomCardTextColor: restRoomCardTextColor,
                 }),
             });
             setMessage({ text: "Hotel theme configuration saved successfully.", type: "success" });
@@ -187,286 +193,296 @@ export function AppearanceSettings() {
     return (
         <AppLayout title="Appearance Settings" requiredRole="admin">
             <div className="p-6 max-w-5xl mx-auto space-y-8 animate-fade-in">
-            <div>
-                <h1 className="text-2xl font-bold font-serif text-[var(--accent-color)] flex items-center gap-2">
-                    <Paintbrush className="w-6 h-6" />
-                    Appearance Settings
-                </h1>
-                <p className="text-sm opacity-70 mt-1">Manage global and per-hotel branding colors.</p>
-            </div>
-
-            {message.text && (
-                <div className={`p-4 rounded-lg flex items-center justify-center font-medium transition-all ${message.type === 'success' ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-red-500/10 text-red-600 border border-red-500/20'}`}>
-                    {message.text}
-                </div>
-            )}
-
-            {/* SECTION A: GLOBAL THEME */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
                 <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-gray-400" />
-                        System-Wide Global Theme
-                    </h2>
-                    <p className="text-sm text-gray-500">These settings act as the default fallback for all hotels unless overridden.</p>
+                    <h1 className="text-2xl font-bold font-serif text-[var(--accent-color)] flex items-center gap-2">
+                        <Paintbrush className="w-6 h-6" />
+                        Appearance Settings
+                    </h1>
+                    <p className="text-sm opacity-70 mt-1">Manage global and per-hotel branding colors.</p>
                 </div>
 
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                        <p className="text-sm font-medium">Show Financial Summary in Check-In Details</p>
-                    </div>
-                    <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={showFinancialSummary}
-                        onChange={(e) => {
-                            const enabled = e.target.checked;
-                            setShowFinancialSummary(enabled);
-                            localStorage.setItem("showFinancialSummary", JSON.stringify(enabled));
-                        }}
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <ColorPickerField
-                        label="Sidebar Background"
-                        value={globalSidebar}
-                        onChange={setGlobalSidebar}
-                    />
-                    <ColorPickerField
-                        label="Header Background"
-                        value={globalHeader}
-                        onChange={setGlobalHeader}
-                    />
-                    <ColorPickerField
-                        label="Accent Color"
-                        value={globalAccent}
-                        onChange={setGlobalAccent}
-                    />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button
-                        onClick={handleResetGlobal}
-                        className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-700"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                        Reset to Default
-                    </button>
-                    <button
-                        onClick={handleSaveGlobal}
-                        className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
-                        style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
-                    >
-                        <Save className="w-4 h-4" />
-                        Save Global Theme
-                    </button>
-                </div>
-            </div>
-
-
-            {/* SECTION B: PER HOTEL THEME */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
-                <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Paintbrush className="w-5 h-5 text-gray-400" />
-                        Per-Hotel Custom Theme
-                    </h2>
-                    <p className="text-sm text-gray-500">Override the global theme for specific hotels.</p>
-                </div>
-
-                <div className="flex flex-col md:flex-row md:items-center gap-4 py-2">
-                    <div className="w-full md:w-1/3">
-                        <label className="block text-sm font-medium mb-1">Select Hotel</label>
-                        <select
-                            value={selectedHotelId}
-                            onChange={(e) => setSelectedHotelId(e.target.value)}
-                            className="w-full border rounded-lg p-2 dark:bg-gray-900 dark:border-gray-700"
-                        >
-                            {hotels.map((h: any) => (
-                                <option key={h.id} value={h.id}>{h.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="w-full md:w-2/3 flex items-center pt-5">
-                        <label className="flex items-center gap-3 cursor-pointer select-none">
-                            <div className={`w-12 h-6 rounded-full transition-colors relative ${isCustomTheme ? 'bg-[var(--accent-color)]' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                                <input
-                                    type="checkbox"
-                                    className="opacity-0 absolute w-full h-full cursor-pointer z-10"
-                                    checked={isCustomTheme}
-                                    onChange={(e) => setIsCustomTheme(e.target.checked)}
-                                />
-                                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isCustomTheme ? 'left-7' : 'left-1'}`} />
-                            </div>
-                            <span className="font-medium text-sm">Enable Custom Theme for This Hotel</span>
-                        </label>
-                    </div>
-                </div>
-
-                {isCustomTheme ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t animate-fade-in">
-                        <ColorPickerField
-                            label="Hotel Sidebar Color"
-                            value={hotelSidebar}
-                            onChange={setHotelSidebar}
-                        />
-                        <ColorPickerField
-                            label="Hotel Header Color"
-                            value={hotelHeader}
-                            onChange={setHotelHeader}
-                        />
-                        <ColorPickerField
-                            label="Hotel Accent Color"
-                            value={hotelAccent}
-                            onChange={setHotelAccent}
-                        />
-                    </div>
-                ) : (
-                    <div className="p-6 text-center text-gray-500 border rounded-lg bg-gray-50 dark:bg-gray-900/50 pt-4 border-t">
-                        Currently using the Global Theme fallback. Enable the toggle above to customize.
+                {message.text && (
+                    <div className={`p-4 rounded-lg flex items-center justify-center font-medium transition-all ${message.type === 'success' ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 'bg-red-500/10 text-red-600 border border-red-500/20'}`}>
+                        {message.text}
                     </div>
                 )}
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button
-                        onClick={handleRemoveHotelTheme}
-                        disabled={!isCustomTheme}
-                        className="flex items-center gap-2 px-4 py-2 border rounded-lg text-red-600 border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50 dark:hover:bg-red-900/20 dark:border-red-900/50"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                        Remove Custom Theme
-                    </button>
-                    <button
-                        onClick={handleSaveHotel}
-                        disabled={!isCustomTheme && !hotels.find(h => h.id === selectedHotelId)?.isCustomTheme}
-                        className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90 disabled:opacity-50"
-                        style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
-                    >
-                        <Save className="w-4 h-4" />
-                        Save Hotel Theme
-                    </button>
+                {/* SECTION A: GLOBAL THEME */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
+                    <div>
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Building2 className="w-5 h-5 text-gray-400" />
+                            System-Wide Global Theme
+                        </h2>
+                        <p className="text-sm text-gray-500">These settings act as the default fallback for all hotels unless overridden.</p>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <p className="text-sm font-medium">Show Financial Summary in Check-In Details</p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={showFinancialSummary}
+                            onChange={(e) => {
+                                const enabled = e.target.checked;
+                                setShowFinancialSummary(enabled);
+                                localStorage.setItem("showFinancialSummary", JSON.stringify(enabled));
+                            }}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <ColorPickerField
+                            label="Sidebar Background"
+                            value={globalSidebar}
+                            onChange={setGlobalSidebar}
+                        />
+                        <ColorPickerField
+                            label="Header Background"
+                            value={globalHeader}
+                            onChange={setGlobalHeader}
+                        />
+                        <ColorPickerField
+                            label="Accent Color"
+                            value={globalAccent}
+                            onChange={setGlobalAccent}
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <button
+                            onClick={handleResetGlobal}
+                            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-700"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Reset to Default
+                        </button>
+                        <button
+                            onClick={handleSaveGlobal}
+                            className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
+                            style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
+                        >
+                            <Save className="w-4 h-4" />
+                            Save Global Theme
+                        </button>
+                    </div>
                 </div>
 
-            </div>
 
-            {/* SECTION C: ROOM STATUS COLORS */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
-                <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Paintbrush className="w-5 h-5 text-gray-400" />
-                        Room Status Colors
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                        Configure room card background colors by room status.
-                    </p>
+                {/* SECTION B: PER HOTEL THEME */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
+                    <div>
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Paintbrush className="w-5 h-5 text-gray-400" />
+                            Per-Hotel Custom Theme
+                        </h2>
+                        <p className="text-sm text-gray-500">Override the global theme for specific hotels.</p>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 py-2">
+                        <div className="w-full md:w-1/3">
+                            <label className="block text-sm font-medium mb-1">Select Hotel</label>
+                            <select
+                                value={selectedHotelId}
+                                onChange={(e) => setSelectedHotelId(e.target.value)}
+                                className="w-full border rounded-lg p-2 dark:bg-gray-900 dark:border-gray-700"
+                            >
+                                {hotels.map((h: any) => (
+                                    <option key={h.id} value={h.id}>{h.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="w-full md:w-2/3 flex items-center pt-5">
+                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                <div className={`w-12 h-6 rounded-full transition-colors relative ${isCustomTheme ? 'bg-[var(--accent-color)]' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                    <input
+                                        type="checkbox"
+                                        className="opacity-0 absolute w-full h-full cursor-pointer z-10"
+                                        checked={isCustomTheme}
+                                        onChange={(e) => setIsCustomTheme(e.target.checked)}
+                                    />
+                                    <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${isCustomTheme ? 'left-7' : 'left-1'}`} />
+                                </div>
+                                <span className="font-medium text-sm">Enable Custom Theme for This Hotel</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {isCustomTheme ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t animate-fade-in">
+                            <ColorPickerField
+                                label="Hotel Sidebar Color"
+                                value={hotelSidebar}
+                                onChange={setHotelSidebar}
+                            />
+                            <ColorPickerField
+                                label="Hotel Header Color"
+                                value={hotelHeader}
+                                onChange={setHotelHeader}
+                            />
+                            <ColorPickerField
+                                label="Hotel Accent Color"
+                                value={hotelAccent}
+                                onChange={setHotelAccent}
+                            />
+                            <ColorPickerField
+                                label="Rest. Room Card Background"
+                                value={restRoomCardColor}
+                                onChange={setRestRoomCardColor}
+                            />
+                            <ColorPickerField
+                                label="Rest. Room Card Text"
+                                value={restRoomCardTextColor}
+                                onChange={setRestRoomCardTextColor}
+                            />
+                        </div>
+                    ) : (
+                        <div className="p-6 text-center text-gray-500 border rounded-lg bg-gray-50 dark:bg-gray-900/50 pt-4 border-t">
+                            Currently using the Global Theme fallback. Enable the toggle above to customize.
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <button
+                            onClick={handleRemoveHotelTheme}
+                            disabled={!isCustomTheme}
+                            className="flex items-center gap-2 px-4 py-2 border rounded-lg text-red-600 border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50 dark:hover:bg-red-900/20 dark:border-red-900/50"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Remove Custom Theme
+                        </button>
+                        <button
+                            onClick={handleSaveHotel}
+                            disabled={!isCustomTheme && !hotels.find(h => h.id === selectedHotelId)?.isCustomTheme}
+                            className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90 disabled:opacity-50"
+                            style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
+                        >
+                            <Save className="w-4 h-4" />
+                            Save Hotel Theme
+                        </button>
+                    </div>
+
                 </div>
 
-                <div className="space-y-4">
-                    <RoomStatusColorRow
-                        label="Check In Color"
-                        value={roomStatusColors.checkInColor}
-                        onChange={(value) =>
-                            setRoomStatusColors((prev) => ({ ...prev, checkInColor: value }))
-                        }
-                    />
-                    <RoomStatusColorRow
-                        label="Check Out Color"
-                        value={roomStatusColors.checkOutColor}
-                        onChange={(value) =>
-                            setRoomStatusColors((prev) => ({ ...prev, checkOutColor: value }))
-                        }
-                    />
-                    <RoomStatusColorRow
-                        label="Maintenance Color"
-                        value={roomStatusColors.maintenanceColor}
-                        onChange={(value) =>
-                            setRoomStatusColors((prev) => ({ ...prev, maintenanceColor: value }))
-                        }
-                    />
+                {/* SECTION C: ROOM STATUS COLORS */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
+                    <div>
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Paintbrush className="w-5 h-5 text-gray-400" />
+                            Room Status Colors
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                            Configure room card background colors by room status.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <RoomStatusColorRow
+                            label="Check In Color"
+                            value={roomStatusColors.checkInColor}
+                            onChange={(value) =>
+                                setRoomStatusColors((prev) => ({ ...prev, checkInColor: value }))
+                            }
+                        />
+                        <RoomStatusColorRow
+                            label="Check Out Color"
+                            value={roomStatusColors.checkOutColor}
+                            onChange={(value) =>
+                                setRoomStatusColors((prev) => ({ ...prev, checkOutColor: value }))
+                            }
+                        />
+                        <RoomStatusColorRow
+                            label="Maintenance Color"
+                            value={roomStatusColors.maintenanceColor}
+                            onChange={(value) =>
+                                setRoomStatusColors((prev) => ({ ...prev, maintenanceColor: value }))
+                            }
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <button
+                            onClick={handleResetRoomStatusColors}
+                            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-700"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Reset to Default
+                        </button>
+                        <button
+                            onClick={handleSaveRoomStatusColors}
+                            className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
+                            style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
+                        >
+                            <Save className="w-4 h-4" />
+                            Save Settings
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button
-                        onClick={handleResetRoomStatusColors}
-                        className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors dark:hover:bg-gray-700"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                        Reset to Default
-                    </button>
-                    <button
-                        onClick={handleSaveRoomStatusColors}
-                        className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
-                        style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
-                    >
-                        <Save className="w-4 h-4" />
-                        Save Settings
-                    </button>
-                </div>
-            </div>
+                {/* SECTION D: KOT WALL COLORS */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
+                    <div>
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Paintbrush className="w-5 h-5 text-gray-400" />
+                            KOT Wall Colors
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                            Configure color settings for the KOT Wall page.
+                        </p>
+                    </div>
 
-            {/* SECTION D: KOT WALL COLORS */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 space-y-6">
-                <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <Paintbrush className="w-5 h-5 text-gray-400" />
-                        KOT Wall Colors
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                        Configure color settings for the KOT Wall page.
-                    </p>
-                </div>
+                    <div className="space-y-4">
+                        <KOTWallColorRow
+                            label="KOT Wall Background Color"
+                            value={kotWallColors.wallBackgroundColor}
+                            onChange={(value) =>
+                                setKotWallColors((prev) => ({ ...prev, wallBackgroundColor: value }))
+                            }
+                        />
+                        <KOTWallColorRow
+                            label="KOT Card Background Color"
+                            value={kotWallColors.cardBackgroundColor}
+                            onChange={(value) =>
+                                setKotWallColors((prev) => ({ ...prev, cardBackgroundColor: value }))
+                            }
+                        />
+                        <KOTWallColorRow
+                            label="KOT Card Border Color"
+                            value={kotWallColors.cardBorderColor}
+                            onChange={(value) =>
+                                setKotWallColors((prev) => ({ ...prev, cardBorderColor: value }))
+                            }
+                        />
+                        <KOTWallColorRow
+                            label="KOT Card Text Color"
+                            value={kotWallColors.cardTextColor}
+                            onChange={(value) =>
+                                setKotWallColors((prev) => ({ ...prev, cardTextColor: value }))
+                            }
+                        />
+                        <KOTWallColorRow
+                            label="KOT Header Background"
+                            value={kotWallColors.headerBackgroundColor}
+                            onChange={(value) =>
+                                setKotWallColors((prev) => ({ ...prev, headerBackgroundColor: value }))
+                            }
+                        />
+                    </div>
 
-                <div className="space-y-4">
-                    <KOTWallColorRow
-                        label="KOT Wall Background Color"
-                        value={kotWallColors.wallBackgroundColor}
-                        onChange={(value) =>
-                            setKotWallColors((prev) => ({ ...prev, wallBackgroundColor: value }))
-                        }
-                    />
-                    <KOTWallColorRow
-                        label="KOT Card Background Color"
-                        value={kotWallColors.cardBackgroundColor}
-                        onChange={(value) =>
-                            setKotWallColors((prev) => ({ ...prev, cardBackgroundColor: value }))
-                        }
-                    />
-                    <KOTWallColorRow
-                        label="KOT Card Border Color"
-                        value={kotWallColors.cardBorderColor}
-                        onChange={(value) =>
-                            setKotWallColors((prev) => ({ ...prev, cardBorderColor: value }))
-                        }
-                    />
-                    <KOTWallColorRow
-                        label="KOT Card Text Color"
-                        value={kotWallColors.cardTextColor}
-                        onChange={(value) =>
-                            setKotWallColors((prev) => ({ ...prev, cardTextColor: value }))
-                        }
-                    />
-                    <KOTWallColorRow
-                        label="KOT Header Background"
-                        value={kotWallColors.headerBackgroundColor}
-                        onChange={(value) =>
-                            setKotWallColors((prev) => ({ ...prev, headerBackgroundColor: value }))
-                        }
-                    />
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                        <button
+                            onClick={handleSaveKotWallColors}
+                            className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
+                            style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
+                        >
+                            <Save className="w-4 h-4" />
+                            Save Settings
+                        </button>
+                    </div>
                 </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button
-                        onClick={handleSaveKotWallColors}
-                        className="flex items-center gap-2 px-6 py-2 rounded-lg text-white font-medium transition-colors hover:opacity-90"
-                        style={{ backgroundColor: "var(--accent-color)", color: "#000" }}
-                    >
-                        <Save className="w-4 h-4" />
-                        Save Settings
-                    </button>
-                </div>
-            </div>
 
             </div>
         </AppLayout>
