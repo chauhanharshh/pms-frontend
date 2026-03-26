@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { Calendar, Bell, Hotel, Menu } from "lucide-react";
+import { Calendar, Bell, Hotel, Menu, RefreshCw } from "lucide-react";
 import { resolveBrandName, resolveLogoUrl, handleLogoImageError } from "../utils/branding";
 
 interface TopNavbarProps {
@@ -10,7 +11,8 @@ interface TopNavbarProps {
 
 export function TopNavbar({ title, onMenuClick }: TopNavbarProps) {
   const { user, currentHotelId } = useAuth();
-  const { hotels } = usePMS();
+  const { hotels, refreshAll } = usePMS();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     year: "numeric",
@@ -106,10 +108,26 @@ export function TopNavbar({ title, onMenuClick }: TopNavbarProps) {
           </div>
         </div>
 
-        {/* Date Block */}
-        <div className="hidden sm:flex items-center gap-1.5 opacity-80" style={{ color: "#A8832D" }}>
-          <Calendar className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-medium">{today}</span>
+        {/* Date Block & Refresh */}
+        <div className="hidden sm:flex items-center gap-3 opacity-80" style={{ color: "#A8832D" }}>
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-medium">{today}</span>
+          </div>
+          <button
+            onClick={() => {
+              setIsRefreshing(true);
+              refreshAll(true);
+              setTimeout(() => setIsRefreshing(false), 1000);
+            }}
+            className={`p-1 rounded-md transition-colors ${
+              isRefreshing ? "bg-black/5" : "hover:bg-black/5"
+            }`}
+            title="Refresh Data"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          </button>
         </div>
       </div>
     </div>

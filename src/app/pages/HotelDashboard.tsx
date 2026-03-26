@@ -917,6 +917,7 @@ export function HotelDashboard() {
     updateRoom,
     updateBooking,
     hotels,
+    dashboardStats,
     isQRScannerOpen,
     setIsQRScannerOpen,
     handleQRScan
@@ -1023,11 +1024,7 @@ export function HotelDashboard() {
     (b) => b.status === "pending" || b.status === "confirmed",
   ).length;
 
-  const todayRevenue = hotelBookings
-    .filter((b) => b.status === "checked_in" || b.status === "checked_out")
-    .reduce((s, b) => s + Number(b.totalAmount || 0), 0);
-  const restaurantRevenue = todayOrders.reduce((s, o) => s + Number(o.totalAmount || 0), 0);
-  const expenseTotal = todayExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  // stats calculations removed as we now use dashboardStats from context
 
   // Unique floors + types for filters
   const floors = useMemo(
@@ -1244,17 +1241,17 @@ export function HotelDashboard() {
             color="#3b82f6"
           />
           <StatCard
-            label="Room Revenue"
-            value={formatCurrency(todayRevenue)}
-            sub={restaurantEnabled ? formatCurrency(restaurantRevenue) + " restaurant" : undefined}
-            icon={<IndianRupee className="w-5 h-5" />}
+            label="Today's Reservations"
+            value={dashboardStats?.todayReservations || 0}
+            sub="as of today"
+            icon={<Calendar className="w-5 h-5" />}
             color={T.gold}
           />
           <StatCard
-            label="Today's Expenses"
-            value={formatCurrency(expenseTotal)}
-            sub={`${todayExpenses.length} entries`}
-            icon={<Wallet className="w-5 h-5" />}
+            label="Today's Check-ins"
+            value={dashboardStats?.todayCheckIns || 0}
+            sub="pending check-ins"
+            icon={<DoorOpen className="w-5 h-5" />}
             color="#8b5cf6"
           />
         </div>

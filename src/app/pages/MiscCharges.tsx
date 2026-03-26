@@ -167,7 +167,7 @@ export function MiscCharges() {
                     "Description",
                     "Amount",
                     "Date",
-                    "Billed",
+                    "Status",
                     "Actions",
                   ].map((col) => (
                     <th
@@ -226,13 +226,13 @@ export function MiscCharges() {
                       <span
                         className="px-2 py-0.5 rounded-full text-xs font-medium"
                         style={{
-                          background: mc.addedToFinalBill
+                          background: (mc as any).status === "PAID"
                             ? "#dcfce7"
-                            : "#fee2e2",
-                          color: mc.addedToFinalBill ? "#166534" : "#dc2626",
+                            : "#ffedd5",
+                          color: (mc as any).status === "PAID" ? "#166534" : "#c2410c",
                         }}
                       >
-                        {mc.addedToFinalBill ? "Added" : "Pending"}
+                        {(mc as any).status === "PAID" ? "Paid" : "Pending"}
                       </span>
                     </td>
                     <td className="px-4 py-3">

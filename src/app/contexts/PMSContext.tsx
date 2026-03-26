@@ -107,6 +107,8 @@ export interface DashboardStats {
   occupiedRooms: number;
   vacantRooms: number;
   occupancyRate: number;
+  todayReservations: number;
+  todayCheckIns: number;
 }
 
 export interface Booking {
@@ -734,6 +736,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
         const totalRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.totalRooms || 0), 0);
         const occupiedRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.occupiedRooms || 0), 0);
         const vacantRooms = statsList.reduce((sum: number, item: any) => sum + Number(item.vacantRooms || 0), 0);
+        const todayReservations = statsList.reduce((sum: number, item: any) => sum + Number(item.todayReservations || 0), 0);
+        const todayCheckIns = statsList.reduce((sum: number, item: any) => sum + Number(item.todayCheckIns || 0), 0);
         const occupancyRate = totalRooms > 0 ? Number(((occupiedRooms / totalRooms) * 100).toFixed(2)) : 0;
 
         setDashboardStats({
@@ -742,6 +746,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           occupiedRooms,
           vacantRooms,
           occupancyRate,
+          todayReservations,
+          todayCheckIns,
         });
       } else {
         const [
