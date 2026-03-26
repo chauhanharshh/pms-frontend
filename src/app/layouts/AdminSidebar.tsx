@@ -548,8 +548,9 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
   const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
 
   let sections = ADMIN_SECTIONS;
+  const userRole = user?.role?.toLowerCase();
 
-  if (user?.role === "restaurant_admin") {
+  if (userRole === "restaurant_admin") {
     sections = sections.filter((s) => s.title === "Restaurant" || s.title === "GST Reports (Admin)");
     // Further filter GST reports if needed
     sections = sections.map(s => {

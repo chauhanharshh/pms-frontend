@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
+import { usePMS } from "../contexts/PMSContext";
 import api from "../services/api";
 import { toast } from "sonner";
 import { Download, Lock, Printer, Search } from "lucide-react";
@@ -8,6 +9,8 @@ import { formatDateForCSV, exportToCSV } from "../utils/tableExport";
 
 type RestaurantDayClosingSummary = {
   date: string;
+  hotelId: string;
+  hotelName: string;
   totalKotsToday: number;
   openKots: number;
   convertedKots: number;
@@ -90,33 +93,32 @@ const toCsvCell = (val: any) => {
 
 export function RestaurantDayClosingPage() {
   const { user, currentHotelId } = useAuth();
+  const { hotels } = usePMS();
   const today = useMemo(() => new Date(), []);
   const todayDisplay = useMemo(() => toDisplayDate(today), [today]);
 
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [targetHotelIdForClosing, setTargetHotelIdForClosing] = useState<string | null>(null);
 
   const [records, setRecords] = useState<RestaurantDayClosingSummary[]>([]);
-  const [todaySummary, setTodaySummary] = useState<RestaurantDayClosingSummary>({
-    date: todayDisplay,
-    totalKotsToday: 0,
-    openKots: 0,
-    convertedKots: 0,
-    cancelledKots: 0,
-    totalOrdersAmount: 0,
-    serviceChargeAmount: 0,
-    totalRevenueToday: 0,
-    totalInvoicesToday: 0,
-    dayClosed: false,
-    closedAt: null,
-    closedBy: null,
-  });
+  const [todaySummaries, setTodaySummaries] = useState<RestaurantDayClosingSummary[]>([]);
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
+  const [selectedHotelId, setSelectedHotelId] = useState<string>(currentHotelId || "");
+
+  // Update selected hotel if currentHotelId changes
+  useEffect(() => {
+    if (currentHotelId) {
+      setSelectedHotelId(currentHotelId);
+    } else if (!selectedHotelId && hotels.length > 0) {
+      setSelectedHotelId(hotels[0].id);
+    }
+  }, [currentHotelId, hotels, selectedHotelId]);
 
   const fetchDayClosingRecords = async () => {
     try {
@@ -125,19 +127,21 @@ export function RestaurantDayClosingPage() {
       const [historyResponse, todayResponse] = await Promise.all([
         api.get("/restaurant/day-closing", {
           params: {
-            ...(currentHotelId ? { hotelId: currentHotelId } : {}),
+            hotelId: selectedHotelId || undefined,
+            fromDate: appliedFrom || undefined,
+            toDate: appliedTo || undefined,
           },
         }),
         api.get("/restaurant/day-closing", {
           params: {
             date: todayDisplay,
-            ...(currentHotelId ? { hotelId: currentHotelId } : {}),
+            hotelId: selectedHotelId || undefined,
           },
         }),
       ]);
 
       const historyData = historyResponse.data?.data as DayClosingResponse;
-      const todayData = todayResponse.data?.data as RestaurantDayClosingSummary | undefined;
+      const todayDataRaw = todayResponse.data?.data;
 
       const nextRecords = Array.isArray(historyData)
         ? sortByDateDesc(historyData.map(normalizeSummary))
@@ -146,8 +150,14 @@ export function RestaurantDayClosingPage() {
           : [];
 
       setRecords(nextRecords);
-      if (todayData) {
-        setTodaySummary(normalizeSummary(todayData));
+
+      if (todayDataRaw) {
+        const nextToday = Array.isArray(todayDataRaw) 
+          ? todayDataRaw.map(normalizeSummary)
+          : [normalizeSummary(todayDataRaw)];
+        setTodaySummaries(nextToday);
+      } else {
+        setTodaySummaries([]);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load restaurant day closing records");
@@ -159,23 +169,26 @@ export function RestaurantDayClosingPage() {
   useEffect(() => {
     fetchDayClosingRecords();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayDisplay, currentHotelId]);
+  }, [todayDisplay, selectedHotelId, appliedFrom, appliedTo]);
 
-  const handleCloseDay = async () => {
+  const handleCloseDay = async (hotelIdOverride?: string) => {
+    const hotelIdToClose = hotelIdOverride || targetHotelIdForClosing || selectedHotelId;
+    
+    if (!hotelIdToClose) {
+      toast.error("Please select a specific hotel to close the day");
+      return;
+    }
+
     try {
       setClosing(true);
       const response = await api.post("/restaurant/day-closing", {
         date: todayDisplay,
-        ...(currentHotelId ? { hotelId: currentHotelId } : {}),
+        hotelId: hotelIdToClose,
       });
-
-      const data = response.data?.data as RestaurantDayClosingSummary;
-      if (data) {
-        setTodaySummary(normalizeSummary(data));
-      }
 
       toast.success(`Restaurant Day Closed Successfully for ${todayDisplay}`);
       setShowConfirm(false);
+      setTargetHotelIdForClosing(null);
       await fetchDayClosingRecords();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to close restaurant day");
@@ -185,19 +198,20 @@ export function RestaurantDayClosingPage() {
   };
 
   const allRows = useMemo(() => {
-    const hasTodayInRecords = records.some((row) => row.date === todayDisplay);
-    const baseRows = sortByDateDesc(records);
+    // Combine records with todaySummaries
+    const combined = [...records];
+    
+    todaySummaries.forEach(todayRow => {
+      const existingIdx = combined.findIndex(r => r.date === todayRow.date && r.hotelId === todayRow.hotelId);
+      if (existingIdx >= 0) {
+        combined[existingIdx] = todayRow;
+      } else {
+        combined.push(todayRow);
+      }
+    });
 
-    if (!hasTodayInRecords && !todaySummary.dayClosed) {
-      return [...baseRows, todaySummary];
-    }
-
-    if (hasTodayInRecords) {
-      return baseRows.map((row) => (row.date === todayDisplay ? todaySummary : row));
-    }
-
-    return baseRows;
-  }, [records, todaySummary, todayDisplay]);
+    return sortByDateDesc(combined);
+  }, [records, todaySummaries]);
 
   const filteredRows = useMemo(() => {
     if (!appliedFrom && !appliedTo) return allRows;
@@ -235,7 +249,11 @@ export function RestaurantDayClosingPage() {
     });
   }, [allRows, appliedFrom, appliedTo]);
 
-  const todayClosed = todaySummary.dayClosed;
+  const openHotelsToday = useMemo(() => {
+    return todaySummaries.filter(s => !s.dayClosed);
+  }, [todaySummaries]);
+
+  const canCloseDay = selectedHotelId ? !todaySummaries.find(s => s.hotelId === selectedHotelId)?.dayClosed : openHotelsToday.length > 0;
 
   const periodText = useMemo(() => {
     const visibleDates = filteredRows
@@ -289,6 +307,7 @@ export function RestaurantDayClosingPage() {
   const handleDownloadCsv = () => {
     const dataToExport = filteredRows.map((row) => ({
       Date: formatDateForCSV(row.date),
+      Hotel: row.hotelName,
       "Total KOTs": row.totalKotsToday,
       Open: row.openKots,
       Converted: row.convertedKots,
@@ -298,7 +317,7 @@ export function RestaurantDayClosingPage() {
       "Total Revenue": row.totalRevenueToday.toFixed(2),
       "Total Invoices": row.totalInvoicesToday,
       "Closed By": row.closedBy || "-",
-      Actions: !row.dayClosed && row.date === todayDisplay ? "Close Day" : "Closed",
+      Status: row.dayClosed ? "Closed" : "Open",
     }));
 
     exportToCSV(dataToExport, "restaurant-day-closing");
@@ -361,13 +380,27 @@ export function RestaurantDayClosingPage() {
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex flex-wrap gap-3 items-end">
+              <div className="min-w-[200px]">
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Hotel</label>
+                <select
+                  value={selectedHotelId}
+                  onChange={(e) => setSelectedHotelId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                  {hotels.map((hotel) => (
+                    <option key={hotel.id} value={hotel.id}>
+                      {hotel.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Date From</label>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white"
+                  className="h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
                 />
               </div>
               <div>
@@ -376,19 +409,19 @@ export function RestaurantDayClosingPage() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white"
+                  className="h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
                 />
               </div>
               <button
                 onClick={handleSearch}
-                className="h-10 px-4 rounded-lg bg-slate-800 text-white text-sm font-semibold inline-flex items-center gap-2"
+                className="h-10 px-4 rounded-lg bg-slate-800 text-white text-sm font-semibold inline-flex items-center gap-2 hover:bg-slate-700 transition-colors"
               >
                 <Search className="w-4 h-4" />
                 Search
               </button>
               <button
                 onClick={handleReset}
-                className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold"
+                className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
               >
                 Reset
               </button>
@@ -398,7 +431,7 @@ export function RestaurantDayClosingPage() {
               <button
                 onClick={handlePrintTable}
                 disabled={loading}
-                className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2"
+                className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2 hover:bg-slate-50 transition-colors"
               >
                 <Printer className="w-4 h-4" />
                 Print
@@ -406,18 +439,25 @@ export function RestaurantDayClosingPage() {
               <button
                 onClick={handleDownloadCsv}
                 disabled={loading}
-                className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2"
+                className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2 hover:bg-slate-50 transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Download CSV
               </button>
               <button
-                onClick={() => setShowConfirm(true)}
-                disabled={todayClosed || closing || loading}
-                className="h-10 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                onClick={() => {
+                  if (selectedHotelId) {
+                    setTargetHotelIdForClosing(selectedHotelId);
+                    setShowConfirm(true);
+                  } else {
+                    toast.info("Please select a specific hotel or use the button in the table row to close the day.");
+                  }
+                }}
+                disabled={!canCloseDay || closing || loading}
+                className="h-10 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2 hover:bg-emerald-700 transition-colors"
               >
                 <Lock className="w-4 h-4" />
-                {todayClosed ? "Day Already Closed" : "Close Day"}
+                {!canCloseDay ? "Day Already Closed" : "Close Day"}
               </button>
             </div>
           </div>
@@ -429,6 +469,7 @@ export function RestaurantDayClosingPage() {
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-700">
                 <tr>
                   <th className="text-left px-3 py-2 font-semibold">Date</th>
+                  <th className="text-left px-3 py-2 font-semibold">Hotel</th>
                   <th className="text-right px-3 py-2 font-semibold">Total KOTs</th>
                   <th className="text-right px-3 py-2 font-semibold">Open</th>
                   <th className="text-right px-3 py-2 font-semibold">Converted</th>
@@ -454,8 +495,9 @@ export function RestaurantDayClosingPage() {
                   filteredRows.map((row) => {
                     const isTodayOpen = row.date === todayDisplay && !row.dayClosed;
                     return (
-                      <tr key={`${row.date}-${row.closedAt || "open"}`} className="border-b border-slate-100 last:border-b-0">
+                      <tr key={`${row.date}-${row.hotelId}-${row.closedAt || "open"}`} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors">
                         <td className="px-3 py-2 text-slate-800">{row.date}</td>
+                        <td className="px-3 py-2 text-slate-800 font-medium">{row.hotelName}</td>
                         <td className="px-3 py-2 text-right text-slate-800">{toInt(row.totalKotsToday)}</td>
                         <td className="px-3 py-2 text-right text-slate-800">{toInt(row.openKots)}</td>
                         <td className="px-3 py-2 text-right text-slate-800">{toInt(row.convertedKots)}</td>
@@ -468,9 +510,12 @@ export function RestaurantDayClosingPage() {
                         <td className="px-3 py-2">
                           {isTodayOpen ? (
                             <button
-                              onClick={() => setShowConfirm(true)}
+                              onClick={() => {
+                                setTargetHotelIdForClosing(row.hotelId);
+                                setShowConfirm(true);
+                              }}
                               disabled={closing || loading}
-                              className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60"
+                              className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-semibold disabled:opacity-60 hover:bg-emerald-700 transition-colors"
                             >
                               Close Day
                             </button>
@@ -498,6 +543,7 @@ export function RestaurantDayClosingPage() {
           <thead>
             <tr>
               <th>Date</th>
+              <th>Hotel</th>
               <th>Total KOTs</th>
               <th>Open</th>
               <th>Converted</th>
@@ -507,15 +553,16 @@ export function RestaurantDayClosingPage() {
               <th>Total Revenue</th>
               <th>Total Invoices</th>
               <th>Closed By</th>
-              <th>Actions</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {filteredRows.map((row) => {
               const isTodayOpen = row.date === todayDisplay && !row.dayClosed;
               return (
-                <tr key={`print-${row.date}-${row.closedAt || "open"}`}>
+                <tr key={`print-${row.date}-${row.hotelId}-${row.closedAt || "open"}`}>
                   <td>{row.date}</td>
+                  <td>{row.hotelName}</td>
                   <td>{toInt(row.totalKotsToday)}</td>
                   <td>{toInt(row.openKots)}</td>
                   <td>{toInt(row.convertedKots)}</td>
@@ -525,7 +572,7 @@ export function RestaurantDayClosingPage() {
                   <td>{toCurrency(row.totalRevenueToday)}</td>
                   <td>{toInt(row.totalInvoicesToday)}</td>
                   <td>{row.closedBy || "-"}</td>
-                  <td>{isTodayOpen ? "Close Day" : "Closed"}</td>
+                  <td>{isTodayOpen ? "Open" : "Closed"}</td>
                 </tr>
               );
             })}
@@ -545,16 +592,19 @@ export function RestaurantDayClosingPage() {
             </p>
             <div className="mt-5 flex gap-3">
               <button
-                onClick={handleCloseDay}
+                onClick={() => handleCloseDay()}
                 disabled={closing}
-                className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60"
+                className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60 hover:bg-emerald-700 transition-colors"
               >
                 Yes, Close Day
               </button>
               <button
-                onClick={() => setShowConfirm(false)}
+                onClick={() => {
+                  setShowConfirm(false);
+                  setTargetHotelIdForClosing(null);
+                }}
                 disabled={closing}
-                className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white text-sm font-semibold"
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 bg-white text-sm font-semibold hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>

@@ -442,19 +442,19 @@ function RoomDetailPanel({
             )}
             {/* Removed: action buttons from room detail view (show info only) */}
             {room.status === "cleaning" && (
-                <button
-                  onClick={() => {
-                    onStatusChange(room.id, "vacant");
-                    onClose();
-                  }}
-                  className="w-full py-4 rounded-xl font-bold text-sm transition-colors duration-200 bg-[#B8860B] hover:bg-[#9A7209] shadow-md" // Removed: active scale animation for instant click response
-                  style={{
-                    color: "#ffffff",
-                    border: "none",
-                  }}
-                >
-                  MARK ROOM READY ✓
-                </button>
+              <button
+                onClick={() => {
+                  onStatusChange(room.id, "vacant");
+                  onClose();
+                }}
+                className="w-full py-4 rounded-xl font-bold text-sm transition-colors duration-200 bg-[#B8860B] hover:bg-[#9A7209] shadow-md" // Removed: active scale animation for instant click response
+                style={{
+                  color: "#ffffff",
+                  border: "none",
+                }}
+              >
+                MARK ROOM READY ✓
+              </button>
             )}
             {room.status === "maintenance" && (
               <button
@@ -475,16 +475,16 @@ function RoomDetailPanel({
               </button>
             )}
             {room.status === "vacant" && (
-                <button
-                  onClick={() => {
-                    onStatusChange(room.id, "maintenance");
-                    onClose();
-                  }}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
-                  style={{ border: `1.5px solid ${T.border}`, color: "#6d28d9" }}
-                >
-                  REPORT MAINTENANCE ISSUE
-                </button>
+              <button
+                onClick={() => {
+                  onStatusChange(room.id, "maintenance");
+                  onClose();
+                }}
+                className="w-full py-3.5 rounded-xl font-bold text-sm bg-white active:scale-[0.98] transition-all"
+                style={{ border: `1.5px solid ${T.border}`, color: "#6d28d9" }}
+              >
+                REPORT MAINTENANCE ISSUE
+              </button>
             )}
           </div>
         </div>
@@ -810,9 +810,9 @@ function RoomCard({
       ? roomStatusColors.checkInColor
       : room.status === "vacant"
         ? roomStatusColors.checkOutColor
-      : room.status === "maintenance"
-        ? roomStatusColors.maintenanceColor
-        : cfg.bg;
+        : room.status === "maintenance"
+          ? roomStatusColors.maintenanceColor
+          : cfg.bg;
   const cardBorder = cardBg;
   const nights = booking
     ? calculateRoomDays(
@@ -825,7 +825,7 @@ function RoomCard({
     <button
       onClick={onClick}
       onContextMenu={(e) => onContextMenu && onContextMenu(e, room)}
-      className="rounded-lg text-left transition-all w-full"
+      className="rounded-none text-left transition-all w-full"
       style={{
         background: cardBg,
         border: `1.5px solid ${cardBorder}`,
@@ -1145,33 +1145,39 @@ export function HotelDashboard() {
         style={{ fontFamily: "Georgia, Inter, sans-serif" }}
       >
         {/* Hotel Header row */}
-        <div 
+        <div
           className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 p-5 sm:p-7 rounded-sm shadow-sm border"
           style={{ background: "#1F2937", border: "1px solid #E5E1DA" }}
         >
-            {/* Hotel Logo in Dashboard Header */}
-            <div className="hidden sm:flex w-16 h-16 items-center justify-center flex-shrink-0 bg-white rounded-xl border border-white/10 p-2 shadow-lg">
-              <img
-                src={resolveLogoUrl(hotelData?.logoUrl)}
-                alt="Logo"
-                className="w-full h-full object-contain"
-                onError={handleLogoImageError}
-              />
-            </div>
-            <div className="min-w-0">
-              <h2
-                style={{
-                  fontFamily: "Times New Roman, serif",
-                  color: "#F9FAFB",
-                  fontSize: "1.4rem",
-                  marginBottom: "2px",
-                }}
-              >
-                {resolveBrandName(hotelData)}
-              </h2>
-            {(locationText || hotelGst) && (
-              <p className="text-sm" style={{ color: "#D1D5DB" }}>
-                {[locationText, hotelGst ? `GST: ${hotelGst}` : ""].filter(Boolean).join(" · ")}
+          {/* Hotel Logo in Dashboard Header */}
+          <div className="hidden sm:flex w-16 h-16 items-center justify-center flex-shrink-0 bg-white rounded-xl border border-white/10 p-2 shadow-lg">
+            <img
+              src={resolveLogoUrl(hotelData?.logoUrl)}
+              alt="Logo"
+              className="w-full h-full object-contain"
+              onError={handleLogoImageError}
+            />
+          </div>
+          <div className="min-w-0">
+            <h2
+              style={{
+                fontFamily: "Times New Roman, serif",
+                color: T.gold,
+                fontSize: "1.5rem",
+                marginBottom: "4px",
+                fontWeight: "bold"
+              }}
+            >
+              {hotelName || resolveBrandName(hotelData)}
+            </h2>
+            {locationText && (
+              <p className="text-sm" style={{ color: "#D1D5DB", fontFamily: "Calibri, sans-serif", fontWeight: "bold" }}>
+                {locationText}
+              </p>
+            )}
+            {hotelGst && (
+              <p className="text-sm mt-0.5" style={{ color: "#D1D5DB", fontFamily: "Calibri, sans-serif", fontWeight: "bold" }}>
+                GST: {hotelGst}
               </p>
             )}
             <div className="flex items-center gap-2 sm:gap-4 mt-2 flex-wrap">
@@ -1193,7 +1199,7 @@ export function HotelDashboard() {
                 className="text-[10px] sm:text-xs"
                 style={{ color: "#D1D5DB" }}
               >
-                CI: {hotelCheckIn || "N/A"} · CO: {hotelCheckOut || "N/A"}
+                Check-in: {hotelCheckIn || "N/A"} · Check-out: {hotelCheckOut || "N/A"}
               </span>
             </div>
           </div>

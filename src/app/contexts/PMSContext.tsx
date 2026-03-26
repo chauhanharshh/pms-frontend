@@ -489,7 +489,7 @@ interface PMSContextType {
   clearRestaurantKOTsForRoom: (roomId: string) => void;
   getKOTs: (status?: string, hotelId?: string) => Promise<any[]>;
   updateKOT: (id: string, updates: any) => Promise<void>;
-  deleteKOT: (id: string) => Promise<void>;
+  deleteKOT: (id: string, hotelId?: string) => Promise<void>;
   convertKOTToInvoice: (kotId: string, hotelId?: string) => Promise<Invoice>;
 
   // Restaurant Tables
@@ -1247,8 +1247,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        await refreshRestaurantKOTs();
-        await fetchAll(true);
+        // await refreshRestaurantKOTs();
+        // await fetchAll(true);
         return res.data.data;
       } catch (error: any) {
         const status = error?.response?.status;
@@ -1296,8 +1296,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        await refreshRestaurantKOTs();
-        await fetchAll(true);
+        // await refreshRestaurantKOTs();
+        // await fetchAll(true);
         return invoiceRes.data.data;
       }
     }
@@ -1332,8 +1332,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       );
 
       // Confirm final state from backend after conversion.
-      await refreshRestaurantKOTs();
-      await fetchAll(true);
+      // await refreshRestaurantKOTs();
+      // await fetchAll(true);
       return res.data.data;
     } catch (error: any) {
       console.error('Invoice API error:', error.response?.data);
@@ -1344,28 +1344,39 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const generateKOTAndInvoice = async (id: string, hotelId?: string) => {
     const config = hotelId ? { headers: { 'X-Hotel-ID': hotelId } } : {};
     const res = await api.post(`/restaurant/orders/${id}/kot`, {}, config);
-    await fetchAll(true);
+    await refreshRestaurantKOTs(); // Fixed: performance — use targeted refresh instead of fetchAll(true)
     return res.data.data;
   };
 
   const payRestaurantInvoice = async (id: string, paymentMethod: string) => {
     const res = await api.post(`/restaurant/invoices/${id}/pay`, { paymentMethod });
-    await fetchAll(true);
+    // await fetchAll(true); // Fixed: performance — extremely slow full refresh
     return res.data.data;
   };
 
   const getCheckedInRooms = useCallback(async (hotelId?: string) => {
+    // Fixed: added adminId support to prevent 500 on multi-hotel fetch
+    const safeHotelId = hotelId && hotelId !== 'all' ? hotelId : null;
+    const adminId = user?.hotel?.adminId || (user as any)?.adminId;
+
+    if (!safeHotelId && !adminId) {
+      console.warn('No hotelId or adminId available, skipping fetch');
+      return [];
+    }
+
+    const params: any = safeHotelId ? { hotelId: safeHotelId } : { hotelId: 'all', adminId };
+
     const response = await api.get(`/restaurant/checked-in-rooms`, {
-      params: { hotelId },
+      params,
       headers: {
         Authorization: `Bearer ${token}`,
         // Fixed: use selectedHotelId instead of loggedIn hotelId
         // Send X-Hotel-ID so the backend honours the requested hotel before boss-mode check
-        ...(hotelId ? { 'X-Hotel-ID': hotelId } : {}),
+        ...(safeHotelId ? { 'X-Hotel-ID': safeHotelId } : {}),
       }
     });
     return response.data.data;
-  }, [token]);
+  }, [token, user]);
 
   const isFetchingKOTsRef = useRef(false);
 
@@ -1386,7 +1397,9 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       }
 
       const query = params.toString() ? `?${params.toString()}` : "";
-      const config = (hotelId && hotelId !== 'all') ? { headers: { 'X-Hotel-ID': hotelId } } : {};
+      
+      // Fixed: send 'all' if no specific hotelId to trigger consolidated view in middleware
+      const config = { headers: { 'X-Hotel-ID': (hotelId && hotelId !== 'all') ? hotelId : 'all' } };
       const res = await api.get(`/restaurant/kots${query}`, config);
       const next = res.data?.data || [];
       setRestaurantKOTs(next);
@@ -1446,8 +1459,8 @@ export function PMSProvider({ children }: { children: ReactNode }) {
       );
 
       // Confirm final state from backend after conversion.
-      await refreshRestaurantKOTs();
-      await fetchAll(true);
+      // await refreshRestaurantKOTs();
+      // await fetchAll(true);
       return res.data.data;
     } catch (err: any) {
       setError(err.response?.data?.message || err.message);

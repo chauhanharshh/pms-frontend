@@ -95,15 +95,12 @@ export default function RestaurantKOTs() {
         }
     };
 
-    const handleConvert = async (kot: any) => {
-        if (kot.status === 'CONVERTED') {
-            alert('This KOT is already converted to a bill.');
-            return;
-        }
+    const handleConvert = async (kotId: string, hotelId: string) => {
         if (!confirm("Are you sure you want to convert this KOT to a Bill?")) return;
+        
         try {
-            await convertKOTToInvoice(kot.id, kot.hotelId);
-            await refreshRestaurantKOTs();
+            await convertKOTToInvoice(kotId, hotelId);
+            // await refreshRestaurantKOTs(); // Redundant refresh
             window.dispatchEvent(new CustomEvent("restaurant:kots-updated"));
         } catch (error: any) {
             if (error.response?.status === 409) {
@@ -427,7 +424,7 @@ export default function RestaurantKOTs() {
                                                         {kot.status === 'OPEN' && (
                                                             <>
                                                                 <button
-                                                                    onClick={() => handleConvert(kot)}
+                                                                    onClick={() => handleConvert(kot.id, kot.hotelId)}
                                                                     className="px-3 py-1.5 text-white rounded text-xs font-bold transition-all shadow-sm flex items-center gap-1 hover:brightness-110" // Removed: active scale animation for instant click response
                                                                     style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
                                                                 >
@@ -472,7 +469,7 @@ export default function RestaurantKOTs() {
                                                         {kot.status === 'CONVERTED' && (
                                                             <button
                                                                 disabled={kot.status === 'CONVERTED'}
-                                                                onClick={() => handleConvert(kot)}
+                                                                onClick={() => handleConvert(kot.id, kot.hotelId)}
                                                                 className="px-3 py-1.5 text-gray-500 bg-gray-100 border border-gray-200 rounded text-xs font-bold cursor-not-allowed"
                                                                 title="This KOT is already converted"
                                                             >

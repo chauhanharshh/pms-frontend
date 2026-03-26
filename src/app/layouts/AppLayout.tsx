@@ -1,4 +1,4 @@
-import { useState, ReactNode, useMemo } from "react";
+import React, { useState, ReactNode, useMemo } from "react";
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
@@ -9,6 +9,7 @@ import { usePMS } from "../contexts/PMSContext";
 import { QRScannerModal } from "../components/QRScannerModal";
 import { QRScanResultModal } from "../components/QRScanResultModal";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import api from "../services/api";
 
 interface AppLayoutProps {
   title: string;
@@ -19,11 +20,13 @@ interface AppLayoutProps {
 // Backend returns: admin | hotel_manager | hotel_user | restaurant_staff
 // Frontend treats these as hotel-shell roles, with restaurant_staff restricted to restaurant routes only.
 function isHotelRole(role: string) {
-  return ["admin", "hotel_manager", "hotel_staff", "restaurant_staff", "hotel", "restaurant_admin"].includes(role);
+  const r = role?.toLowerCase();
+  return ["admin", "hotel_manager", "hotel_staff", "restaurant_staff", "hotel", "restaurant_admin"].includes(r);
 }
 
 function isRestaurantOnlyRole(role: string) {
-  return role === "restaurant_staff" || role === "restaurant_admin";
+  const r = role?.toLowerCase();
+  return r === "restaurant_staff" || r === "restaurant_admin";
 }
 
 function isRestaurantRoute(pathname: string) {
@@ -43,7 +46,8 @@ function isRestaurantRoute(pathname: string) {
 }
 
 function isSuperAdminRole(role: string) {
-  return role === "super_admin" || role === "superadmin";
+  const r = role?.toLowerCase();
+  return r === "super_admin" || r === "superadmin";
 }
 
 export function AppLayout({
@@ -65,6 +69,19 @@ export function AppLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 1024px)");
 
+  // Fixed: performance — keep-alive ping to prevent backend cold starts (Render.com)
+  useEffect(() => {
+    const keepAlive = setInterval(async () => {
+      try {
+        await api.get("/health");
+      } catch (e) {
+        // silently ignore ping errors
+      }
+    }, 10 * 60 * 1000); // every 10 minutes
+
+    return () => clearInterval(keepAlive);
+  }, []);
+
   useEffect(() => {
     // Close mobile menu on route change
     setMobileMenuOpen(false);
@@ -83,41 +100,43 @@ export function AppLayout({
     const isHotelRoute = location.pathname.startsWith("/hotel");
     const isSuperAdminRoute = location.pathname.startsWith("/superadmin");
 
-    if (isRestaurantOnlyRole(user.role) && !isRestaurantRoute(location.pathname)) {
+    const role = user.role?.toLowerCase();
+
+    if (isRestaurantOnlyRole(role) && !isRestaurantRoute(location.pathname)) {
       navigate("/hotel/restaurant/rooms", { replace: true });
       return;
     }
 
-    if (isSuperAdminRole(user.role) && !isSuperAdminRoute) {
+    if (isSuperAdminRole(role) && !isSuperAdminRoute) {
       navigate("/superadmin", { replace: true });
       return;
     }
 
-    if (isSuperAdminRoute && !isSuperAdminRole(user.role)) {
-      navigate(user.role === "admin" ? "/admin" : "/hotel", { replace: true });
+    if (isSuperAdminRoute && !isSuperAdminRole(role)) {
+      navigate(role === "admin" ? "/admin" : "/hotel", { replace: true });
       return;
     }
 
-    if (isAdminRoute && user.role !== "admin") {
+    if (isAdminRoute && role !== "admin") {
       navigate("/hotel", { replace: true });
       return;
     }
 
-    if (isHotelRoute && !isHotelRole(user.role)) {
+    if (isHotelRoute && !isHotelRole(role)) {
       navigate("/admin", { replace: true });
       return;
     }
 
-    if (requiredRole === "admin" && user.role !== "admin") {
+    if (requiredRole === "admin" && role !== "admin") {
       navigate("/hotel", { replace: true });
       return;
     }
-    if (requiredRole === "hotel" && !isHotelRole(user.role)) {
+    if (requiredRole === "hotel" && !isHotelRole(role)) {
       navigate("/admin", { replace: true });
       return;
     }
-    if (requiredRole === "superadmin" && !isSuperAdminRole(user.role)) {
-      navigate(user.role === "admin" ? "/admin" : "/hotel", { replace: true });
+    if (requiredRole === "superadmin" && !isSuperAdminRole(role)) {
+      navigate(role === "admin" ? "/admin" : "/hotel", { replace: true });
       return;
     }
   }, [user, loading, requiredRole, navigate, location.pathname]);
@@ -128,18 +147,20 @@ export function AppLayout({
   const isAdminRoute = location.pathname.startsWith("/admin");
   const isHotelRoute = location.pathname.startsWith("/hotel");
   const isSuperAdminRoute = location.pathname.startsWith("/superadmin");
+  const role = user.role?.toLowerCase();
 
-  if (isRestaurantOnlyRole(user.role) && !isRestaurantRoute(location.pathname)) return null;
+  if (isRestaurantOnlyRole(role) && !isRestaurantRoute(location.pathname)) return null;
 
-  if (isSuperAdminRole(user.role) && !isSuperAdminRoute) return null;
-  if (isSuperAdminRoute && !isSuperAdminRole(user.role)) return null;
-  if (isAdminRoute && user.role !== "admin") return null;
-  if (isHotelRoute && !isHotelRole(user.role)) return null;
-  if (requiredRole === "admin" && user.role !== "admin") return null;
-  if (requiredRole === "hotel" && !isHotelRole(user.role)) return null;
-  if (requiredRole === "superadmin" && !isSuperAdminRole(user.role)) return null;
+  if (isSuperAdminRole(role) && !isSuperAdminRoute) return null;
+  if (isSuperAdminRoute && !isSuperAdminRole(role)) return null;
+  if (isAdminRoute && role !== "admin") return null;
+  if (isHotelRoute && !isHotelRole(role)) return null;
+  if (requiredRole === "admin" && role !== "admin") return null;
+  if (requiredRole === "hotel" && !isHotelRole(role)) return null;
+  if (requiredRole === "superadmin" && !isSuperAdminRole(role)) return null;
 
-  const SidebarComponent = (user.role === "admin" || user.role === "restaurant_admin") ? AdminSidebar : HotelSidebar;
+  const SidebarComponent: React.ComponentType<{ collapsed: boolean; onToggle: () => void }> = 
+    (role === "admin" || role === "restaurant_admin") ? AdminSidebar : HotelSidebar;
 
   return (
     <div

@@ -331,13 +331,14 @@ export function HotelSidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isRestaurantOnlyUser = user?.role === "restaurant_staff";
+  const isRestaurantOnlyUser = user?.role?.toLowerCase() === "restaurant_staff";
   const restaurantEnabled = JSON.parse(localStorage.getItem("restaurantEnabled") ?? "false");
 
   let sections = isRestaurantOnlyUser ? RESTAURANT_STAFF_SECTIONS : HOTEL_SECTIONS;
 
   // Filter sections and items based on restaurantEnabled
-  if (!restaurantEnabled) {
+  // Fixed: ensure RESTAURANT_STAFF role shows restaurant sidebar menu even if restaurantEnabled is false in localStorage
+  if (!restaurantEnabled && !isRestaurantOnlyUser) {
     sections = sections
       .filter((s) => s.title !== "Restaurant")
       .map((s) => {

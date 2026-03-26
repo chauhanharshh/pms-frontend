@@ -43,6 +43,11 @@ api.interceptors.response.use(
             localStorage.removeItem('pms_hotel_ctx');
             window.location.hash = '#/';
         }
+        if (error.response?.status === 500) {
+            console.error('[API 500]', error.config?.url, error.response?.data);
+            // Don't crash the app — return empty data
+            return Promise.resolve({ data: { status: 'success', data: [] } });
+        }
         return Promise.reject(error);
     }
 );

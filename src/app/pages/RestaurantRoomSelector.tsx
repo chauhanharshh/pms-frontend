@@ -191,12 +191,23 @@ export function RestaurantRoomSelector() {
         // Fixed: halt loop on network failure; only manual Refresh resets this
         if (hasFetchErrorRef.current) return;
 
+        // Fixed: added adminId support to prevent 500 on multi-hotel fetch
+        const safeHotelId = activeSelectorHotelId && activeSelectorHotelId !== 'all' ? activeSelectorHotelId : null;
+        const safeAdminId = user?.hotel?.adminId || (user as any)?.adminId;
+
+        if (!safeHotelId && !safeAdminId) {
+            return;
+        }
+
         isFetchingRef.current = true;
         let isMounted = true;
 
         try {
             // Fixed: use 'all' sentinel for consolidated view
             const fetchHotelId = activeSelectorHotelId || 'all';
+            const params = fetchHotelId === 'all'
+                ? { hotelId: 'all', adminId: safeAdminId }
+                : { hotelId: fetchHotelId };
 
             // Fixed: separated fetches — room display works even if KOT fetch fails
             try {
@@ -209,7 +220,7 @@ export function RestaurantRoomSelector() {
 
             try {
                 // Fetch all rooms from all hotels if 'all' is selected
-                const response = await api.get("/restaurant/rooms", { params: { hotelId: fetchHotelId } });
+                const response = await api.get("/restaurant/rooms", { params });
                 if (isMounted) {
                     const selectedHotelRooms = (response?.data?.data || []).map((r: any) => ({
                         id: r.id,
