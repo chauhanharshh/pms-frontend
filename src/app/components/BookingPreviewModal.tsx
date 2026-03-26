@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { Booking, Room, usePMS } from "../contexts/PMSContext";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import { calculateStayDays, isLateCheckout } from "../utils/stayCalculation";
-import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car } from "lucide-react";
+import { Printer, X, User, Home, Calendar, Phone, Mail, MapPin, Briefcase, Car, Edit2, Save } from "lucide-react";
 import { resolveBrandName } from "../utils/branding";
 import { QRCodeSVG } from "qrcode.react";
 import { calculateRoomTax } from "../utils/tax";
@@ -45,7 +46,7 @@ function formatDateWithTime(dateStr?: string, timeStr?: string) {
 }
 
 export function BookingPreviewModal({
-    booking,
+    booking: initialBooking,
     room,
     onClose,
 }: {
@@ -53,6 +54,12 @@ export function BookingPreviewModal({
     room?: Room | null;
     onClose: () => void;
 }) {
+    const { hotels, companies, updateBooking } = usePMS();
+    const [booking, setBooking] = useState(initialBooking);
+    const [isEditingTimes, setIsEditingTimes] = useState(false);
+    const [editedCinTime, setEditedCinTime] = useState(booking.checkInTime || "12:00");
+    const [editedCoutTime, setEditedCoutTime] = useState(booking.checkOutTime || "11:00");
+
     const nights = calculateStayDays(
         booking.checkInDate,
         booking.checkInTime || "12:00",
@@ -64,6 +71,42 @@ export function BookingPreviewModal({
     const durationLabel = lateCheckout
         ? `${displayNights} Night(s) + Late Check-Out`
         : `${displayNights} Night(s)`;
+
+    const handleSaveTimes = async () => {
+        try {
+            const newNights = calculateStayDays(
+                booking.checkInDate,
+                editedCinTime,
+                booking.checkOutDate,
+                editedCoutTime
+            );
+            const rRate = firstPositiveNumber(
+                booking.roomPrice,
+                (booking as any).roomRate,
+                room?.basePrice,
+            );
+            const base = rRate * newNights;
+            const taxInfo = calculateRoomTax(rRate, newNights);
+            const total = base + Math.round((base * taxInfo.rate) / 100);
+
+            await updateBooking(booking.id, {
+                checkInTime: editedCinTime,
+                checkOutTime: editedCoutTime,
+                totalAmount: total
+            } as any);
+            
+            setBooking(prev => ({
+                ...prev,
+                checkInTime: editedCinTime,
+                checkOutTime: editedCoutTime,
+                totalAmount: total
+            }));
+            setIsEditingTimes(false);
+        } catch (err) {
+            console.error("Failed to update times:", err);
+            alert("Failed to update times");
+        }
+    };
     const firstPositiveNumber = (...values: any[]) => {
         for (const value of values) {
             const parsed = Number(value);
@@ -83,7 +126,7 @@ export function BookingPreviewModal({
     const baseAmount = roomRate * nights;
     const taxInfo = calculateRoomTax(roomRate, nights);
     const gstRate = taxInfo.rate;
-    const gstAmount = taxInfo.amount;
+    const gstAmount = Math.round((baseAmount * gstRate) / 100);
     const totalRoomRent = baseAmount + gstAmount;
     const advancePaid = firstPositiveNumber((booking as any)?.bill?.paidAmount, booking.advanceAmount);
     const currentBalance = totalRoomRent - advancePaid;
@@ -94,7 +137,6 @@ export function BookingPreviewModal({
             return true;
         }
     })();
-    const { hotels, companies } = usePMS();
     const hotel = hotels.find((h) => h.id === booking.hotelId);
     const linkedCompany = booking.companyId
         ? companies.find((c) => c.id === booking.companyId)
@@ -257,6 +299,15 @@ export function BookingPreviewModal({
                         <div className="space-y-4">
                             <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider pb-2 border-b" style={{ color: T.darkGold, borderColor: T.border }}>
                                 <Home className="w-4 h-4" /> Stay Information
+                                {!isEditingTimes && booking.status !== 'checked_out' && booking.status !== 'cancelled' && (
+                                    <button 
+                                        onClick={() => setIsEditingTimes(true)}
+                                        className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
+                                        title="Edit Times"
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
                             </h3>
                             <div className="space-y-3 text-sm">
                                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
@@ -267,16 +318,54 @@ export function BookingPreviewModal({
                                 </div>
                                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
                                     <span className="text-gray-500">Check-In:</span>
-                                    <span className="font-semibold break-words">
-                                        {checkInDisplay}
-                                    </span>
+                                    {isEditingTimes ? (
+                                        <input 
+                                            type="time" 
+                                            className="px-2 py-0.5 border rounded text-xs outline-none focus:border-gold-500"
+                                            value={editedCinTime}
+                                            onChange={(e) => setEditedCinTime(e.target.value)}
+                                        />
+                                    ) : (
+                                        <span className="font-semibold break-words">
+                                            {checkInDisplay}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
                                     <span className="text-gray-500">Check-Out:</span>
-                                    <span className="font-semibold break-words">
-                                        {checkOutDisplay}
-                                    </span>
+                                    {isEditingTimes ? (
+                                        <input 
+                                            type="time" 
+                                            className="px-2 py-0.5 border rounded text-xs outline-none focus:border-gold-500"
+                                            value={editedCoutTime}
+                                            onChange={(e) => setEditedCoutTime(e.target.value)}
+                                        />
+                                    ) : (
+                                        <span className="font-semibold break-words">
+                                            {checkOutDisplay}
+                                        </span>
+                                    )}
                                 </div>
+                                {isEditingTimes && (
+                                    <div className="flex gap-2 mt-2">
+                                        <button 
+                                            onClick={handleSaveTimes}
+                                            className="flex items-center gap-1.5 px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors"
+                                        >
+                                            <Save className="w-3 h-3" /> Save
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                setIsEditingTimes(false);
+                                                setEditedCinTime(booking.checkInTime || "12:00");
+                                                setEditedCoutTime(booking.checkOutTime || "11:00");
+                                            }}
+                                            className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium hover:bg-gray-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
                                     <span className="text-gray-500">Duration:</span>
                                     <span className="font-semibold break-words">{durationLabel}</span>

@@ -12,7 +12,7 @@ import { BookingPreviewModal } from "../components/BookingPreviewModal";
 const GOLD = "#C6A75E";
 const DARKGOLD = "#A8832D";
 
-const emptyBooking = (hotelId: string): Omit<Booking, "id"> => ({
+const emptyBooking = (hotelId: string, hotel?: any): Omit<Booking, "id"> => ({
   hotelId,
   roomId: "",
   roomNumber: "",
@@ -22,6 +22,8 @@ const emptyBooking = (hotelId: string): Omit<Booking, "id"> => ({
   guestEmail: "",
   checkInDate: new Date().toISOString().split("T")[0],
   checkOutDate: "",
+  checkInTime: hotel?.checkInTime || "12:00",
+  checkOutTime: hotel?.checkOutTime || "11:00",
   adults: 1,
   children: 0,
   totalAmount: 0,
@@ -62,7 +64,21 @@ export function Reservations() {
       ? hotels[0]?.id
       : filterHotel
     : user?.hotelId || "";
-  const [form, setForm] = useState(emptyBooking(defaultHotel));
+  const currentHotel = hotels.find(h => h.id === defaultHotel);
+  const [form, setForm] = useState(emptyBooking(defaultHotel, currentHotel));
+
+  useEffect(() => {
+    if (showForm && !form.checkInTime) {
+        const hotel = hotels.find(h => h.id === form.hotelId);
+        if (hotel) {
+            setForm(f => ({
+                ...f,
+                checkInTime: hotel.checkInTime || "12:00",
+                checkOutTime: hotel.checkOutTime || "11:00"
+            }));
+        }
+    }
+  }, [showForm, form.hotelId, hotels]);
 
   const [searchParams] = useSearchParams();
   const paramRoomId = searchParams.get("roomId");
@@ -101,12 +117,20 @@ export function Reservations() {
     }));
   };
 
-  const recalcTotal = (checkIn: string, checkOut: string, price?: number) => {
+  const recalcTotal = (checkIn: string, checkOut: string, price?: number, checkInTime?: string, checkOutTime?: string) => {
     const room = rooms.find((r) => r.id === form.roomId);
     if (!room || !checkIn || !checkOut) return;
-    const nights = calculateRoomDays(checkIn, checkOut);
+    
+    const cinTime = checkInTime ?? form.checkInTime ?? "12:00";
+    const coutTime = checkOutTime ?? form.checkOutTime ?? "11:00";
+    
+    const nights = calculateRoomDays(`${checkIn}T${cinTime}`, `${checkOut}T${coutTime}`);
     const p = price !== undefined ? price : ((form as any).roomPrice || 0);
-    setForm((f) => ({ ...f, totalAmount: p * nights }));
+    const base = p * nights;
+    // GST 5% on base if daily price <= 7500, 18% otherwise
+    const gstRate = p > 7500 ? 18 : 5;
+    const gstAmount = Math.round((base * gstRate) / 100);
+    setForm((f) => ({ ...f, totalAmount: base + gstAmount }));
   };
 
   const handleSave = async () => {
@@ -592,41 +616,81 @@ export function Reservations() {
                     placeholder="Enter manual price..."
                   />
                 </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    style={{ color: DARKGOLD }}
-                  >
-                    Check-in Date *
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2.5 rounded-lg outline-none"
-                    style={{ border: "2px solid #E5E1DA" }}
-                    value={form.checkInDate}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, checkInDate: e.target.value }));
-                      recalcTotal(e.target.value, form.checkOutDate);
-                    }}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      style={{ color: DARKGOLD }}
+                    >
+                      Check-in Date *
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2.5 rounded-lg outline-none"
+                      style={{ border: "2px solid #E5E1DA" }}
+                      value={form.checkInDate}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, checkInDate: e.target.value }));
+                        recalcTotal(e.target.value, form.checkOutDate, undefined, form.checkInTime, form.checkOutTime);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      style={{ color: DARKGOLD }}
+                    >
+                      Check-in Time
+                    </label>
+                    <input
+                      type="time"
+                      className="w-full px-3 py-2.5 rounded-lg outline-none"
+                      style={{ border: "2px solid #E5E1DA" }}
+                      value={form.checkInTime || ""}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, checkInTime: e.target.value }));
+                        recalcTotal(form.checkInDate, form.checkOutDate, undefined, e.target.value, form.checkOutTime);
+                      }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    style={{ color: DARKGOLD }}
-                  >
-                    Check-out Date *
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2.5 rounded-lg outline-none"
-                    style={{ border: "2px solid #E5E1DA" }}
-                    value={form.checkOutDate}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, checkOutDate: e.target.value }));
-                      recalcTotal(form.checkInDate, e.target.value);
-                    }}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      style={{ color: DARKGOLD }}
+                    >
+                      Check-out Date *
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2.5 rounded-lg outline-none"
+                      style={{ border: "2px solid #E5E1DA" }}
+                      value={form.checkOutDate}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, checkOutDate: e.target.value }));
+                        recalcTotal(form.checkInDate, e.target.value, undefined, form.checkInTime, form.checkOutTime);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      style={{ color: DARKGOLD }}
+                    >
+                      Check-out Time
+                    </label>
+                    <input
+                      type="time"
+                      className="w-full px-3 py-2.5 rounded-lg outline-none"
+                      style={{ border: "2px solid #E5E1DA" }}
+                      value={form.checkOutTime || ""}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, checkOutTime: e.target.value }));
+                        recalcTotal(form.checkInDate, form.checkOutDate, undefined, form.checkInTime, e.target.value);
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label
