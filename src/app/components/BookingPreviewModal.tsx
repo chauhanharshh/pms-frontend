@@ -168,6 +168,8 @@ export function BookingPreviewModal({
         plan: booking?.plan || "EP",
     });
 
+    const hotelName = hotel?.name || "HOTELS4U PMS";
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 print:bg-white print:static print:p-0"
@@ -190,6 +192,7 @@ export function BookingPreviewModal({
             <div
                 className="w-full max-w-2xl lg:max-w-[700px] max-h-[92vh] flex flex-col bg-white rounded-xl overflow-hidden shadow-2xl print:shadow-none print:max-w-none print:rounded-none print:max-h-none print:overflow-visible print:block"
                 onClick={(e) => e.stopPropagation()}
+                id="booking-preview-printable"
             >
                 {/* Modal Header - Hidden on Print */}
                 <div
@@ -200,47 +203,50 @@ export function BookingPreviewModal({
                         <h2 style={{ fontFamily: "Times New Roman, serif", color: T.gold, fontSize: "1.25rem", fontWeight: "bold" }}>
                             Check-In Details
                         </h2>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                             Booking Ref: {booking.id.split("-").pop()?.toUpperCase()}
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={handlePrint}
-                            className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg text-sm font-medium transition-colors hover:bg-gray-50"
-                            style={{ color: T.darkGold, border: `1px solid ${T.border}` }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm"
+                            style={{ color: T.darkGold }}
                         >
-                            <Printer className="w-4 h-4" /> Print
+                            <Printer className="w-3.5 h-3.5" /> Print
                         </button>
-                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 hover:bg-black/5 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+                        >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
 
-                {/* Printable Area */}
-                <div id="booking-preview-printable" className="p-5 md:p-6 space-y-5 bg-white text-gray-800 overflow-y-auto print:overflow-visible relative">
-                    {/* QR Code Overlay (Hidden on Mobile Search, Showing top-right in printable area) */}
-                    <div className="absolute top-4 right-4 md:top-6 md:right-6 flex flex-col items-center gap-1 scale-[0.8] md:scale-100 origin-top-right">
-                        <div className="p-1.5 bg-white border rounded-lg shadow-sm" style={{ borderColor: T.border }}>
-                            <QRCodeSVG value={qrData} size={isLateCheckout(booking.checkOutTime || "") ? 60 : 80} level="M" />
+                {/* Main Content Area */}
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 print:p-0 print:overflow-visible">
+                    
+                    {/* Header with Hotel Name and QR */}
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6 pb-8 border-b print:pb-6 print:gap-4" style={{ borderColor: T.border }}>
+                        <div className="text-center md:text-left space-y-2">
+                            <h1 className="text-2xl md:text-3xl font-black tracking-widest" style={{ color: "#B8860B", fontFamily: "Georgia, serif" }}>
+                                {hotelName.toUpperCase()}
+                            </h1>
+                            <p className="text-sm text-gray-600 max-w-md mx-auto md:mx-0 leading-relaxed font-medium">
+                                {hotel?.address || "Hospitality Services & Management"}
+                            </p>
                         </div>
-                        <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-widest font-bold">Booking QR</span>
+                        {/* QR Code Overlay (Hidden on Mobile Search, Showing top-right in printable area) */}
+                        <div className="flex flex-col items-center gap-1 scale-[0.8] md:scale-100 origin-top-right">
+                            <div className="p-1.5 bg-white border rounded-lg shadow-sm" style={{ borderColor: T.border }}>
+                                <QRCodeSVG value={qrData} size={isLateCheckout(booking.checkOutTime || "") ? 60 : 80} level="M" />
+                            </div>
+                            <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-widest font-bold">Booking QR</span>
+                        </div>
                     </div>
 
 
-                    {/* Print Header */}
-                    <div className="text-center border-b pb-4" style={{ borderColor: T.border }}>
-                        <h1 className="text-2xl font-bold mb-1 uppercase tracking-wide" style={{ fontFamily: "Times New Roman, serif", color: T.darkGold }}>
-                            {resolveBrandName(hotel)}
-                        </h1>
-                        <p className="text-sm text-gray-500">
-                            {hotel?.address}, {hotel?.city}
-                        </p>
-                        <h2 className="mt-4 text-xl font-bold border rounded-md inline-block px-4 py-1" style={{ borderColor: T.border, color: T.text }}>
-                            GUEST REGISTRATION / CHECK-IN DETAILS
-                        </h2>
-                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 print:grid-cols-2">
 
