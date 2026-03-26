@@ -1222,12 +1222,24 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   const updateItem = async (id: string, updates: Partial<RestaurantItem>) => {
     try {
-      // Find the item first if hotelId is not in updates
       const existingItem = restaurantItems.find(i => i.id === id);
       const hId = updates.hotelId || existingItem?.hotelId || currentHotelId || user?.hotelId;
       const config = hId ? { params: { hotelId: hId } } : {};
       
-      const res = await api.put(`/restaurant/menu/${id}`, updates, config);
+      // Sanitize: only send fields the backend expects, avoid sending entire relation objects
+      const allowedFields = [
+        'itemName', 'description', 'price', 'taxRate', 
+        'isAvailable', 'isVeg', 'preparationTime', 'categoryId',
+        'image', 'sortOrder', 'spicyLevel', 'isJain', 'isEgg'
+      ];
+      const cleanUpdates: any = {};
+      allowedFields.forEach(f => {
+        if (updates[f as keyof RestaurantItem] !== undefined) {
+          cleanUpdates[f] = updates[f as keyof RestaurantItem];
+        }
+      });
+      
+      const res = await api.put(`/restaurant/menu/${id}`, cleanUpdates, config);
       setRestaurantItems((prev) => prev.map((i) => (i.id === id ? res.data.data : i)));
       toast.success("Item updated successfully");
       await fetchAll(true);
