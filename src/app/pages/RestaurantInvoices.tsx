@@ -34,11 +34,12 @@ import { printHtml } from "../utils/print";
 export default function RestaurantInvoices() {
     const { isLoading: pmsLoading } = usePMS();
     const [invoices, setInvoices] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>({ totalBills: 0, collected: 0, pending: 0, cancelled: 0 });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [dateFilter, setDateFilter] = useState("");
-    const [selectedHotelFilter, setSelectedHotelFilter] = useState(""); // Added: Hotel column and hotel filter for Restaurant Invoices
+    const [selectedHotelFilter, setSelectedHotelFilter] = useState("all"); // Added: Hotel column and hotel filter for Restaurant Invoices
     const [showPayModal, setShowPayModal] = useState<any>(null);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [invoiceToPreview, setInvoiceToPreview] = useState<any>(null);
@@ -61,14 +62,18 @@ export default function RestaurantInvoices() {
             const params: any = {};
             if (adminId) params.adminId = adminId;
 
-            // Fixed: don't send hotelId when 'All Hotels' selected — was causing 500
-            if (selectedHotelFilter && selectedHotelFilter !== 'all') {
+            if (selectedHotelFilter) {
                 params.hotelId = selectedHotelFilter;
             }
             
-            // Fixed: fetch all admin invoices, filter by selected hotel
-            const res = await api.get("/restaurant/invoices", { params });
-            setInvoices(res.data.data);
+            // Parallel fetch for invoices and stats
+            const [invoicesRes, statsRes] = await Promise.all([
+                api.get("/restaurant/invoices", { params }),
+                api.get("/restaurant/invoices/stats", { params })
+            ]);
+
+            setInvoices(invoicesRes.data.data);
+            setStats(statsRes.data.data);
         } catch (err) {
             console.error("Failed to fetch restaurant invoices:", err);
         } finally {
@@ -78,7 +83,7 @@ export default function RestaurantInvoices() {
 
     useEffect(() => {
         fetchInvoices();
-    }, []);
+    }, [selectedHotelFilter, statusFilter, dateFilter]);
 
     useEffect(() => {
         const handleInvoiceGenerated = () => {
@@ -119,9 +124,8 @@ export default function RestaurantInvoices() {
             safeDateSearchText(inv?.invoiceDate).includes(query) ||
             safeDateSearchText(inv?.createdAt).includes(query);
         const matchesStatus = statusFilter === "all" || inv.status === statusFilter;
-        const matchesDate = !dateFilter || inv.invoiceDate.startsWith(dateFilter);
-        // Fixed: fetch all admin invoices, filter by selected hotel
-        const matchesHotel = !selectedHotelFilter || String(inv.hotelId) === String(selectedHotelFilter);
+        const matchesDate = !dateFilter || (inv.invoiceDate && inv.invoiceDate.startsWith(dateFilter)) || (inv.createdAt && inv.createdAt.startsWith(dateFilter));
+        const matchesHotel = selectedHotelFilter === "all" || String(inv.hotelId) === String(selectedHotelFilter);
         return matchesSearch && matchesStatus && matchesDate && matchesHotel;
     });
 
@@ -409,23 +413,23 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Total Bills</p>
-                        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{filteredInvoices.length}</h3>
+                        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">{stats.totalBills}</h3>
                     </div>
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Collected</p>
                         <h3 className="text-lg sm:text-2xl font-bold text-emerald-600 mt-1">
-                            ₹{filteredInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
+                            ₹{Number(stats.collected).toLocaleString()}
                         </h3>
                     </div>
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Pending</p>
                         <h3 className="text-lg sm:text-2xl font-bold text-amber-600 mt-1">
-                            ₹{filteredInvoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + Number(i.totalAmount), 0).toLocaleString()}
+                            ₹{Number(stats.pending).toLocaleString()}
                         </h3>
                     </div>
                     <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
                         <p className="text-gray-500 text-[11px] sm:text-sm uppercase tracking-wider font-semibold">Cancelled</p>
-                        <h3 className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{filteredInvoices.filter(i => i.status === 'cancelled').length}</h3>
+                        <h3 className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{stats.cancelled}</h3>
                     </div>
                 </div>
 
@@ -473,7 +477,7 @@ ${serviceCharge > 0 ? formatReceiptTotalLine("S.C.(10%)", serviceCharge) : ""}</
                                     value={selectedHotelFilter}
                                     onChange={(e) => setSelectedHotelFilter(e.target.value)}
                                 >
-                                    <option value="">All Hotels</option>
+                                    <option value="all">All Hotels</option>
                                     {hotels.map(hotel => (
                                         <option key={hotel.id} value={hotel.id}>
                                             {hotel.name}
