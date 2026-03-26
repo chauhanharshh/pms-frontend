@@ -1023,15 +1023,30 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   const walkInCheckIn = async (data: any): Promise<{ booking: Booking; bill: Bill }> => {
     const res = await api.post("/bookings/walk-in", data);
     const { booking, bill } = res.data.data;
-    await fetchAll();
+    
+    // Targeted state updates instead of fetchAll() 
+    setBookings(prev => [...prev, booking]);
+    setBills(prev => [...prev, bill]);
+    setRooms(prev => prev.map(r => r.id === booking.roomId ? { ...r, status: 'occupied' } : r));
+    
+    // Silent refresh for everything else (stats, etc.)
+    fetchAll(true);
+    
     return { booking, bill };
   };
 
   const updateBooking = async (id: string, updates: Partial<Booking>) => {
     if (updates.status === "checked_in") {
       const res = await api.put(`/bookings/${id}/check-in`, updates);
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.data } : b)));
-      await fetchAll(); // refresh rooms and bills
+      const { booking, bill } = res.data.data;
+      
+      // Targeted state updates instead of fetchAll()
+      setBookings((prev) => prev.map((b) => (b.id === id ? booking : b)));
+      if (bill) setBills(prev => [...prev, bill]);
+      setRooms(prev => prev.map(r => r.id === booking.roomId ? { ...r, status: 'occupied' } : r));
+      
+      // Silent refresh for context sync
+      fetchAll(true);
     } else if (updates.status === "checked_out") {
       const targetBooking = bookings.find((b) => b.id === id);
       const targetRoomId = targetBooking?.roomId;
