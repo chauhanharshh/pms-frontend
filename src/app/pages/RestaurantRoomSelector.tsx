@@ -709,10 +709,10 @@ export function RestaurantRoomSelector() {
                                                                         };
                                                                         const hasOpenKOT = isCardKotCut(table) || tablesWithOpenKOT.has(`${hotelGroup.hotelId}:${tableId}`);
                                                                         const isBilled = isCardBilled(table);
-                                                                        
+
                                                                         // Custom Colors from Hotel
                                                                         const cardHotel = availableHotels.find(h => String(h.id) === String(hotelGroup.hotelId));
-                                                                        const customBg = cardHotel?.restaurantRoomCardColor || "#0781b6";
+                                                                        const customBg = cardHotel?.restaurantRoomCardColor || "#067c99ff";
                                                                         const customText = cardHotel?.restaurantRoomCardTextColor || "#ffffff";
 
                                                                         // Determine final colors based on priority: Open KOT (Red) > Billed (Yellow) > Default
@@ -736,8 +736,8 @@ export function RestaurantRoomSelector() {
                                                                                 onClick={() => handleRoomCardClick(table)}
                                                                                 onDoubleClick={() => handleRoomCardDoubleClick(table)}
                                                                                 onContextMenu={(e) => handleContextMenu(e, table)}
-                                                                                className={`group rounded-xl p-5 border-none hover:shadow-lg transition-all text-left flex flex-col gap-3 relative overflow-hidden`}
-                                                                                style={{ 
+                                                                                className={`group rounded-none p-5 border-none hover:shadow-lg transition-all text-left flex flex-col gap-3 relative overflow-hidden`}
+                                                                                style={{
                                                                                     backgroundColor: finalBg,
                                                                                 }}
                                                                             >
@@ -781,10 +781,10 @@ export function RestaurantRoomSelector() {
                                                         {group.rooms.map((room: any) => {
                                                             const hasOpenKOT = roomsWithOpenKOT.has(room.id);
                                                             const isBilled = isCardBilled(room);
-                                                            
+
                                                             // Custom Colors from Hotel
                                                             const cardHotel = availableHotels.find(h => String(h.id) === String(room.hotelId));
-                                                            const customBg = cardHotel?.restaurantRoomCardColor || "#0781b6";
+                                                            const customBg = cardHotel?.restaurantRoomCardColor || "#0793b6";
                                                             const customText = cardHotel?.restaurantRoomCardTextColor || "#ffffff";
 
                                                             // Determine final colors based on priority: Open KOT (Red) > Billed (Yellow) > Default
@@ -808,8 +808,8 @@ export function RestaurantRoomSelector() {
                                                                     onClick={() => handleRoomCardClick(room)}
                                                                     onDoubleClick={() => handleRoomCardDoubleClick(room)}
                                                                     onContextMenu={(e) => handleContextMenu(e, room)}
-                                                                    className={`group rounded-xl p-5 border-none hover:shadow-lg transition-all text-left flex flex-col gap-3 relative overflow-hidden`}
-                                                                    style={{ 
+                                                                    className={`group rounded-none p-5 border-none hover:shadow-lg transition-all text-left flex flex-col gap-3 relative overflow-hidden`}
+                                                                    style={{
                                                                         backgroundColor: finalBg,
                                                                     }}
                                                                 >

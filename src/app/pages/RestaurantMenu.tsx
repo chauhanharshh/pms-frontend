@@ -177,7 +177,26 @@ export function RestaurantMenu() {
                 </button>
               </div>
             </div>
-            <div className="p-3 space-y-1">
+            <div 
+              className="p-3 space-y-1 overflow-y-auto custom-scrollbar"
+              style={{ maxHeight: 'calc(100vh - 280px)' }}
+            >
+              <style>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                  width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                  background: rgba(184, 134, 11, 0.05);
+                  border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                  background: rgba(184, 134, 11, 0.2);
+                  border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                  background: rgba(184, 134, 11, 0.4);
+                }
+              `}</style>
               {categories.map((cat) => (
                 <div
                   key={cat.id}

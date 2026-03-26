@@ -330,7 +330,7 @@ export function AppearanceSettings() {
                             />
                             <ColorPickerField
                                 label="Rest. Room Card Background"
-                                value={restRoomCardColor}
+                                value={restRoomCardColor || "#0793b6"}
                                 onChange={setRestRoomCardColor}
                             />
                             <ColorPickerField
