@@ -325,6 +325,18 @@ export function LoginPage() {
             Avaialable.com
           </a>
         </div>
+
+        <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '0.9rem', color: '#9CA3AF', fontFamily: 'Times New Roman, serif', fontWeight: 'bold' }}>
+          Powered By{' '}
+          <a
+            href="https://hotels4u.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#b8963e', textDecoration: 'none' }}
+          >
+            UTTARAKHAND HOTELS4U
+          </a>
+        </div>
       </div>
     </div>
   );

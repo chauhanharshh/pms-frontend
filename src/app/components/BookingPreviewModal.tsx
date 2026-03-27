@@ -94,7 +94,7 @@ export function BookingPreviewModal({
                 checkOutTime: editedCoutTime,
                 totalAmount: total
             } as any);
-            
+
             setBooking(prev => ({
                 ...prev,
                 checkInTime: editedCinTime,
@@ -226,7 +226,7 @@ export function BookingPreviewModal({
 
                 {/* Main Content Area */}
                 <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 print:p-0 print:overflow-visible">
-                    
+
                     {/* Header with Hotel Name and QR */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6 pb-8 border-b print:pb-6 print:gap-4" style={{ borderColor: T.border }}>
                         <div className="text-center md:text-left space-y-2">
@@ -306,7 +306,7 @@ export function BookingPreviewModal({
                             <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider pb-2 border-b" style={{ color: T.darkGold, borderColor: T.border }}>
                                 <Home className="w-4 h-4" /> Stay Information
                                 {!isEditingTimes && booking.status !== 'checked_out' && booking.status !== 'cancelled' && (
-                                    <button 
+                                    <button
                                         onClick={() => setIsEditingTimes(true)}
                                         className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600"
                                         title="Edit Times"
@@ -325,8 +325,8 @@ export function BookingPreviewModal({
                                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
                                     <span className="text-gray-500">Check-In:</span>
                                     {isEditingTimes ? (
-                                        <input 
-                                            type="time" 
+                                        <input
+                                            type="time"
                                             className="px-2 py-0.5 border rounded text-xs outline-none focus:border-gold-500"
                                             value={editedCinTime}
                                             onChange={(e) => setEditedCinTime(e.target.value)}
@@ -340,8 +340,8 @@ export function BookingPreviewModal({
                                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
                                     <span className="text-gray-500">Check-Out:</span>
                                     {isEditingTimes ? (
-                                        <input 
-                                            type="time" 
+                                        <input
+                                            type="time"
                                             className="px-2 py-0.5 border rounded text-xs outline-none focus:border-gold-500"
                                             value={editedCoutTime}
                                             onChange={(e) => setEditedCoutTime(e.target.value)}
@@ -354,13 +354,13 @@ export function BookingPreviewModal({
                                 </div>
                                 {isEditingTimes && (
                                     <div className="flex gap-2 mt-2">
-                                        <button 
+                                        <button
                                             onClick={handleSaveTimes}
                                             className="flex items-center gap-1.5 px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors"
                                         >
                                             <Save className="w-3 h-3" /> Save
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 setIsEditingTimes(false);
                                                 setEditedCinTime(booking.checkInTime || "12:00");
@@ -465,6 +465,7 @@ export function BookingPreviewModal({
 
                     </div>
 
+                    {/* Updated: 48→72 hours and added early check-in policy */}
                     {/* Terms and Conditions */}
                     <div className="mt-2">
                         <h3
@@ -491,15 +492,15 @@ export function BookingPreviewModal({
                             </p>
                             <p>
                                 <span className="font-semibold">6. Cancellation Policy:</span><br />
-                                A) If a booking is cancelled more than 48 hours before the scheduled check-in time, the guest is eligible for a full refund (100%).<br />
-                                B) If cancellation occurs between 24 and 48 hours before check-in, 50% of the booking amount may be deducted as cancellation charges.<br />
+                                A) If a booking is cancelled more than 72 hours before the scheduled check-in time, the guest is eligible for a full refund (100%).<br />
+                                B) If cancellation occurs between 24 and 72 hours before check-in, 50% of the booking amount may be deducted as cancellation charges.<br />
                                 C) If cancellation occurs within 24 hours of the scheduled check-in time, the hotel may charge up to one full night as cancellation charges.
                             </p>
                             <p>
                                 <span className="font-semibold">7. No Show Policy:</span> If the guest fails to arrive at the hotel on the scheduled check-in date without prior cancellation, the booking will be marked as a No Show. In such cases, the hotel reserves the right to charge one night's stay or the entire advance amount.
                             </p>
                             <p>
-                                <span className="font-semibold">8. Early Check-Out Policy:</span> If a guest checks out earlier than the booked stay period, at least one night charge may apply. Refund for remaining nights will depend on the hotel's discretion.
+                                <span className="font-semibold">8. Early Check-In & Early Check-Out Policy:</span> Early Check-In Policy: Guests checking in before 9:00 AM will be charged one full day's room rent as early check-in charges. If a guest checks out earlier than the booked stay period, at least one night charge may apply. Refund for remaining nights will depend on the hotel's discretion.**Refund is not guaranteed**
                             </p>
                             <p>
                                 <span className="font-semibold">9. Refund Policy:</span> Refunds will be processed according to the cancellation policy mentioned above. Refunds will be issued using the same payment method used during booking (UPI, Card, Cash, or Bank Transfer). Refund processing time may take 3 to 7 working days.
