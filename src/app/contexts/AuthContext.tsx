@@ -68,9 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // --- LOGIN SUCCESS HANDLER: Role-based navigation and license check ---
+    // Fixed: HashRouter required for Electron file:// protocol - use hash-based navigation
     // Superadmin → direct to super admin panel, NO license check:
     if (newUser.role === 'super_admin') {
-      window.location.href = '/superadmin';
+      window.location.hash = '#/superadmin';
       return;
     }
 
@@ -78,10 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (newUser.role === 'admin') {
       const licenseKey = localStorage.getItem(`license_${newUser.id}`);
       if (!licenseKey) {
-        window.location.href = '/activate-license';
+        window.location.hash = '#/activate-license';
         return;
       }
-      window.location.href = '/admin/dashboard';
+      window.location.hash = '#/admin/dashboard';
       return;
     }
 
@@ -104,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (res.data.adminId && res.data.licenseKey) {
             localStorage.setItem(`license_${res.data.adminId}`, res.data.licenseKey);
           }
-          window.location.href = newUser.role === 'restaurant_admin' ? '/hotel/restaurant/rooms' : '/hotel/dashboard';
+          window.location.hash = newUser.role === 'restaurant_admin' ? '#/hotel/restaurant/rooms' : '#/hotel/dashboard';
         } else {
           // License not valid → show message and logout:
           logout();
@@ -113,13 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         // API failed → allow login (offline mode):
         console.error('License check failed:', error);
-        window.location.href = newUser.role === 'restaurant_admin' ? '/hotel/restaurant/rooms' : '/hotel/dashboard';
+        window.location.hash = newUser.role === 'restaurant_admin' ? '#/hotel/restaurant/rooms' : '#/hotel/dashboard';
       }
       return;
     }
 
     // Default fallback:
-    window.location.href = '/hotel/dashboard';
+    window.location.hash = '#/hotel/dashboard';
     return;
   };
 

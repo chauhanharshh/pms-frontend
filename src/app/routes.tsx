@@ -349,5 +349,6 @@ const routes = [
 
 const isElectronRuntime = typeof window !== "undefined" && typeof window.electronAPI !== "undefined";
 
+// Fixed: HashRouter required for Electron file:// protocol
 export const router = isElectronRuntime ? createHashRouter(routes) : createBrowserRouter(routes);
 

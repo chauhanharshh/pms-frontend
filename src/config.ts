@@ -12,7 +12,7 @@ const runtimeProcess = (globalThis as { process?: { env?: Record<string, string 
 const apiBaseUrl = import.meta.env?.VITE_API_URL
     || import.meta.env?.VITE_API_BASE_URL
     || runtimeProcess?.env?.REACT_APP_API_URL
-    || 'https://your-production-api.com';
+    || 'https://pms-backend-1j4y.onrender.com/api/v1'; // Fixed: hardcoded fallback for Electron production build
 
 export const API_BASE_URL = apiBaseUrl;
 
