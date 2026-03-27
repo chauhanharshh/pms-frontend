@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../../config';
 
-export const DEFAULT_BRAND_NAME = 'Hotels4U PMS';
+export const DEFAULT_BRAND_NAME = 'UTTARAKHAND HOTELS4U';
 const ASSET_BASE = import.meta.env.BASE_URL || './';
 const normalizedAssetBase = ASSET_BASE.endsWith('/') ? ASSET_BASE : `${ASSET_BASE}/`;
 export const DEFAULT_LOGO_URL = `${normalizedAssetBase}images/logo_h4u.webp`;

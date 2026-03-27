@@ -168,7 +168,7 @@ export function BookingPreviewModal({
         plan: booking?.plan || "EP",
     });
 
-    const hotelName = hotel?.name || "HOTELS4U PMS";
+    const hotelName = hotel?.name || "UTTARAKHAND HOTELS4U";
 
     return (
         <div

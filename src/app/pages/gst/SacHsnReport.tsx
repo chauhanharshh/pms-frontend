@@ -15,7 +15,10 @@ export function SacHsnReport() {
     const fetchReport = async (filters: any) => {
         try {
             setLoading(true);
-            const res = await api.get("/gst-reports/sac-hsn", { params: filters });
+            const restaurantEnabled = localStorage.getItem("restaurantEnabled") === "true";
+            const res = await api.get("/gst-reports/sac-hsn", { 
+                params: { ...filters, restaurantEnabled } 
+            });
             setData(res.data.data);
         } catch (err) {
             console.error("Failed to fetch SAC/HSN Summary Data", err);

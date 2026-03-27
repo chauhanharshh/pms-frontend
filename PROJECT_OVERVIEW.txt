@@ -1,15 +1,15 @@
 ###############################################################################
-#                         HOTELS4U PMS - PROJECT OVERVIEW                     #
+#                         UTTARAKHAND HOTELS4U - PROJECT OVERVIEW                     #
 ###############################################################################
 
 1. PROJECT INTRODUCTION
 -----------------------
-Hotels4U PMS ek Multi-Hotel Property Management System hai. 
+UTTARAKHAND HOTELS4U ek Multi-Hotel Property Management System hai. 
 Yeh system hotel management ko easy banane ke liye design kiya gaya hai.
 
 Problem it solves: 
 Jab ek hi owner ke multiple hotels hote hain, toh unhe manage karna mushkil hota hai. 
-Hotels4U PMS se sabhi hotels ko ek central server se connect karke manage kiya ja sakta hai.
+UTTARAKHAND HOTELS4U se sabhi hotels ko ek central server se connect karke manage kiya ja sakta hai.
 
 Key Features:
 • Room Booking: Rooms ki booking manage karma.
@@ -163,7 +163,7 @@ System ko aage badhane ke kai tareeke hain:
 
 11. FINAL SUMMARY
 -----------------
-Hotels4U PMS ko Multi-hotel use-case ko dhyaan mein rakh kar banaya gaya hai. 
+UTTARAKHAND HOTELS4U ko Multi-hotel use-case ko dhyaan mein rakh kar banaya gaya hai. 
 React aur Node.js ka use system ko fast aur reliable banata hai, 
 aur PostgreSQL ensures ki data hamesha integrity ke saath store rahe. 
 Yeh architecture modern business needs ke liye perfect aur scalable hai.

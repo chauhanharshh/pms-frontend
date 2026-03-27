@@ -1,13 +1,13 @@
-# Hotels4U PMS - User Manual & Documentation
+# UTTARAKHAND HOTELS4U - User Manual & Documentation
 
-Welcome to the **Hotels4U Property Management System (PMS)**. This comprehensive guide covers everything from system overview to operational workflows for Hotel and Restaurant management.
+Welcome to the **UTTARAKHAND HOTELS4U**. This comprehensive guide covers everything from system overview to operational workflows for Hotel and Restaurant management.
 
 ---
 
 ## 1. System Overview
 
-### What is Hotels4U PMS?
-Hotels4U PMS is a multi-hotel management software designed to centralize operations for owners with multiple properties. It allows for seamless tracking of bookings, check-ins, billing, and restaurant sales across all connected hotels from a single interface.
+### What is UTTARAKHAND HOTELS4U?
+UTTARAKHAND HOTELS4U is a multi-hotel management software designed to centralize operations for owners with multiple properties. It allows for seamless tracking of bookings, check-ins, billing, and restaurant sales across all connected hotels from a single interface.
 
 ### Key Features
 *   **Multi-Hotel Management:** Manage multiple properties from one admin account.
@@ -47,10 +47,10 @@ Hotels4U PMS is a multi-hotel management software designed to centralize operati
 ## 3. Getting Started
 
 ### Installation
-1.  Locate the `Hotels4U_PMS_Setup.exe` file.
+1.  Locate the `UTTARAKHAND_HOTELS4U_Setup.exe` file.
 2.  Double-click to run the installer.
 3.  Once installed, the application will launch automatically.
-4.  (Optional) Pin the Hotels4U icon to your Taskbar for quick access.
+4.  (Optional) Pin the application icon to your Taskbar for quick access.
 
 ### First-Time Setup & Activation
 1.  **Login:** Enter your credentials on the login screen.
@@ -160,5 +160,5 @@ Accessible via the **Super Admin Panel** (restricted to Super Admin role).
 **A:** Click the room card on the Dashboard and click the "MARK ROOM READY ✓" button.
 
 ---
-**HOTELS4U PMS © 2026**
+**UTTARAKHAND HOTELS4U © 2026**
 *Efficiency in Every Stay.*

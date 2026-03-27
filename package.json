@@ -11,8 +11,9 @@
     "postbuild": "node -e \"const fs=require('fs');fs.rmSync('build',{recursive:true,force:true});fs.cpSync('dist','build',{recursive:true});\"",
     "start": "node node_modules/vite/bin/vite.js --port 3000 --strictPort",
     "dev": "node node_modules/vite/bin/vite.js",
-    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "vite build && electron-builder",
+    "electron:check": "electron . --no-sandbox"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -86,6 +87,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "4.7.0",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "electron": "^37.0.0",
     "electron-builder": "^26.0.12",
     "jimp": "^1.6.0",
@@ -97,10 +99,11 @@
   },
   "build": {
     "appId": "com.hotels4u.pms",
-    "productName": "Hotels4U PMS",
+    "productName": "UTTARAKHAND HOTELS4U",
     "files": [
       "build/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "node_modules/**/*"
     ],
     "directories": {
       "output": "dist"
@@ -108,6 +111,10 @@
     "win": {
       "target": "nsis",
       "icon": "public/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "mac": {
       "target": "dmg"

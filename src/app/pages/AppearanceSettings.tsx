@@ -42,7 +42,7 @@ export function AppearanceSettings() {
     const [hotelAccent, setHotelAccent] = useState("#C6A75E");
     const [roomStatusColors, setRoomStatusColors] = useState<RoomStatusColors>(() => getRoomStatusColors());
     const [kotWallColors, setKotWallColors] = useState<KotWallColors>(() => getKotWallColors());
-    const [restRoomCardColor, setRestRoomCardColor] = useState("#0781b6");
+    const [restRoomCardColor, setRestRoomCardColor] = useState("#1ABC9C");
     const [restRoomCardTextColor, setRestRoomCardTextColor] = useState("#ffffff");
 
     const [message, setMessage] = useState({ text: "", type: "" });
@@ -72,7 +72,7 @@ export function AppearanceSettings() {
                 setHotelSidebar(hotel.sidebarColor || globalSidebar);
                 setHotelHeader(hotel.headerColor || globalHeader);
                 setHotelAccent(hotel.accentColor || globalAccent);
-                setRestRoomCardColor(hotel.restaurantRoomCardColor || "#0781b6");
+                setRestRoomCardColor(hotel.restaurantRoomCardColor || "#1ABC9C");
                 setRestRoomCardTextColor(hotel.restaurantRoomCardTextColor || "#ffffff");
             }
         }
@@ -330,7 +330,7 @@ export function AppearanceSettings() {
                             />
                             <ColorPickerField
                                 label="Rest. Room Card Background"
-                                value={restRoomCardColor || "#0793b6"}
+                                value={restRoomCardColor || "#1ABC9C"}
                                 onChange={setRestRoomCardColor}
                             />
                             <ColorPickerField

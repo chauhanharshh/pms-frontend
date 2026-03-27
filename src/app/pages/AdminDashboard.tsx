@@ -301,31 +301,31 @@ export function AdminDashboard() {
               {
                 label: "New Reservation",
                 desc: "Book a room",
-                path: "/admin/reservations",
+                path: selectedHotelId ? "/hotel/reservations" : "/admin/reservations",
                 icon: <Building2 className="w-5 h-5" />,
               },
               {
                 label: "New Check-In",
                 desc: "Walk-in or confirm",
-                path: "/admin/check-in",
+                path: selectedHotelId ? "/hotel/check-in" : "/admin/check-in",
                 icon: <Users className="w-5 h-5" />,
               },
               {
                 label: "View Bills",
                 desc: "Manage all bills",
-                path: "/admin/bills",
+                path: selectedHotelId ? "/hotel/bills" : "/admin/bills",
                 icon: <IndianRupee className="w-5 h-5" />,
               },
               {
                 label: "Invoices",
                 desc: "GST & Tax Invoices",
-                path: "/admin/invoices",
+                path: selectedHotelId ? "/hotel/invoices" : "/admin/invoices",
                 icon: <FileText className="w-5 h-5" />,
               },
               {
                 label: "Reports",
                 desc: "Analytics & charts",
-                path: "/admin/reports",
+                path: selectedHotelId ? "/hotel/reports" : "/admin/reports",
                 icon: <LayoutDashboard className="w-5 h-5" />,
               },
             ].map((action) => (

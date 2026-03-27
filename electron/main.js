@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, session, Menu } = require('electron');
 const path = require('path');
 
-const isDev = !app.isPackaged;
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged; // Fixed: app.isPackaged to prevent build error
 const DEV_URL = 'http://localhost:3000';
 const BUILD_INDEX_PATH = path.join(__dirname, '../build/index.html');
 

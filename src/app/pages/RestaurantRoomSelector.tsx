@@ -712,7 +712,7 @@ export function RestaurantRoomSelector() {
 
                                                                         // Custom Colors from Hotel
                                                                         const cardHotel = availableHotels.find(h => String(h.id) === String(hotelGroup.hotelId));
-                                                                        const customBg = cardHotel?.restaurantRoomCardColor || "#067c99ff";
+                                                                        const customBg = cardHotel?.restaurantRoomCardColor || "#1ABC9C";
                                                                         const customText = cardHotel?.restaurantRoomCardTextColor || "#ffffff";
 
                                                                         // Determine final colors based on priority: Open KOT (Red) > Billed (Yellow) > Default
@@ -784,7 +784,7 @@ export function RestaurantRoomSelector() {
 
                                                             // Custom Colors from Hotel
                                                             const cardHotel = availableHotels.find(h => String(h.id) === String(room.hotelId));
-                                                            const customBg = cardHotel?.restaurantRoomCardColor || "#0793b6";
+                                                            const customBg = cardHotel?.restaurantRoomCardColor || "#1ABC9C";
                                                             const customText = cardHotel?.restaurantRoomCardTextColor || "#ffffff";
 
                                                             // Determine final colors based on priority: Open KOT (Red) > Billed (Yellow) > Default

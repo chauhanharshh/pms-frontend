@@ -576,6 +576,31 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
       });
   }
 
+  // Dynamically update paths based on currentHotelId
+  sections = sections.map((s) => {
+    if (s.title === "Hotel Management") {
+      return {
+        ...s,
+        items: s.items.map((item) => {
+          if (item.label === "Dashboard") {
+            return {
+              ...item,
+              path: currentHotelId ? "/hotel/dashboard" : "/admin/dashboard",
+            };
+          }
+          if (item.label === "New Check-In" && currentHotelId) {
+            return { ...item, path: "/hotel/check-in" };
+          }
+          if (item.label === "New Reservation" && currentHotelId) {
+            return { ...item, path: "/hotel/reservations" };
+          }
+          return item;
+        }),
+      };
+    }
+    return s;
+  });
+
   const defaultOpen: Record<string, boolean> = {};
   sections.forEach((s) => {
     defaultOpen[s.title] =
@@ -593,7 +618,12 @@ export function AdminSidebar({ collapsed, onToggle }: SidebarProps) {
     logout();
     navigate("/");
   };
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/admin" || path === "/admin/dashboard") {
+      return location.pathname === "/admin" || location.pathname === "/admin/dashboard";
+    }
+    return location.pathname === path;
+  };
 
   const activeHotel = currentHotelId
     ? hotels.find((h) => h.id === currentHotelId)
