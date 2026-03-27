@@ -697,17 +697,17 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           ${watermarkHtml}
           <div class="invoice-content">
           <div class="text-center" style="margin-bottom: 20px;">
-            ${hasLogo ? `<div style="margin-bottom: 12px;"><img src="${safeLogoAttr}" style="max-height: 70px; width: auto; object-fit: contain;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
+            ${/* Removed: logo from invoice header as requested */ ""}
             <div class="hotel-name" style="color: ${hotelFields.invoiceHotelNameColor};">${hotelFields.name}</div>
             ${hotelFields.invoiceShowCustomLines ? `
             <div class="hotel-info" style="font-weight: bold; margin-bottom: 2px; color: ${hotelFields.invoiceHeaderColor}; font-size: ${hotelFields.invoiceLine1Size || 14}px;">${hotelFields.invoiceLine1}</div>
             <div class="hotel-info" style="font-weight: bold; margin-bottom: 8px; color: ${hotelFields.invoiceHeaderColor}; font-size: ${hotelFields.invoiceLine2Size || 16}px;">${hotelFields.invoiceLine2}</div>
             ` : ""}
-            <div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">${hotelFields.addressLine1}</div>
-            ${hotelFields.addressLine2 ? `<div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">${hotelFields.addressLine2}</div>` : ""}
-            <div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">Contact No:- ${hotelFields.phone}</div>
-            <div class="hotel-info" style="color: ${hotelFields.invoiceHeaderColor};">GST Number: ${hotelFields.gst}</div>
-            <div class="proforma-title" style="color: ${hotelFields.invoiceHeaderColor};">TAX INVOICE</div>
+            <div class="hotel-info" style="color: #000000;">${hotelFields.addressLine1}</div>
+            ${hotelFields.addressLine2 ? `<div class="hotel-info" style="color: #000000;">${hotelFields.addressLine2}</div>` : ""}
+            <div class="hotel-info" style="color: #000000;">Contact No:- ${hotelFields.phone}</div>
+            <div class="hotel-info" style="color: #000000;">GST Number: ${hotelFields.gst}</div>
+            <div class="proforma-title" style="color: #000000;">TAX INVOICE</div>
           </div>
 
           <div class="info-box">
