@@ -75,19 +75,19 @@ export function GstSummaryReport() {
 
                         {/* Summary Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard title="Room Taxable" value={data.summary.totalRoomTaxable} />
-                            <StatCard title="Restaurant Taxable" value={data.summary.totalRestaurantTaxable} />
-                            <StatCard title="Misc Taxable" value={data.summary.totalMiscTaxable} />
+                            <StatCard title="Room Taxable" value={data?.summary?.totalRoomTaxable || 0} />
+                            <StatCard title="Restaurant Taxable" value={data?.summary?.totalRestaurantTaxable || 0} />
+                            <StatCard title="Misc Taxable" value={data?.summary?.totalMiscTaxable || 0} />
 
                             <div className="row-span-2 bg-[#C6A75E]/10 border border-[#C6A75E]/20 p-5 rounded-xl flex flex-col justify-center items-center text-center">
                                 <p className="text-sm text-[#C6A75E] font-medium mb-2 uppercase tracking-widest">Total GST Liability</p>
-                                <p className="text-3xl font-bold text-[#C6A75E]">{formatCurrency(data.summary.grandTotalTax)}</p>
-                                <p className="text-sm mt-3 text-gray-500">{data.summary.totalInvoiceCount} Invoices</p>
+                                <p className="text-3xl font-bold text-[#C6A75E]">{formatCurrency(data?.summary?.grandTotalTax || 0)}</p>
+                                <p className="text-sm mt-3 text-gray-500">{data?.summary?.totalInvoiceCount || 0} Invoices</p>
                             </div>
 
-                            <StatCard title="Total CGST" value={data.summary.totalCgst} />
-                            <StatCard title="Total SGST" value={data.summary.totalSgst} />
-                            <StatCard title="Total IGST" value={data.summary.totalIgst} />
+                            <StatCard title="Total CGST" value={data?.summary?.totalCgst || 0} />
+                            <StatCard title="Total SGST" value={data?.summary?.totalSgst || 0} />
+                            <StatCard title="Total IGST" value={data?.summary?.totalIgst || 0} />
                         </div>
                     </div>
                 ) : (

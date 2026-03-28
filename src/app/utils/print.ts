@@ -5,21 +5,42 @@ export function printHtml(html: string) {
         if (!img) return;
         img.onerror = null;
         var stage = img.getAttribute('data-stage') || 'primary';
+        var currentSrc = img.src;
+
         if (stage === 'primary') {
-          if (window.location.hostname === 'localhost' && !img.src.includes('localhost:5000')) {
+          // 1. Try local dev fallback
+          if (window.location.hostname === 'localhost' && !currentSrc.includes('localhost:5000')) {
             img.setAttribute('data-stage', 'dev-local');
             try {
-              var url = new URL(img.src);
+              var url = new URL(currentSrc);
               img.src = 'http://localhost:5000' + url.pathname + url.search;
               return;
             } catch (e) {}
           }
+
+          // 2. Try production fallback
+          if (!currentSrc.includes('onrender.com')) {
+            img.setAttribute('data-stage', 'prod-fallback');
+            try {
+              var url = new URL(currentSrc);
+              img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+              return;
+            } catch (e) {}
+          }
         }
+
+        if (stage === 'dev-local' && !currentSrc.includes('onrender.com')) {
+            img.setAttribute('data-stage', 'prod-fallback');
+            try {
+                var url = new URL(currentSrc);
+                img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+                return;
+            } catch (e) {}
+        }
+
         img.style.display = 'none';
         var parent = img.parentElement;
         if (parent && (parent.classList.contains('invoice-watermark') || parent.classList.contains('center'))) {
-          // If the image was in a dedicated center/watermark container, hide the container too
-          // unless it has other content (heuristic)
           if (parent.children.length === 1) parent.style.display = 'none';
         }
       }

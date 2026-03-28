@@ -82,7 +82,9 @@ export function CheckOut() {
       await updateBooking(selectedBooking.id, {
         status: "checked_out",
         finalPayment: balanceDue > 0 ? balanceDue : 0,
-        paymentMode: balanceDue > 0 ? paymentMode : undefined,
+        // Fixed: default to Cash when payment method is empty/unknown
+        paymentMode: paymentMode || "cash",
+        paymentMethod: paymentMode?.toUpperCase() || "CASH",
       });
 
       alert(`Check-out successful for Room ${selectedBooking.room?.roomNumber}`);

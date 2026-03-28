@@ -9,6 +9,51 @@ import { exportToCSV, formatDateForCSV } from "../../utils/tableExport";
 const formatCurrency = (val: any) => Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatRawCurrency = (val: any) => Number(val || 0).toFixed(2);
 
+// Fixed: map payment method to correct Cash/Bank/CoCr column
+const getPaymentColumns = (invoice: any) => {
+    const method = (
+        invoice.paymentMethod ||
+        invoice.modeOfPayment ||
+        invoice.paymentMode ||
+        invoice.bills?.[0]?.paymentMethod ||
+        invoice.settlements?.[0]?.mode ||
+        ""
+    ).toLowerCase().trim();
+
+    const amount = Number(
+        invoice.netPayable ||
+        invoice.totalAmount ||
+        invoice.paidAmount ||
+        0
+    );
+
+    if (
+        method.includes("upi") ||
+        method.includes("bank") ||
+        method.includes("card") ||
+        method.includes("online") ||
+        method.includes("transfer") ||
+        method.includes("cheque") ||
+        method.includes("check") ||
+        method.includes("neft") ||
+        method.includes("rtgs")
+    ) {
+        return { cash: 0, bank: amount, coCr: 0 };
+    }
+
+    if (
+        method.includes("credit") ||
+        method.includes("company") ||
+        method.includes("corporate") ||
+        method.includes("co.cr")
+    ) {
+        return { cash: 0, bank: 0, coCr: amount };
+    }
+
+    // Fixed: everything else (cash, empty, null, unknown) → Cash
+    return { cash: amount, bank: 0, coCr: 0 };
+};
+
 export function RoomGstReport() {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
@@ -31,21 +76,24 @@ export function RoomGstReport() {
 
     // Calculate Summary Totals
     const totals = useMemo(() => {
-        return data.reduce((acc, row) => ({
-            roomRentDisc: acc.roomRentDisc + Number(row.roomRentDisc || 0),
-            roomRent: acc.roomRent + Number(row.roomRent || 0),
-            cgst: acc.cgst + Number(row.cgst || 0),
-            sgst: acc.sgst + Number(row.sgst || 0),
-            igst: acc.igst + Number(row.igst || 0),
-            otherCharges: acc.otherCharges + Number(row.otherCharges || 0),
-            otherChargesGst: acc.otherChargesGst + Number(row.otherChargesGst || 0),
-            invDiscount: acc.invDiscount + Number(row.invDiscount || 0),
-            advance: acc.advance + Number(row.advance || 0),
-            netPayable: acc.netPayable + Number(row.netPayable || 0),
-            cash: acc.cash + Number(row.cash || 0),
-            bank: acc.bank + Number(row.bank || 0),
-            coCr: acc.coCr + Number(row.coCr || 0),
-        }), {
+        return data.reduce((acc, row) => {
+            const payments = getPaymentColumns(row);
+            return {
+                roomRentDisc: acc.roomRentDisc + Number(row.roomRentDisc || 0),
+                roomRent: acc.roomRent + Number(row.roomRent || 0),
+                cgst: acc.cgst + Number(row.cgst || 0),
+                sgst: acc.sgst + Number(row.sgst || 0),
+                igst: acc.igst + Number(row.igst || 0),
+                otherCharges: acc.otherCharges + Number(row.otherCharges || 0),
+                otherChargesGst: acc.otherChargesGst + Number(row.otherChargesGst || 0),
+                invDiscount: acc.invDiscount + Number(row.invDiscount || 0),
+                advance: acc.advance + Number(row.advance || 0),
+                netPayable: acc.netPayable + Number(row.netPayable || 0),
+                cash: acc.cash + payments.cash,
+                bank: acc.bank + payments.bank,
+                coCr: acc.coCr + payments.coCr,
+            };
+        }, {
             roomRentDisc: 0, roomRent: 0, cgst: 0, sgst: 0, igst: 0,
             otherCharges: 0, otherChargesGst: 0, invDiscount: 0, advance: 0,
             netPayable: 0, cash: 0, bank: 0, coCr: 0
@@ -56,25 +104,28 @@ export function RoomGstReport() {
 
     const exportToCsv = () => {
         if (data.length === 0) return;
-        const exportData = data.map((r) => ({
-            "Invoice Date": formatDateForCSV(r.date),
-            "Bill No.": r.invoiceNo,
-            "Guest Name": r.guestName,
-            "Room No": r.roomNumber || "",
-            "Room Rent Disc.": formatRawCurrency(r.roomRentDisc),
-            "Room Rent": formatRawCurrency(r.roomRent),
-            "CGST": formatRawCurrency(r.cgst),
-            "SGST": formatRawCurrency(r.sgst),
-            "IGST": formatRawCurrency(r.igst),
-            "Other Char.": formatRawCurrency(r.otherCharges),
-            "Other Charges GST": formatRawCurrency(r.otherChargesGst),
-            "Inv. Discount": formatRawCurrency(r.invDiscount),
-            "Advance": formatRawCurrency(r.advance),
-            "Net Payable": formatRawCurrency(r.netPayable),
-            "Cash": formatRawCurrency(r.cash),
-            "Bank": formatRawCurrency(r.bank),
-            "Co. Cr.": formatRawCurrency(r.coCr),
-        }));
+        const exportData = data.map((r) => {
+            const payments = getPaymentColumns(r);
+            return {
+                "Invoice Date": formatDateForCSV(r.date),
+                "Bill No.": r.invoiceNo,
+                "Guest Name": r.guestName,
+                "Room No": r.roomNumber || "",
+                "Room Rent Disc.": formatRawCurrency(r.roomRentDisc),
+                "Room Rent": formatRawCurrency(r.roomRent),
+                "CGST": formatRawCurrency(r.cgst),
+                "SGST": formatRawCurrency(r.sgst),
+                "IGST": formatRawCurrency(r.igst),
+                "Other Char.": formatRawCurrency(r.otherCharges),
+                "Other Charges GST": formatRawCurrency(r.otherChargesGst),
+                "Inv. Discount": formatRawCurrency(r.invDiscount),
+                "Advance": formatRawCurrency(r.advance),
+                "Net Payable": formatRawCurrency(r.netPayable),
+                "Cash": formatRawCurrency(payments.cash),
+                "Bank": formatRawCurrency(payments.bank),
+                "Co. Cr.": formatRawCurrency(payments.coCr),
+            };
+        });
         exportToCSV(exportData, `invoice_revenue_report_${new Date().getTime()}`);
     };
 
@@ -131,31 +182,34 @@ export function RoomGstReport() {
                                     </tr>
                                 ) : (
                                     <>
-                                        {data.map((row, i) => (
-                                            <tr key={i} className="border-b border-gray-100 print:border-gray-300 hover:bg-gray-50 print:hover:bg-transparent">
-                                                <td className="px-2 py-2 align-top">{formatDate(row.date)}<br /><span className="text-[9px] print:text-[9px] opacity-70 mt-1 block">{new Date(row.date).getFullYear()}</span></td>
-                                                <td className="px-2 py-2 align-top">{row.invoiceNo}</td>
-                                                <td className="px-2 py-2 align-top">
-                                                    <div className="uppercase">{row.guestName}</div>
-                                                    <div className="uppercase opacity-80 mt-0.5">NA</div>
-                                                    <div className="mt-0.5">{row.roomNumber || ""}</div>
-                                                    <div className="mt-0.5">5%</div>
-                                                </td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.roomRentDisc)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.roomRent)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.cgst)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.sgst)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.igst)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.otherCharges)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.otherChargesGst)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.invDiscount)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.advance)}</td>
-                                                <td className="px-2 py-2 text-right align-top font-bold">{formatCurrency(row.netPayable)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.cash)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.bank)}</td>
-                                                <td className="px-2 py-2 text-right align-top">{formatCurrency(row.coCr)}</td>
-                                            </tr>
-                                        ))}
+                                        {data.map((row, i) => {
+                                            const payments = getPaymentColumns(row);
+                                            return (
+                                                <tr key={i} className="border-b border-gray-100 print:border-gray-300 hover:bg-gray-50 print:hover:bg-transparent">
+                                                    <td className="px-2 py-2 align-top">{formatDate(row.date)}<br /><span className="text-[9px] print:text-[9px] opacity-70 mt-1 block">{new Date(row.date).getFullYear()}</span></td>
+                                                    <td className="px-2 py-2 align-top">{row.invoiceNo}</td>
+                                                    <td className="px-2 py-2 align-top">
+                                                        <div className="uppercase">{row.guestName}</div>
+                                                        <div className="uppercase opacity-80 mt-0.5">NA</div>
+                                                        <div className="mt-0.5">{row.roomNumber || ""}</div>
+                                                        <div className="mt-0.5">5%</div>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.roomRentDisc)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.roomRent)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.cgst)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.sgst)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.igst)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.otherCharges)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.otherChargesGst)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.invDiscount)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(row.advance)}</td>
+                                                    <td className="px-2 py-2 text-right align-top font-bold">{formatCurrency(row.netPayable)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(payments.cash)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(payments.bank)}</td>
+                                                    <td className="px-2 py-2 text-right align-top">{formatCurrency(payments.coCr)}</td>
+                                                </tr>
+                                            );
+                                        })}
                                         {/* Grand Total Row */}
                                         <tr className="bg-gray-50 print:bg-gray-200 font-bold border-y border-gray-200 print:border-black">
                                             <td className="px-2 py-2" colSpan={3}>TOTAL</td>

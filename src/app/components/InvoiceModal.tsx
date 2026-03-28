@@ -223,24 +223,28 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   };
 
   const checkInDateValue = firstNonEmpty(
+    invoice?.checkInDate,
     checkinData?.checkInDate,
     invoiceBooking?.checkInDate,
     bk?.checkInDate
   );
 
   const checkOutDateValue = firstNonEmpty(
+    invoice?.checkOutDate,
     checkinData?.checkOutDate,
     invoiceBooking?.checkOutDate,
     bk?.checkOutDate
   );
 
   const checkInTimeValue = firstNonEmpty(
+    invoice?.checkInTime,
     checkinData?.checkInTime,
     invoiceBooking?.checkInTime,
     bk?.checkInTime
   );
 
   const checkOutTimeValue = firstNonEmpty(
+    invoice?.checkOutTime,
     checkinData?.checkOutTime,
     invoiceBooking?.checkOutTime,
     bk?.checkOutTime
@@ -334,15 +338,16 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   console.log('Full reservation object:', reservationData);
 
   const guestName =
+    invoice?.guestName ||
     booking?.guestName ||
     booking?.guest?.name ||
     [booking?.firstName, booking?.lastName].filter(Boolean).join(' ').trim() ||
     checkin?.guestName ||
-    invoice?.guestName ||
     bill?.booking?.guestName ||
     '—';
 
   const contactNo =
+    invoice?.phone ||
     booking?.phone ||
     booking?.contact ||
     booking?.phoneNumber ||
@@ -351,10 +356,10 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     booking?.guest?.phone ||
     checkin?.phone ||
     checkin?.guestPhone ||
-    invoice?.phone ||
     '—';
 
   const address =
+    invoice?.address ||
     booking?.address ||
     booking?.homeAddress ||
     booking?.permanentAddress ||
@@ -364,12 +369,12 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     '';
 
   const roomNumber =
+    invoice?.roomNumber ||
     booking?.roomNumber ||
     booking?.room?.number ||
     booking?.room?.roomNumber ||
     booking?.roomNo ||
     checkin?.roomNumber ||
-    invoice?.roomNumber ||
     bill?.booking?.roomNumber ||
     bill?.booking?.room?.number ||
     bill?.booking?.room?.roomNumber ||
@@ -383,10 +388,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     booking?.id?.slice(-5) ||
     '—';
 
-  const adults = booking?.adults || booking?.pax?.adults || 0;
-  const children = booking?.children || booking?.pax?.children || 0;
+  const adults = invoice?.adults || booking?.adults || booking?.pax?.adults || 0;
+  const children = invoice?.children || booking?.children || booking?.pax?.children || 0;
 
   const companyName =
+    invoice?.company ||
     booking?.corporateClient?.name ||
     booking?.billingCompanyName ||
     checkin?.billingCompanyName ||
@@ -404,6 +410,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     bill?.booking?.company?.gstNumber ||
     "";
   const plan =
+    invoice?.plan ||
     booking?.plan ||
     checkinData?.plan ||
     bill?.booking?.plan ||
@@ -464,14 +471,17 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
   const items: any[] = [];
 
-  if (Number(invoice.bill?.roomCharges) > 0) {
-    const base = Number(invoice.bill.roomCharges);
+  if (Number(invoice.roomRent || invoice.bill?.roomCharges) > 0) {
+    const base = Number(invoice.roomRent || invoice.bill.roomCharges);
     const totalRoomNights = Math.max(stayDays, 1);
     const normalNights = lateCheckoutApplied ? Math.max(totalRoomNights - 1, 1) : totalRoomNights;
-    const normalRoomCharge = roomRate > 0 ? roomRate * normalNights : (lateCheckoutApplied ? base / totalRoomNights * normalNights : base);
-    const lateCheckoutCharge = lateCheckoutApplied
+    
+    // Priority: use invoice level override roomRent if available, otherwise calculate from daily roomRate
+    const normalRoomCharge = invoice.roomRent ? Number(invoice.roomRent) : (roomRate > 0 ? roomRate * normalNights : (lateCheckoutApplied ? base / totalRoomNights * normalNights : base));
+    const lateCheckoutCharge = !invoice.roomRent && lateCheckoutApplied
       ? (roomRate > 0 ? roomRate : Math.max(base - normalRoomCharge, 0))
       : 0;
+    
     const normalRoomGst = (normalRoomCharge * slabRate) / 100;
     const lateCheckoutGst = (lateCheckoutCharge * slabRate) / 100;
     const normalChargeDate = formatStoredDateOnly(checkInDateValue) !== '-' ? formatStoredDateOnly(checkInDateValue) : billDateStr;
@@ -487,7 +497,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       total: normalRoomCharge + normalRoomGst
     });
 
-    if (lateCheckoutApplied && lateCheckoutCharge > 0) {
+    if (!invoice.roomRent && lateCheckoutApplied && lateCheckoutCharge > 0) {
       items.push({
         date: lateChargeDate,
         type: "Late\nCheck-Out",
@@ -521,9 +531,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         total: chargeAmount
       });
     }
-  } else if (Number(invoice.bill?.miscCharges) > 0) {
+  } else if (Number(invoice.roomRent || invoice.bill?.miscCharges) > 0) {
     // Fallback: aggregated row when individual records aren't available
-    const base = Number(invoice.bill.miscCharges);
+    const base = Number(invoice.miscCharges || invoice.bill.miscCharges);
     items.push({
       date: billDateStr,
       type: "Misc\nCharges",
@@ -548,13 +558,16 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
     });
   }
 
-  const itemsChargesTotal = items.reduce((sum, item) => sum + Number(item.charges || 0), 0);
+  // Override billing totals if invoice level data exists
+  const itemsChargesTotal = invoice.isModified ? (Number(invoice.roomRent || 0) + Number(invoice.otherCharges || 0) + Number(invoice.miscCharges || 0)) : items.reduce((sum, item) => sum + Number(item.charges || 0), 0);
   const itemsDiscountTotal = items.reduce((sum, item) => sum + Number(item.discount || 0), 0);
-  const itemsGstTotal = items.reduce((sum, item) => sum + Number(item.gst || 0), 0);
-  const itemsBeforeRound = items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const itemsGstTotal = invoice.isModified ? (Number(invoice.cgst || 0) + Number(invoice.sgst || 0)) : items.reduce((sum, item) => sum + Number(item.gst || 0), 0);
+  const itemsBeforeRound = invoice.isModified ? (Number(invoice.totalAmount || 0)) : items.reduce((sum, item) => sum + Number(item.total || 0), 0);
   const itemsRoundOff = Math.round(itemsBeforeRound) - itemsBeforeRound;
   const itemsTotalAmount = Math.round(itemsBeforeRound);
-  const itemsNetPayable = itemsTotalAmount - advanceAmount;
+  const invoiceDiscount = Number(invoice.discount || 0);
+  const advanceAmountForInvoice = invoice.isModified ? Number(invoice.advancePaid || 0) : advanceAmount;
+  const itemsNetPayable = invoice.isModified ? Number(invoice.netPayable || 0) : (itemsTotalAmount - advanceAmount - invoiceDiscount);
   const itemsCgst = itemsGstTotal / 2;
   const itemsSgst = itemsGstTotal / 2;
 
@@ -624,34 +637,34 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         .text-left { text-align: left; }
         .text-right { text-align: right; }
         table { width: 100%; border-collapse: collapse; font-weight: bold; }
-        .border-all { border: 2px solid #000; } /* Added: bold lines */
-        .border-b { border-bottom: 2px solid #000; } /* Added: bold lines */
-        .border-l { border-left: 2px solid #000; } /* Added: bold lines */
-        .border-r { border-right: 2px solid #000; } /* Added: bold lines */
+        .border-all { border: 3px solid #C6A75E; } /* Added: bold gold lines */
+        .border-b { border-bottom: 3px solid #C6A75E; } /* Added: bold gold lines */
+        .border-l { border-left: 3px solid #C6A75E; } /* Added: bold gold lines */
+        .border-r { border-right: 3px solid #C6A75E; } /* Added: bold gold lines */
         
         .hotel-name { font-size: 26px; font-weight: bold; margin: 0; text-transform: uppercase; color: #C6A75E; font-family: 'Times New Roman', serif; }
         .hotel-info { font-size: 14px; margin: 2px 0; font-family: 'Courier New', Courier, monospace; }
         .proforma-title { font-size: 16px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; text-decoration: underline; }
         
-        .info-box { border: 2px solid #000; display: flex; margin-bottom: 15px; font-weight: bold; } /* Added: bold lines and text */
+        .info-box { border: 3px solid #C6A75E; display: flex; margin-bottom: 15px; font-weight: bold; } /* Added: bold gold lines and text */
         .info-col { width: 50%; padding: 8px 12px; }
         .info-row { display: flex; margin-bottom: 4px; line-height: 1.2; }
         .info-label { width: 140px; }
         .info-val { flex: 1; }
         
-        .table-header th { padding: 8px 4px; text-align: left; font-size: 13px; border-bottom: 2px solid #000; border-right: 2px solid #000; font-weight: bold; }
+        .table-header th { padding: 8px 4px; text-align: left; font-size: 13px; border-bottom: 3px solid #C6A75E; border-right: 3px solid #C6A75E; font-weight: bold; }
         .table-header th:last-child { border-right: none; }
         
-        .totals-section { border: 2px solid #000; display: flex; border-top: none; font-weight: bold; }
-        .totals-col-left { width: 50%; border-right: 2px solid #000; padding: 8px 12px; }
+        .totals-section { border: 3px solid #C6A75E; display: flex; border-top: none; font-weight: bold; }
+        .totals-col-left { width: 50%; border-right: 3px solid #C6A75E; padding: 8px 12px; }
         .totals-col-right { width: 50%; padding: 8px 12px; }
         .totals-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
         
-        .rupees-box { border: 2px solid #000; border-top: none; padding: 10px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase; }
+        .rupees-box { border: 3px solid #C6A75E; border-top: none; padding: 10px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase; }
         
         .signature-section { margin-top: 80px; display: flex; justify-content: space-between; padding: 0 40px; }
         .sig-box { text-align: center; width: 250px; }
-        .sig-line { border-top: 2px solid #000; margin-bottom: 8px; font-weight: bold; }
+        .sig-line { border-top: 3px solid #C6A75E; margin-bottom: 8px; font-weight: bold; }
         .late-checkout-note { font-size: 11px; font-style: italic; color: #555; margin-top: 10px; margin-bottom: 10px; border-top: 1px solid #ccc; padding-top: 6px; }
         
         @media print { 
@@ -675,18 +688,43 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           if (!img) return;
           img.onerror = null;
           var stage = img.getAttribute('data-stage') || 'primary';
+          var currentSrc = img.src;
+
           if (stage === 'primary') {
-            if (window.location.hostname === 'localhost' && !img.src.includes('localhost:5000')) {
+            // 1. Try local dev fallback
+            if (window.location.hostname === 'localhost' && !currentSrc.includes('localhost:5000')) {
               img.setAttribute('data-stage', 'dev-local');
               try {
-                var url = new URL(img.src);
+                var url = new URL(currentSrc);
                 img.src = 'http://localhost:5000' + url.pathname + url.search;
                 return;
               } catch (e) {
                 console.error('Local fallback failed:', e);
               }
             }
+
+            // 2. Try production fallback
+            if (!currentSrc.includes('onrender.com')) {
+              img.setAttribute('data-stage', 'prod-fallback');
+              try {
+                var url = new URL(currentSrc);
+                img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+                return;
+              } catch (e) {
+                console.error('Production fallback failed:', e);
+              }
+            }
           }
+
+          if (stage === 'dev-local' && !currentSrc.includes('onrender.com')) {
+            img.setAttribute('data-stage', 'prod-fallback');
+            try {
+              var url = new URL(currentSrc);
+              img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+              return;
+            } catch (e) {}
+          }
+
           img.style.display = 'none';
           var parent = img.parentElement;
           if (parent && parent.classList.contains('invoice-watermark')) {
@@ -696,7 +734,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       </script>
       </head>
       <body>
-        <div class="invoice-wrapper invoice-container" style="border: 2px solid #000; min-height: 100vh; font-weight: bold;">
+        <div class="invoice-wrapper invoice-container" style="border: 3px solid #C6A75E; min-height: 100vh; font-weight: bold;">
           <!-- Added: bold fonts and borders throughout invoice -->
           ${watermarkHtml}
           <div class="invoice-content">
@@ -715,7 +753,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           </div>
 
           <div class="info-box">
-            <div class="info-col" style="border-right: 2px solid #000;">
+            <div class="info-col" style="border-right: 3px solid #C6A75E;">
               ${companyName ? `<div class="info-row"><div class="info-label">Company</div><div class="info-val">- ${companyName}</div></div>` : ""}
               ${companyGst ? `<div class="info-row"><div class="info-label">GST No.</div><div class="info-val">- ${companyGst}</div></div>` : ""}
               <div class="info-row"><div class="info-label">Guest Name</div><div class="info-val">- ${guestName || "-"}</div></div>
@@ -749,28 +787,33 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
             <tbody>
               ${itemsHtml}
               <tr style="font-weight: bold; font-size: 16px;">
-                <td colspan="3" style="padding: 8px 4px; border-right: 2px solid #000;">Total</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 2px solid #000;">${itemsChargesTotal.toFixed(2)}</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 2px solid #000;">${itemsDiscountTotal.toFixed(2)}</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 2px solid #000;">${itemsGstTotal.toFixed(2)}</td>
+                <td colspan="3" style="padding: 8px 4px; border-right: 3px solid #C6A75E;">Total</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 3px solid #C6A75E;">${itemsChargesTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 3px solid #C6A75E;">${itemsDiscountTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 3px solid #C6A75E;">${itemsGstTotal.toFixed(2)}</td>
                 <td style="padding: 8px 4px; text-align: right;">${itemsBeforeRound.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
 
           <div class="totals-section">
-            <div class="totals-col-left" style="border-right: 2px solid #000;">
+            <div class="totals-col-left" style="border-right: 3px solid #C6A75E;">
               <div class="totals-row"><div>Total GST</div><div>${itemsGstTotal.toFixed(2)}</div></div>
               <div class="totals-row"><div>CGST</div><div>${itemsCgst.toFixed(2)}</div></div>
               <div class="totals-row"><div>SGST</div><div>${itemsSgst.toFixed(2)}</div></div>
             </div>
-            <div class="totals-col-right">
-              <div class="totals-row"><div>Total Amount</div><div>${itemsBeforeRound.toFixed(2)}</div></div>
-              <div class="totals-row"><div>(-) Advance</div><div>${advanceAmount.toFixed(2)}</div></div>
-              <div class="totals-row"><div>(-) Discount</div><div>0.00</div></div>
-              <div class="totals-row"><div>Round Off</div><div>${itemsRoundOff.toFixed(2)}</div></div>
-              <div class="totals-row" style="font-weight: bold; margin-top: 4px;"><div>Net Payable</div><div>${itemsNetPayable.toFixed(2)}</div></div>
-            </div>
+              <div class="totals-col-right">
+                <div class="totals-row"><div>Total Amount</div><div>${itemsBeforeRound.toFixed(2)}</div></div>
+                <div class="totals-row"><div>(-) Advance</div><div>${advanceAmountForInvoice.toFixed(2)}</div></div>
+                <div class="totals-row">
+                  <div>
+                    (-) Discount ${invoice.discountType === 'percent' ? `(${Number(invoice.discountValue)}%)` : ''}
+                  </div>
+                  <div>${invoiceDiscount.toFixed(2)}</div>
+                </div>
+                <div class="totals-row"><div>Round Off</div><div>${itemsRoundOff.toFixed(2)}</div></div>
+                <div class="totals-row" style="font-weight: bold; margin-top: 4px;"><div>Net Payable</div><div>${itemsNetPayable.toFixed(2)}</div></div>
+              </div>
           </div>
 
           <div class="rupees-box">

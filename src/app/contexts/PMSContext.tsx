@@ -117,7 +117,7 @@ export interface DashboardStats {
 export interface Booking {
   id: string;
   hotelId: string;
-  roomId: string;
+  roomId?: string;
   plan?: string;
   roomNumber?: string;
   guestName: string;
@@ -150,6 +150,10 @@ export interface Booking {
   vehicleDetails?: string;
   remarks?: string;
   roomPrice?: number;
+  finalPayment?: number;
+  paymentMode?: string;
+  paymentMethod?: string;
+  reservation?: any;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -196,6 +200,32 @@ export interface Invoice {
   invoiceDate: string;
   createdAt: string;
   bill?: Partial<Bill>;
+
+  // Override fields
+  guestName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  company?: string;
+  idProofType?: string;
+  idProofNumber?: string;
+  checkInDate?: string;
+  checkInTime?: string;
+  checkOutDate?: string;
+  checkOutTime?: string;
+  roomNumber?: string;
+  plan?: string;
+  adults?: number;
+  children?: number;
+  roomRent?: number;
+  otherCharges?: number;
+  miscCharges?: number;
+  advancePaid?: number;
+  discount?: number;
+  netPayable?: number;
+  remarks?: string;
+  isModified?: boolean;
+  modifiedAt?: string;
 }
 
 export interface Vendor {
@@ -1052,7 +1082,11 @@ export function PMSProvider({ children }: { children: ReactNode }) {
     } else if (updates.status === "checked_out") {
       const targetBooking = bookings.find((b) => b.id === id);
       const targetRoomId = targetBooking?.roomId;
-      const res = await api.put(`/bookings/${id}/check-out`, { finalPayment: (updates as any).finalPayment });
+      const res = await api.put(`/bookings/${id}/check-out`, { 
+        finalPayment: (updates as any).finalPayment,
+        paymentMode: (updates as any).paymentMode,
+        paymentMethod: (updates as any).paymentMethod
+      });
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...res.data.booking } : b)));
       if (targetRoomId) {
         setRooms((prev) =>
@@ -1101,9 +1135,13 @@ export function PMSProvider({ children }: { children: ReactNode }) {
   };
 
   const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
-    if (updates.status) {
+    if (Object.keys(updates).length === 1 && updates.status) {
       const res = await api.patch(`/invoices/${id}/status`, { status: updates.status });
       setInvoices((prev) => prev.map((inv) => (inv.id === id ? res.data.data : inv)));
+    } else {
+      const res = await api.patch(`/invoices/${id}`, updates);
+      setInvoices((prev) => prev.map((inv) => (inv.id === id ? res.data.data : inv)));
+      await fetchAll(true); // Refresh related data like bookings/bills
     }
   };
 

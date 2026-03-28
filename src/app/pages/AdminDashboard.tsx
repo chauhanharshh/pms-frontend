@@ -323,6 +323,12 @@ export function AdminDashboard() {
                 icon: <FileText className="w-5 h-5" />,
               },
               {
+                label: "Edit Invoice",
+                desc: "Modify issued invoices",
+                path: selectedHotelId ? "/hotel/invoices/modify" : "/admin/invoices/modify",
+                icon: <FileText className="w-5 h-5" />,
+              },
+              {
                 label: "Reports",
                 desc: "Analytics & charts",
                 path: selectedHotelId ? "/hotel/reports" : "/admin/reports",

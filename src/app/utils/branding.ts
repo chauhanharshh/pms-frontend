@@ -78,9 +78,7 @@ export function handleLogoImageError(event: { currentTarget: HTMLImageElement })
   console.warn(`Logo failed to load: ${currentSrc} (Stage: ${stage})`);
 
   if (stage === 'primary') {
-    // SMART DEVELOPER FALLBACK: 
-    // If we are developing locally but the logo failed to load (likely from Render/Cloud),
-    // try the local backend on port 5000. This handles the "split environment" case.
+    // 1. Try local dev fallback IF we are on localhost
     if (typeof window !== 'undefined' && 
         window.location.hostname === 'localhost' && 
         !currentSrc.includes('localhost:5000') &&
@@ -92,17 +90,38 @@ export function handleLogoImageError(event: { currentTarget: HTMLImageElement })
         img.dataset.logoFallbackStage = 'dev-local';
         img.src = localSrc;
         return;
-      } catch (e) {
-        // Fall through
-      }
+      } catch (e) {}
+    }
+
+    // 2. If not on localhost or local fallback failed, try production fallback
+    if (!currentSrc.includes('onrender.com')) {
+      try {
+        const url = new URL(currentSrc);
+        const prodSrc = `https://pms-backend-1j4y.onrender.com${url.pathname}${url.search}`;
+        img.dataset.logoFallbackStage = 'prod-fallback';
+        img.src = prodSrc;
+        return;
+      } catch (e) {}
     }
     
+    // 3. Fallback to default asset
     img.dataset.logoFallbackStage = 'secondary';
     img.src = DEFAULT_LOGO_URL;
     return;
   }
 
-  if (stage === 'dev-local') {
+  if (stage === 'dev-local' || stage === 'prod-fallback') {
+    // If local/prod fallback failed, try production if not tried, else default
+    if (stage === 'dev-local' && !currentSrc.includes('onrender.com')) {
+      try {
+        const url = new URL(currentSrc);
+        const prodSrc = `https://pms-backend-1j4y.onrender.com${url.pathname}${url.search}`;
+        img.dataset.logoFallbackStage = 'prod-fallback';
+        img.src = prodSrc;
+        return;
+      } catch (e) {}
+    }
+    
     img.dataset.logoFallbackStage = 'secondary';
     img.src = DEFAULT_LOGO_URL;
     return;

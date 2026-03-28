@@ -106,20 +106,26 @@ export function Reservations() {
     (r) => r.hotelId === form.hotelId && r.status === "vacant",
   );
 
-  const handleRoomSelect = (roomId: string) => {
-    const room = rooms.find((r) => r.id === roomId);
-    if (!room) return;
-    setForm((f) => ({
-      ...f,
-      roomId,
-      roomNumber: room.roomNumber,
-      // Manual entry required - do not auto-fill roomPrice or totalAmount
-    }));
+  const handleRoomSelect = (val: string) => {
+    // Added: free-text input for room — accepts dropdown or manual entry
+    const room = rooms.find((r) => r.id === val || r.roomNumber === val);
+    if (room) {
+      setForm((f) => ({
+        ...f,
+        roomId: room.id,
+        roomNumber: room.roomNumber,
+      }));
+    } else {
+      setForm((f) => ({
+        ...f,
+        roomId: "",
+        roomNumber: val,
+      }));
+    }
   };
 
   const recalcTotal = (checkIn: string, checkOut: string, price?: number, checkInTime?: string, checkOutTime?: string) => {
-    const room = rooms.find((r) => r.id === form.roomId);
-    if (!room || !checkIn || !checkOut) return;
+    if (!checkIn || !checkOut) return;
     
     const cinTime = checkInTime ?? form.checkInTime ?? "12:00";
     const coutTime = checkOutTime ?? form.checkOutTime ?? "11:00";
@@ -134,7 +140,7 @@ export function Reservations() {
   };
 
   const handleSave = async () => {
-    if (!form.guestName || !form.roomId || !form.checkOutDate || !form.roomPrice) {
+    if (!form.guestName || (!form.roomId && !form.roomNumber) || !form.checkOutDate || !form.roomPrice) {
       alert("Please fill in all required fields (Guest Name, Room, Room Price, and Check-out Date)");
       return;
     }
@@ -582,19 +588,21 @@ export function Reservations() {
                   >
                     Select Room *
                   </label>
-                  <select
+                  <input
                     className="w-full px-3 py-2.5 rounded-lg outline-none"
                     style={{ border: "2px solid #E5E1DA" }}
-                    value={form.roomId}
+                    placeholder="Type or select room..."
+                    list="room-datalist"
+                    value={form.roomNumber || ""}
                     onChange={(e) => handleRoomSelect(e.target.value)}
-                  >
-                    <option value="">-- Choose room --</option>
+                  />
+                  <datalist id="room-datalist">
                     {availableRooms.map((r) => (
-                      <option key={r.id} value={r.id}>
+                      <option key={r.id} value={r.roomNumber}>
                         Room {r.roomNumber} — {r.roomType?.name}
                       </option>
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label
@@ -830,7 +838,7 @@ export function Reservations() {
                   />
                 </div>
               </div>
-              {form.roomId && (
+              {(form.roomId || form.roomNumber) && (
                 <div
                   className="col-span-2 rounded-xl p-4 flex items-center justify-between"
                   style={{

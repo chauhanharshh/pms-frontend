@@ -745,9 +745,7 @@ export function RestaurantRoomSelector() {
                                                                                     <div>
                                                                                         <p className="text-2xl font-bold" style={{ color: finalText }}>Table {table.roomNumber}</p>
                                                                                     </div>
-                                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1`} style={{ backgroundColor: finalText + "22", border: `1px solid ${finalText}44` }}>
-                                                                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusIndicatorColor }} />
-                                                                                    </div>
+
                                                                                 </div>
 
                                                                                 <div className="mt-2 pt-3 border-t" style={{ borderColor: finalText + "22" }}>
@@ -817,9 +815,7 @@ export function RestaurantRoomSelector() {
                                                                         <div>
                                                                             <p className="text-2xl font-bold" style={{ color: finalText }}>Room {room.roomNumber}</p>
                                                                         </div>
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1`} style={{ backgroundColor: finalText + "22", border: `1px solid ${finalText}44` }}>
-                                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusIndicatorColor }} />
-                                                                        </div>
+
                                                                     </div>
 
                                                                     <div className="mt-2 pt-3 border-t" style={{ borderColor: finalText + "22" }}>

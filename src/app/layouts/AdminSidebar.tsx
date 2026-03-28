@@ -208,6 +208,11 @@ const ADMIN_SECTIONS: NavSection[] = [
         icon: <FileBarChart className="w-4 h-4" />,
       },
       {
+        label: "Modify Invoices",
+        path: "/admin/invoices/modify",
+        icon: <PlusCircle className="w-4 h-4" />,
+      },
+      {
         label: "Pending Settlement",
         path: "/admin/invoices/pending",
         icon: <ClipboardCheck className="w-4 h-4" />,

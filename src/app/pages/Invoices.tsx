@@ -9,8 +9,9 @@ import {
   formatDate,
   formatActualCheckInDateTime,
 } from "../utils/format";
-import { Receipt, Plus, Eye, Printer, X, Check, CreditCard, Download, Search } from "lucide-react";
+import { Receipt, Plus, Eye, Printer, X, Check, CreditCard, Download, Search, Edit2 } from "lucide-react";
 import { InvoiceModal } from "../components/InvoiceModal";
+import { EditInvoiceModal } from "../components/EditInvoiceModal";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const GOLD = "var(--accent-color, #C6A75E)";
@@ -139,7 +140,10 @@ export function Invoices() {
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
   const [showGenerate, setShowGenerate] = useState(false);
   const [genForm, setGenForm] = useState({ billId: "", guestAddress: "" });
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountType, setDiscountType] = useState<"flat" | "percent">("flat");
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const isMobile = useMediaQuery("(max-width: 1024px)");
 
   const [searchParams] = useSearchParams();
@@ -312,13 +316,43 @@ export function Invoices() {
 
   const handleGenerate = async () => {
     if (!genForm.billId) return;
+
+    // Added: discount field logic in Generate Invoice modal
+    const selectedBill = bills.find(b => b.id === genForm.billId);
+    const billTotal = Number(selectedBill?.totalAmount || 0);
+
+    const calculateDiscount = () => {
+      if (!discountAmount || discountAmount <= 0) return 0;
+      if (discountType === 'percent') {
+        return (billTotal * discountAmount) / 100;
+      }
+      return discountAmount; // flat amount
+    };
+
+    const finalDiscount = calculateDiscount();
+
+    // Validation
+    if (discountType === 'flat' && finalDiscount > billTotal) {
+      alert('Discount cannot exceed bill amount');
+      return;
+    }
+    if (discountType === 'percent' && discountAmount > 100) {
+      alert('Percentage cannot exceed 100%');
+      return;
+    }
+
     try {
       const newInvoice = await addInvoice({
         billId: genForm.billId,
-        guestAddress: genForm.guestAddress
+        guestAddress: genForm.guestAddress,
+        discount: finalDiscount,
+        discountType: discountType,
+        discountValue: discountAmount,
       });
       setShowGenerate(false);
       setGenForm({ billId: "", guestAddress: "" });
+      setDiscountAmount(0);
+      setDiscountType("flat");
 
       // Instantly open the invoice preview
       if (newInvoice) {
@@ -526,15 +560,22 @@ export function Invoices() {
                               {inv.invoiceNumber} · Room {displayFields.roomNumber}
                             </div>
                           </div>
-                          <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
-                            style={{
-                              background: inv.status === "paid" ? "#dcfce7" : "#fef2f2",
-                              color: inv.status === "paid" ? "#166534" : "#991b1b",
-                            }}
-                          >
-                            {inv.status === "paid" ? "PAID" : "UNPAID"}
-                          </span>
+                          <div className="flex gap-2 items-center">
+                            {inv.isModified && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-100 text-blue-700">
+                                Modified
+                              </span>
+                            )}
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                              style={{
+                                background: inv.status === "paid" ? "#dcfce7" : "#fef2f2",
+                                color: inv.status === "paid" ? "#166534" : "#991b1b",
+                              }}
+                            >
+                              {inv.status === "paid" ? "PAID" : "UNPAID"}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -587,6 +628,14 @@ export function Invoices() {
                           >
                             <Eye className="w-4 h-4" /> VIEW
                           </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setEditingInvoice(inv)}
+                              className="bg-amber-600 px-5 py-3 rounded-xl text-sm font-bold text-white shadow-md flex items-center gap-2 transition-all"
+                            >
+                              <Edit2 className="w-4 h-4" /> EDIT
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -728,6 +777,16 @@ export function Invoices() {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingInvoice(inv)}
+                                className="p-1.5 rounded-lg transition-colors hover:bg-amber-50"
+                                style={{ color: "#d97706" }}
+                                title="Edit Invoice"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -830,6 +889,49 @@ export function Invoices() {
                     }
                   />
                 </div>
+
+                {/* Added: discount field in Generate Invoice modal */}
+                <div>
+                  <label
+                    className="block text-sm font-medium mb-1"
+                    style={{ color: DARKGOLD }}
+                  >
+                    Discount
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select
+                      value={discountType}
+                      onChange={e => setDiscountType(e.target.value as "flat" | "percent")}
+                      className="px-2 py-2.5 rounded-lg outline-none border-2 border-[#E5E1DA] bg-white text-sm"
+                    >
+                      <option value="flat">₹ Flat</option>
+                      <option value="percent">% Percent</option>
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      className="flex-1 px-3 py-2.5 rounded-lg outline-none border-2 border-[#E5E1DA]"
+                      placeholder="Enter discount..."
+                      value={discountAmount || ""}
+                      onChange={e => setDiscountAmount(Number(e.target.value))}
+                    />
+                  </div>
+                  {discountAmount > 0 && genForm.billId && (
+                    <div className="mt-1">
+                      <small style={{ color: DARKGOLD }}>
+                        Discount: ₹{
+                          (() => {
+                            const b = bills.find(b => b.id === genForm.billId);
+                            const total = Number(b?.totalAmount || 0);
+                            return discountType === 'percent'
+                              ? ((total * discountAmount) / 100).toFixed(2)
+                              : discountAmount.toFixed(2);
+                          })()
+                        }
+                      </small>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={handleGenerate}
                   disabled={!genForm.billId}
@@ -860,6 +962,13 @@ export function Invoices() {
           <InvoiceModal
             invoice={viewInvoice}
             onClose={() => setViewInvoice(null)}
+          />
+        )}
+
+        {editingInvoice && (
+          <EditInvoiceModal
+            invoice={editingInvoice}
+            onClose={() => setEditingInvoice(null)}
           />
         )}
       </div>

@@ -22,7 +22,9 @@ import {
   IndianRupee,
   Users,
   DoorOpen,
+  Edit2,
 } from "lucide-react";
+import { EditInvoiceModal } from "../components/EditInvoiceModal";
 
 const GOLD = "var(--accent-color, #C6A75E)";
 const DARKGOLD = "var(--primary, #A8832D)";
@@ -103,6 +105,7 @@ export function TodaysView() {
   const hotelFilter = isAdmin ? (currentHotelId || "all") : (user?.hotelId || "");
   const [dateFilter, setDateFilter] = useState(today());
   const [search, setSearch] = useState("");
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
 
   const todayStr = dateFilter || today();
 
@@ -542,6 +545,7 @@ export function TodaysView() {
                       "Check-Out",
                       "Amount",
                       "Status",
+                      "Actions",
                     ].map((col) => (
                       <th
                         key={col}
@@ -619,6 +623,18 @@ export function TodaysView() {
                           >
                             {inv.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {isAdmin && (
+                            <button
+                              onClick={() => setEditingInvoice(inv)}
+                              className="p-1.5 rounded-lg transition-colors hover:bg-amber-50"
+                              style={{ color: "#d97706" }}
+                              title="Edit Invoice"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -811,6 +827,13 @@ export function TodaysView() {
             </div>
           )}
         </div>
+
+        {editingInvoice && (
+          <EditInvoiceModal
+            invoice={editingInvoice}
+            onClose={() => setEditingInvoice(null)}
+          />
+        )}
       </div>
     </AppLayout>
   );

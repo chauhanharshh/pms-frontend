@@ -63,6 +63,8 @@ import { DayClosingPage } from "./pages/DayClosingPage";
 import { StewardManagement } from "./pages/StewardManagement";
 import { ServiceChargeReport } from "./pages/ServiceChargeReport";
 import { RestaurantDayClosingPage } from "./pages/RestaurantDayClosingPage";
+import { ModifyInvoices } from "./pages/ModifyInvoices";
+
 
 // ── GST REPORT PAGES ───────────────────────────────────────────────────────
 import { GstSummaryReport } from "./pages/gst/GstSummaryReport";
@@ -228,6 +230,7 @@ const routes = [
   { path: "/admin/bills", Component: Bills },
   { path: "/admin/invoices", Component: Invoices },
   { path: "/admin/invoices/pending", Component: Invoices },
+  { path: "/admin/invoices/modify", Component: ModifyInvoices },
   { path: "/admin/expenses", Component: Expenses },
   { path: "/admin/advances", Component: AdvancePayments },
   { path: "/admin/misc-charges", Component: MiscCharges },
@@ -313,6 +316,7 @@ const routes = [
   { path: "/hotel/reservations", Component: Reservations },
   { path: "/hotel/bills", Component: Bills },
   { path: "/hotel/invoices", Component: Invoices },
+  { path: "/hotel/invoices/modify", Component: ModifyInvoices },
   { path: "/hotel/expenses", Component: Expenses },
   { path: "/hotel/advances", Component: AdvancePayments },
   { path: "/hotel/misc-charges", Component: MiscCharges },
