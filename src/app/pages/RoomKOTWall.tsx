@@ -641,19 +641,27 @@ export function RoomKOTWall() {
                 />
             </div>
         )}
-        <div className="text-center font-bold text-[14px] leading-tight" style={{ color: selectedHotel?.invoiceHotelNameColor || "#000000" }}>{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
-        {selectedHotel?.invoiceShowCustomLines && (
-            <>
-                <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine1Size || 11}px` }}>{selectedHotel.invoiceLine1 || ""}</div>
-                <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine2Size || 13}px` }}>{selectedHotel.invoiceLine2 || ""}</div>
-            </>
-        )}
-        {lines.line1 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
-        {lines.line2 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
-        {lines.cityState && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
-        <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
-        <div className="text-center leading-tight">{RECEIPT_DASH}</div>
-        <div className="text-center font-bold leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
+        {/* Added: center align restaurant invoice heading */}
+        <div style={{ textAlign: "center" }}>
+            {selectedHotel?.logoUrl && (
+                <div className="flex justify-center mb-2">
+                    <img 
+                        src={resolveLogoUrl(selectedHotel.logoUrl)} 
+                        alt="Logo" 
+                        style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }} 
+                        onError={handleLogoImageError}
+                    />
+                </div>
+            )}
+            <div className="font-bold text-[14px] leading-tight" style={{ color: selectedHotel?.invoiceHotelNameColor || "#000000" }}>{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+            {/* Removed: custom lines from restaurant invoice as requested */}
+            {lines.line1 && <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
+            {lines.line2 && <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
+            {lines.cityState && <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
+            <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
+            <div className="leading-tight">{RECEIPT_DASH}</div>
+            <div className="font-bold leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
+        </div>
         <div className="text-center leading-tight">{RECEIPT_DASH}</div>
         <pre className="m-0 whitespace-pre leading-tight">
 {formatReceiptMetaLine("Bill Date", formatDateTime(inv.invoiceDate || inv.createdAt))}

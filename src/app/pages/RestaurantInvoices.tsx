@@ -270,29 +270,27 @@ export default function RestaurantInvoices() {
                 className="mx-auto bg-white text-black"
                 style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
             >
-                {selectedHotel?.logoUrl && (
-                    <div className="flex justify-center mb-2">
-                        <img 
-                            src={resolveLogoUrl(selectedHotel.logoUrl)} 
-                            alt="Logo" 
-                            style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }} 
-                            onError={handleLogoImageError}
-                        />
-                    </div>
-                )}
-                <div className="text-center font-bold text-[14px] leading-tight" style={{ color: selectedHotel?.invoiceHotelNameColor || "#000000" }}>{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
-                {selectedHotel?.invoiceShowCustomLines && (
-                    <>
-                        <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine1Size || 13}px` }}>{selectedHotel.invoiceLine1 || ""}</div>
-                        <div className="text-center font-bold leading-tight" style={{ color: selectedHotel.invoiceHeaderColor, fontSize: `${selectedHotel.invoiceLine2Size || 15}px` }}>{selectedHotel.invoiceLine2 || ""}</div>
-                    </>
-                )}
-                {lines.line1 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
-                {lines.line2 && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
-                {lines.cityState && <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
-                <div className="text-center leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
-                <div className="text-center leading-tight">{RECEIPT_DASH}</div>
-                <div className="text-center font-bold leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
+                {/* Added: center align restaurant invoice heading */}
+                <div style={{ textAlign: "center" }}>
+                    {selectedHotel?.logoUrl && (
+                        <div className="flex justify-center mb-2">
+                            <img 
+                                src={resolveLogoUrl(selectedHotel.logoUrl)} 
+                                alt="Logo" 
+                                style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }} 
+                                onError={handleLogoImageError}
+                            />
+                        </div>
+                    )}
+                    <div className="font-bold text-[14px] leading-tight" style={{ color: selectedHotel?.invoiceHotelNameColor || "#000000" }}>{selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+                    {/* Removed: custom lines from restaurant invoice as requested */}
+                    {lines.line1 && <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
+                    {lines.line2 && <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
+                    {lines.cityState && <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
+                    <div className="leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
+                    <div className="leading-tight">{RECEIPT_DASH}</div>
+                    <div className="font-bold leading-tight" style={{ color: selectedHotel?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
+                </div>
                 <div className="text-center leading-tight">{RECEIPT_DASH}</div>
                 <pre className="m-0 whitespace-pre leading-tight">
 {formatReceiptMetaLine("Bill Date", formatReceiptDateTime(inv.invoiceDate || inv.createdAt))}
@@ -367,18 +365,18 @@ export default function RestaurantInvoices() {
                         </style>
                     </head>
                     <body>
-                        ${selectedHotel?.logoUrl ? `<div class="center" style="margin-bottom: 8px;"><img src="${resolveLogoUrl(selectedHotel.logoUrl)}" style="max-height: 50px; width: auto; object-fit: contain;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
-                        <div class="center bold big" style="line-height:1.2; color:${selectedHotel?.invoiceHotelNameColor || "#000000"};">${selectedHotel?.name || "HOTEL RESTAURANT"}</div>
-                        ${selectedHotel?.invoiceShowCustomLines ? `
-                        <div class="center bold" style="line-height:1.2; color:${selectedHotel.invoiceHeaderColor}; font-size: ${selectedHotel.invoiceLine1Size || 13}px;">${selectedHotel.invoiceLine1 || ""}</div>
-                        <div class="center bold" style="line-height:1.2; color:${selectedHotel.invoiceHeaderColor}; font-size: ${selectedHotel.invoiceLine2Size || 15}px;">${selectedHotel.invoiceLine2 || ""}</div>
-                        ` : ""}
-                        ${lines.line1 ? `<div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.line1}</div>` : ""}
-                        ${lines.line2 ? `<div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.line2}</div>` : ""}
-                        ${lines.cityState ? `<div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.cityState}</div>` : ""}
-                        <div class="center" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">Contact No: ${contactNo}</div>
-                        <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
-                        <div class="center bold" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">TAX INVOICE</div>
+                        <!-- Added: center align restaurant invoice heading -->
+                        <div class="center">
+                            ${selectedHotel?.logoUrl ? `<div><img src="${resolveLogoUrl(selectedHotel.logoUrl)}" style="max-height: 50px; width: auto; object-fit: contain; margin-bottom: 8px;" alt="Logo" onerror="handleLogoError(this)" /></div>` : ""}
+                            <div class="bold big" style="line-height:1.2; color:${selectedHotel?.invoiceHotelNameColor || "#000000"};">${selectedHotel?.name || "HOTEL RESTAURANT"}</div>
+                            <!-- Removed: custom lines from restaurant invoice as requested -->
+                            ${lines.line1 ? `<div style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.line1}</div>` : ""}
+                            ${lines.line2 ? `<div style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.line2}</div>` : ""}
+                            ${lines.cityState ? `<div style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">${lines.cityState}</div>` : ""}
+                            <div style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">Contact No: ${contactNo}</div>
+                            <div style="line-height:1.2;">${RECEIPT_DASH}</div>
+                            <div class="bold" style="line-height:1.2; color:${selectedHotel?.invoiceHeaderColor || "#000000"};">TAX INVOICE</div>
+                        </div>
                         <div class="center" style="line-height:1.2;">${RECEIPT_DASH}</div>
                         <pre style="line-height:1.2;">${formatReceiptMetaLine("Bill Date", formatReceiptDateTime(inv.invoiceDate || inv.createdAt))}
 ${formatReceiptMetaLine("Bill No.", getShortBillNumber(inv.invoiceNumber))}

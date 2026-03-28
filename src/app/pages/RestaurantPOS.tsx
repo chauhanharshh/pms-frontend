@@ -886,17 +886,17 @@ export function RestaurantPOS() {
             html, body { width: 80mm; }
           }
         </style></head><body>
-          <div class="center bold big" style="color: ${(activeHotel as any)?.invoiceHotelNameColor || "#000000"};">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
-          ${(activeHotel as any)?.invoiceShowCustomLines ? `
-          <div class="center bold" style="color: ${(activeHotel as any).invoiceHeaderColor}; font-size: ${(activeHotel as any).invoiceLine1Size || 13}px;">${(activeHotel as any).invoiceLine1 || ""}</div>
-          <div class="center bold" style="color: ${(activeHotel as any).invoiceHeaderColor}; font-size: ${(activeHotel as any).invoiceLine2Size || 15}px;">${(activeHotel as any).invoiceLine2 || ""}</div>
-          ` : ""}
-          ${addressLines.line1 ? `<div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.line1}</div>` : ""}
-          ${addressLines.line2 ? `<div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.line2}</div>` : ""}
-          ${addressLines.cityState ? `<div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.cityState}</div>` : ""}
-          <div class="center" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">Contact No: ${contactNo}</div>
-          <div class="center">${RECEIPT_DASH}</div>
-          <div class="center bold" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">TAX INVOICE</div>
+          <!-- Added: center align restaurant invoice heading -->
+          <div class="center">
+            <div class="bold big" style="color: ${(activeHotel as any)?.invoiceHotelNameColor || "#000000"};">${activeHotel?.name || "HOTEL RESTAURANT"}</div>
+            <!-- Removed: custom lines from restaurant invoice as requested -->
+            ${addressLines.line1 ? `<div style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.line1}</div>` : ""}
+            ${addressLines.line2 ? `<div style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.line2}</div>` : ""}
+            ${addressLines.cityState ? `<div style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${addressLines.cityState}</div>` : ""}
+            <div style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">Contact No: ${contactNo}</div>
+            <div style="line-height:1.2;">${RECEIPT_DASH}</div>
+            <div class="bold" style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">TAX INVOICE</div>
+          </div>
           <div class="center">${RECEIPT_DASH}</div>
           <div>Bill Date : ${formatReceiptDateTime(invoice?.invoiceDate || invoice?.createdAt)}</div>
           <div>Bill No.  : ${invoice?.invoiceNumber || "-"}</div>
@@ -1170,7 +1170,7 @@ export function RestaurantPOS() {
     body{font-family: Arial, sans-serif; padding:28px; line-height:1.45; color:#000; background:#fff;}
     h1,h2,h3,p{margin:0;}
     hr{border:0;border-top:1px solid #999;margin:10px 0;}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+    .header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;} /* Changed: centered header for restaurant A4 */
     .header-left{display:flex;gap:10px;align-items:center;}
     .logo{width:44px;height:44px;object-fit:contain;}
     .meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px;font-size:13px;}
@@ -1183,19 +1183,15 @@ export function RestaurantPOS() {
     .net{font-weight:700;border-top:1px solid #777;padding-top:8px;margin-top:4px;}
     .footer{text-align:center;margin-top:16px;font-size:12px;}
     </style></head><body>
+    <!-- Added: center align restaurant invoice heading -->
     <div class="header">
-      <div class="header-left">
-        ${activeHotel?.logoUrl ? `<img src="${resolveLogoUrl(activeHotel.logoUrl)}" alt="logo" class="logo" onerror="handleLogoError(this)"/>` : ""}
+        ${activeHotel?.logoUrl ? `<img src="${resolveLogoUrl(activeHotel.logoUrl)}" alt="logo" class="logo" style="margin-bottom: 8px;" onerror="handleLogoError(this)"/>` : ""}
         <div>
           <h2 style="color: ${(activeHotel as any)?.invoiceHotelNameColor || "#000000"};">${activeHotel?.name || "Restaurant"}</h2>
-          ${(activeHotel as any)?.invoiceShowCustomLines ? `
-          <div style="font-weight: bold; color: ${(activeHotel as any).invoiceHeaderColor}; margin-bottom: 2px; font-size: ${(activeHotel as any).invoiceLine1Size || 13}px;">${(activeHotel as any).invoiceLine1 || ""}</div>
-          <div style="font-weight: bold; color: ${(activeHotel as any).invoiceHeaderColor}; margin-bottom: 6px; font-size: ${(activeHotel as any).invoiceLine2Size || 15}px;">${(activeHotel as any).invoiceLine2 || ""}</div>
-          ` : ""}
+          <!-- Removed: custom lines from restaurant invoice as requested -->
           <p style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};">${activeHotel?.address || ""}</p>
+          <p style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};"><strong>TAX INVOICE</strong></p>
         </div>
-      </div>
-      <div style="color: ${(activeHotel as any)?.invoiceHeaderColor || "#000000"};"><strong>Restaurant Bill</strong></div>
     </div>
     <hr />
     <div class="meta">
@@ -1733,30 +1729,28 @@ export function RestaurantPOS() {
                     className="mx-auto bg-white text-black"
                     style={{ width: "76mm", fontFamily: "'Courier New', monospace", fontSize: "11px", lineHeight: 1.35 }}
                   >
-                    {activeHotel?.logoUrl && (
-                      <div className="flex justify-center mb-2">
-                        <img
-                          src={resolveLogoUrl(activeHotel.logoUrl)}
-                          alt="Logo"
-                          style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }}
-                          className="logo-preview-img"
-                          onError={handleLogoImageError}
-                        />
-                      </div>
-                    )}
-                    <div className="text-center font-bold text-[14px]" style={{ color: (activeHotel as any)?.invoiceHotelNameColor || "#000000" }}>{activeHotel?.name || "HOTEL RESTAURANT"}</div>
-                    {(activeHotel as any)?.invoiceShowCustomLines && (
-                      <>
-                        <div className="text-center font-bold" style={{ color: (activeHotel as any).invoiceHeaderColor, fontSize: `${(activeHotel as any).invoiceLine1Size || 11}px` }}>{(activeHotel as any).invoiceLine1 || ""}</div>
-                        <div className="text-center font-bold" style={{ color: (activeHotel as any).invoiceHeaderColor, fontSize: `${(activeHotel as any).invoiceLine2Size || 13}px` }}>{(activeHotel as any).invoiceLine2 || ""}</div>
-                      </>
-                    )}
-                    {lines.line1 && <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
-                    {lines.line2 && <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
-                    {lines.cityState && <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
-                    <div className="text-center" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
-                    <div className="text-center">{RECEIPT_DASH}</div>
-                    <div className="text-center font-bold" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
+                    {/* Added: center align restaurant invoice heading */}
+                    <div style={{ textAlign: "center" }}>
+                        {activeHotel?.logoUrl && (
+                          <div className="flex justify-center mb-2">
+                            <img
+                              src={resolveLogoUrl(activeHotel.logoUrl)}
+                              alt="Logo"
+                              style={{ maxHeight: "50px", width: "auto", objectFit: "contain" }}
+                              className="logo-preview-img"
+                              onError={handleLogoImageError}
+                            />
+                          </div>
+                        )}
+                        <div className="font-bold text-[14px]" style={{ color: (activeHotel as any)?.invoiceHotelNameColor || "#000000" }}>{activeHotel?.name || "HOTEL RESTAURANT"}</div>
+                        {/* Removed: custom lines from restaurant invoice as requested */}
+                        {lines.line1 && <div className="" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.line1}</div>}
+                        {lines.line2 && <div className="" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.line2}</div>}
+                        {lines.cityState && <div className="" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>{lines.cityState}</div>}
+                        <div className="" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>Contact No: {contactNo}</div>
+                        <div className="">{RECEIPT_DASH}</div>
+                        <div className="font-bold" style={{ color: (activeHotel as any)?.invoiceHeaderColor || "#000000" }}>TAX INVOICE</div>
+                    </div>
                     <div className="text-center">{RECEIPT_DASH}</div>
                     <div>Bill Date : {formatReceiptDateTime(billToPreview?.invoiceDate || billToPreview?.createdAt)}</div>
                     <div>Bill No.  : {billToPreview?.invoiceNumber || "-"}</div>
