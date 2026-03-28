@@ -574,8 +574,10 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       .replace(/>/g, "&gt;");
     const hasLogo = safeLogoAttr.trim().length > 0;
     const showWatermark = hasLogo && hotelFields.showInvoiceWatermark;
+    // Fixed: watermark base64 for Electron compatibility
+    const WATERMARK_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiB2aWV3Qm94PSIwIDAgNDAwIDQwMCI+PGcIG9wYWNpdHk9IjAuMTIiPjxjaXJjbGUgY3g9IjIwMCIgY3k9IjIwMCIgcj0iMTkwIiBmaWxsPSJub25lIiBzdHJva2U9IiNDNkE3NUUiIHN0cm9rZS13aWR0aD0iMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iJ1RpbWVzIE5ldyBSb21hbicsIHNlcmlmIiBmb250LXNpemU9IjYwIiBmaWxsPSIjQzZBNzVFIiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlVUV0FSQUtIQU5EPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNjUlIiBmb250LWZhbWlseT0iJ1RpbWVzIE5ldyBSb21hbicsIHNlcmlmIiBmb250LXNpemU9IjQwIiBmaWxsPSIjQzZBNzVFIiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkhPVEVMUzRVPC90ZXh0PjwvZz48L3N2Zz4=';
     const watermarkHtml = showWatermark
-      ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${safeLogoAttr}" alt="watermark" onerror="handleLogoError(this)" /></div>`
+      ? `<div class="invoice-watermark"><img class="invoice-watermark-image" src="${WATERMARK_BASE64}" alt="watermark" /></div>`
       : "";
 
     const lateCheckoutNoteHtml = lateCheckoutApplied
@@ -584,12 +586,12 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
 
     let itemsHtml = items.map(item => `
       <tr>
-        <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.date}</td>
-        <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E; white-space: pre-line; vertical-align: middle;">${item.type}</td>
-        <td class="border-b" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.desc}</td>
-        <td class="border-b text-right" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.charges.toFixed(2)}</td>
-        <td class="border-b text-right" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.discount.toFixed(2)}</td>
-        <td class="border-b text-right" style="padding: 6px 4px; border-right: 1px solid #C6A75E;">${item.gst.toFixed(2)}</td>
+        <td class="border-b" style="padding: 6px 4px; border-right: 2px solid #000;">${item.date}</td>
+        <td class="border-b" style="padding: 6px 4px; border-right: 2px solid #000; white-space: pre-line; vertical-align: middle;">${item.type}</td>
+        <td class="border-b" style="padding: 6px 4px; border-right: 2px solid #000;">${item.desc}</td>
+        <td class="border-b text-right" style="padding: 6px 4px; border-right: 2px solid #000;">${item.charges.toFixed(2)}</td>
+        <td class="border-b text-right" style="padding: 6px 4px; border-right: 2px solid #000;">${item.discount.toFixed(2)}</td>
+        <td class="border-b text-right" style="padding: 6px 4px; border-right: 2px solid #000;">${item.gst.toFixed(2)}</td>
         <td class="border-b text-right" style="padding: 6px 4px;">${item.total.toFixed(2)}</td>
       </tr>
     `).join('');
@@ -598,8 +600,8 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       <html><head><title>Invoice ${invoice.invoiceNumber}</title>
       <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; margin: 0; padding: 0; }
-        .invoice-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; background: #fff; position: relative; min-height: 100%; }
+        body { font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; margin: 0; padding: 0; font-weight: bold; }
+        .invoice-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; background: #fff; position: relative; min-height: 100%; font-weight: bold; }
         .invoice-container { position: relative; }
         .invoice-watermark {
           position: absolute;
@@ -608,7 +610,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           transform: translate(-50%, -50%);
           width: 50%;
           max-width: 400px;
-          opacity: 0.70;
+          opacity: 0.12; /* Increased slightly for better visibility as watermark */
           pointer-events: none;
           z-index: 0;
         }
@@ -621,35 +623,35 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
         .text-center { text-align: center; }
         .text-left { text-align: left; }
         .text-right { text-align: right; }
-        table { width: 100%; border-collapse: collapse; }
-        .border-all { border: 1.5px solid #C6A75E; }
-        .border-b { border-bottom: 1px solid #C6A75E; }
-        .border-l { border-left: 1px solid #C6A75E; }
-        .border-r { border-right: 1px solid #C6A75E; }
+        table { width: 100%; border-collapse: collapse; font-weight: bold; }
+        .border-all { border: 2px solid #000; } /* Added: bold lines */
+        .border-b { border-bottom: 2px solid #000; } /* Added: bold lines */
+        .border-l { border-left: 2px solid #000; } /* Added: bold lines */
+        .border-r { border-right: 2px solid #000; } /* Added: bold lines */
         
         .hotel-name { font-size: 26px; font-weight: bold; margin: 0; text-transform: uppercase; color: #C6A75E; font-family: 'Times New Roman', serif; }
         .hotel-info { font-size: 14px; margin: 2px 0; font-family: 'Courier New', Courier, monospace; }
         .proforma-title { font-size: 16px; font-weight: bold; margin: 20px 0; font-family: serif; letter-spacing: 1px; text-decoration: underline; }
         
-        .info-box { border: 1.5px solid #C6A75E; display: flex; margin-bottom: 15px; }
+        .info-box { border: 2px solid #000; display: flex; margin-bottom: 15px; font-weight: bold; } /* Added: bold lines and text */
         .info-col { width: 50%; padding: 8px 12px; }
         .info-row { display: flex; margin-bottom: 4px; line-height: 1.2; }
         .info-label { width: 140px; }
         .info-val { flex: 1; }
         
-        .table-header th { padding: 8px 4px; text-align: left; font-size: 13px; border-bottom: 1.5px solid #C6A75E; border-right: 1px solid #C6A75E; }
+        .table-header th { padding: 8px 4px; text-align: left; font-size: 13px; border-bottom: 2px solid #000; border-right: 2px solid #000; font-weight: bold; }
         .table-header th:last-child { border-right: none; }
         
-        .totals-section { border: 1.5px solid #C6A75E; display: flex; border-top: none; }
-        .totals-col-left { width: 50%; border-right: 1.5px solid #C6A75E; padding: 8px 12px; }
+        .totals-section { border: 2px solid #000; display: flex; border-top: none; font-weight: bold; }
+        .totals-col-left { width: 50%; border-right: 2px solid #000; padding: 8px 12px; }
         .totals-col-right { width: 50%; padding: 8px 12px; }
         .totals-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
         
-        .rupees-box { border: 1.5px solid #C6A75E; border-top: none; padding: 10px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase; }
+        .rupees-box { border: 2px solid #000; border-top: none; padding: 10px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase; }
         
         .signature-section { margin-top: 80px; display: flex; justify-content: space-between; padding: 0 40px; }
         .sig-box { text-align: center; width: 250px; }
-        .sig-line { border-top: 1.5px solid #000; margin-bottom: 8px; }
+        .sig-line { border-top: 2px solid #000; margin-bottom: 8px; font-weight: bold; }
         .late-checkout-note { font-size: 11px; font-style: italic; color: #555; margin-top: 10px; margin-bottom: 10px; border-top: 1px solid #ccc; padding-top: 6px; }
         
         @media print { 
@@ -662,8 +664,9 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
             transform: translate(-50%, -50%);
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            opacity: 0.07;
+            opacity: 0.12; /* Fixed: consistent opacity for print */
           }
+          * { font-weight: bold !important; } /* Added: bold all invoice text for print */
           @page { size: portrait; margin: 10mm; }
         }
       </style>
@@ -693,7 +696,8 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
       </script>
       </head>
       <body>
-        <div class="invoice-wrapper invoice-container" style="border: 1px solid #C6A75E; min-height: 100vh;">
+        <div class="invoice-wrapper invoice-container" style="border: 2px solid #000; min-height: 100vh; font-weight: bold;">
+          <!-- Added: bold fonts and borders throughout invoice -->
           ${watermarkHtml}
           <div class="invoice-content">
           <div class="text-center" style="margin-bottom: 20px;">
@@ -711,7 +715,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           </div>
 
           <div class="info-box">
-            <div class="info-col" style="border-right: 1.5px solid #C6A75E;">
+            <div class="info-col" style="border-right: 2px solid #000;">
               ${companyName ? `<div class="info-row"><div class="info-label">Company</div><div class="info-val">- ${companyName}</div></div>` : ""}
               ${companyGst ? `<div class="info-row"><div class="info-label">GST No.</div><div class="info-val">- ${companyGst}</div></div>` : ""}
               <div class="info-row"><div class="info-label">Guest Name</div><div class="info-val">- ${guestName || "-"}</div></div>
@@ -745,17 +749,17 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
             <tbody>
               ${itemsHtml}
               <tr style="font-weight: bold; font-size: 16px;">
-                <td colspan="3" style="padding: 8px 4px; border-right: 1.5px solid #C6A75E;">Total</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${itemsChargesTotal.toFixed(2)}</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${itemsDiscountTotal.toFixed(2)}</td>
-                <td style="padding: 8px 4px; text-align: right; border-right: 1.5px solid #C6A75E;">${itemsGstTotal.toFixed(2)}</td>
+                <td colspan="3" style="padding: 8px 4px; border-right: 2px solid #000;">Total</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 2px solid #000;">${itemsChargesTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 2px solid #000;">${itemsDiscountTotal.toFixed(2)}</td>
+                <td style="padding: 8px 4px; text-align: right; border-right: 2px solid #000;">${itemsGstTotal.toFixed(2)}</td>
                 <td style="padding: 8px 4px; text-align: right;">${itemsBeforeRound.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
 
           <div class="totals-section">
-            <div class="totals-col-left">
+            <div class="totals-col-left" style="border-right: 2px solid #000;">
               <div class="totals-row"><div>Total GST</div><div>${itemsGstTotal.toFixed(2)}</div></div>
               <div class="totals-row"><div>CGST</div><div>${itemsCgst.toFixed(2)}</div></div>
               <div class="totals-row"><div>SGST</div><div>${itemsSgst.toFixed(2)}</div></div>
