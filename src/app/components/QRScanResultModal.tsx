@@ -1,5 +1,6 @@
 import React from "react";
 import { X, User, Home, Calendar, ClipboardCheck, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router";
 import { Booking, usePMS } from "../contexts/PMSContext";
 import { formatCurrency } from "../utils/format";
 
@@ -15,6 +16,7 @@ export const QRScanResultModal: React.FC<QRScanResultModalProps> = ({
   booking,
 }) => {
   const { rooms, confirmQRCheckIn, isConfirmingQRCheckIn } = usePMS();
+  const navigate = useNavigate();
 
   if (!isOpen || !booking) return null;
 
@@ -22,7 +24,8 @@ export const QRScanResultModal: React.FC<QRScanResultModalProps> = ({
 
   const handleConfirm = async () => {
     try {
-      await confirmQRCheckIn();
+      // Redirect to check-in page with bookingId pre-filled logic
+      navigate(`/hotel/check-in?bookingId=${booking.id}`);
       onClose();
     } catch (error) {
       // Error is handled in context with toast

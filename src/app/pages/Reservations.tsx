@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { exportToCSV, formatDateForCSV } from "../utils/tableExport";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
+import { HARDCODED_ROOM_TYPES } from "../utils/roomTypes";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency, formatDate } from "../utils/format";
 import { Booking } from "../contexts/PMSContext";
-import { BookOpen, Plus, X, Save, Search, Eye } from "lucide-react";
+import { BookOpen, Plus, X, Save, Search, Eye, ChevronDown, BedDouble } from "lucide-react";
 import { BookingPreviewModal } from "../components/BookingPreviewModal";
 
 const GOLD = "#C6A75E";
@@ -58,6 +59,23 @@ export function Reservations() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
+  const [roomDropdownOpen, setRoomDropdownOpen] = useState(false);
+  const [roomSearch, setRoomSearch] = useState("");
+  const roomDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close room dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (roomDropdownRef.current && !roomDropdownRef.current.contains(e.target as Node)) {
+        setRoomDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Get the room selection preference
+  const roomSelectionMode = localStorage.getItem("roomSelectionMode") || "number";
 
   const defaultHotel = isAdmin
     ? filterHotel === "all"
@@ -102,12 +120,90 @@ export function Reservations() {
     return matchHotel && matchStatus && matchSearch;
   });
 
-  const availableRooms = rooms.filter(
-    (r) => r.hotelId === form.hotelId && r.status === "vacant",
-  );
+  // ── Room availability helper ─────────────────────────────────────────────
+  const d2t = (d: string | Date | undefined | null): number => {
+    if (!d) return 0;
+    const s = typeof d === "string" 
+      ? d.split("T")[0] 
+      : d.toLocaleDateString("en-CA");
+    return new Date(`${s}T00:00:00Z`).getTime();
+  };
+
+  const bookingConflicts = (
+    existingCheckIn: string | Date,
+    existingCheckOut: string | Date,
+    newCheckIn: string,
+    newCheckOut: string,
+  ): boolean => {
+    const bIn  = d2t(existingCheckIn);
+    const bOut = d2t(existingCheckOut);
+    const nIn  = d2t(newCheckIn);
+    const nOut = d2t(newCheckOut);
+    return nIn < bOut && nOut > bIn;
+  };
+
+  const todayUtcMs = d2t(new Date());
+
+  const availableRooms = rooms.filter((r) => {
+    if (r.hotelId !== form.hotelId) return false;
+    if (["maintenance", "cleaning"].includes(r.status)) return false;
+
+    const hasConflict = bookings.some((b) => {
+      if (b.roomId !== r.id) return false;
+      if (!["pending", "confirmed", "checked_in", "reserved", "booked"].includes(b.status)) return false;
+
+      if (form.checkInDate && form.checkOutDate) {
+        return bookingConflicts(b.checkInDate, b.checkOutDate, form.checkInDate, form.checkOutDate);
+      }
+      return d2t(b.checkOutDate) > todayUtcMs;
+    });
+
+    return !hasConflict;
+  });
+
+  const availableTypes = useMemo(() => {
+    if (roomSelectionMode !== "type") return [];
+
+    return HARDCODED_ROOM_TYPES.map(typeName => {
+      const matchingRooms = availableRooms.filter(r => 
+        (r.roomType?.name || "").toLowerCase() === typeName.toLowerCase() ||
+        (r as any).type?.toLowerCase() === typeName.toLowerCase()
+      );
+      
+      return {
+        name: typeName,
+        count: matchingRooms.length,
+        firstRoomId: "", // No longer auto-assigning room ID
+        roomNumber: typeName
+      };
+    });
+  }, [availableRooms, roomSelectionMode]);
+
+  const typedRoom = (form.roomNumber && roomSelectionMode !== "type")
+    ? rooms.find((r) => r.hotelId === form.hotelId && r.roomNumber === form.roomNumber)
+    : null;
+  const typedRoomConflict = (typedRoom && roomSelectionMode !== "type")
+    ? bookings.find((b) => {
+        if (b.roomId !== typedRoom.id) return false;
+        if (!["pending", "confirmed", "checked_in"].includes(b.status)) return false;
+        if (form.checkInDate && form.checkOutDate) {
+          return bookingConflicts(b.checkInDate, b.checkOutDate, form.checkInDate, form.checkOutDate);
+        }
+        return d2t(b.checkOutDate) > todayUtcMs;
+      })
+    : null;
+
 
   const handleRoomSelect = (val: string) => {
-    // Added: free-text input for room — accepts dropdown or manual entry
+    if (roomSelectionMode === "type") {
+      setForm((f) => ({
+        ...f,
+        roomId: "",
+        roomNumber: val,
+      }));
+      return;
+    }
+
     const room = rooms.find((r) => r.id === val || r.roomNumber === val);
     if (room) {
       setForm((f) => ({
@@ -133,7 +229,6 @@ export function Reservations() {
     const nights = calculateRoomDays(`${checkIn}T${cinTime}`, `${checkOut}T${coutTime}`);
     const p = price !== undefined ? price : ((form as any).roomPrice || 0);
     const base = p * nights;
-    // GST 5% on base if daily price <= 7500, 18% otherwise
     const gstRate = p > 7500 ? 18 : 5;
     const gstAmount = Math.round((base * gstRate) / 100);
     setForm((f) => ({ ...f, totalAmount: base + gstAmount }));
@@ -345,12 +440,9 @@ export function Reservations() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm">{b.guestPhone}</td>
-                      <td
-                        className="px-4 py-3 text-sm font-semibold"
-                        style={{ color: DARKGOLD }}
-                      >
-                        Room {b.roomNumber}
-                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold" style={{ color: GOLD }}>
+                      {b.roomId ? `Room ${b.roomNumber}` : (b.roomNumber || "Not Assigned")}
+                    </td>
                       {isAdmin && (
                         <td
                           className="px-4 py-3 text-xs"
@@ -581,28 +673,299 @@ export function Reservations() {
                     <option value="MAP">MAP - Modified American Plan (Breakfast + Dinner)</option>
                   </select>
                 </div>
-                <div>
+                <div ref={roomDropdownRef} style={{ position: "relative" }}>
                   <label
                     className="block text-sm font-medium mb-1"
                     style={{ color: DARKGOLD }}
                   >
-                    Select Room *
+                    {roomSelectionMode === "type" ? "Select Room Type *" : "Select Room *"}
                   </label>
-                  <input
-                    className="w-full px-3 py-2.5 rounded-lg outline-none"
-                    style={{ border: "2px solid #E5E1DA" }}
-                    placeholder="Type or select room..."
-                    list="room-datalist"
-                    value={form.roomNumber || ""}
-                    onChange={(e) => handleRoomSelect(e.target.value)}
-                  />
-                  <datalist id="room-datalist">
-                    {availableRooms.map((r) => (
-                      <option key={r.id} value={r.roomNumber}>
-                        Room {r.roomNumber} — {r.roomType?.name}
-                      </option>
-                    ))}
-                  </datalist>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      border: roomDropdownOpen ? `2px solid ${GOLD}` : "2px solid #E5E1DA",
+                      borderRadius: "10px",
+                      background: "white",
+                      transition: "border-color 0.15s",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <input
+                      type="text"
+                      placeholder={(!form.checkInDate || !form.checkOutDate) 
+                        ? "Select dates first..." 
+                        : (roomSelectionMode === "type" ? "Select room type..." : "Type room number or pick from list...")}
+                      autoComplete="off"
+                      disabled={!form.checkInDate || !form.checkOutDate}
+                      value={roomSearch !== "" ? roomSearch : (form.roomNumber || "")}
+                      onFocus={() => { 
+                        if (form.checkInDate && form.checkOutDate) {
+                          setRoomSearch(form.roomNumber || ""); 
+                          setRoomDropdownOpen(true); 
+                        }
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setRoomSearch(val);
+                        setRoomDropdownOpen(true);
+                        handleRoomSelect(val);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "10px 12px",
+                        border: "none",
+                        outline: "none",
+                        fontSize: "14px",
+                        background: "transparent",
+                        color: (!form.checkInDate || !form.checkOutDate) ? "#9CA3AF" : (form.roomId ? DARKGOLD : "#374151"),
+                        fontWeight: form.roomId ? 600 : 400,
+                        cursor: (!form.checkInDate || !form.checkOutDate) ? "not-allowed" : "text",
+                      }}
+                    />
+                    {form.roomNumber && (
+                      <button
+                        type="button"
+                        onClick={() => { handleRoomSelect(""); setRoomSearch(""); setRoomDropdownOpen(false); }}
+                        style={{ padding: "0 6px", background: "transparent", border: "none", cursor: "pointer", color: "#9CA3AF" }}
+                        title="Clear room"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!form.checkInDate || !form.checkOutDate}
+                      onClick={() => { 
+                        if (form.checkInDate && form.checkOutDate) {
+                          setRoomDropdownOpen((o) => !o); 
+                          setRoomSearch(form.roomNumber || ""); 
+                        }
+                      }}
+                      style={{ 
+                        padding: "0 10px", 
+                        background: "transparent", 
+                        border: "none", 
+                        borderLeft: "1px solid #F3EFE6", 
+                        cursor: (!form.checkInDate || !form.checkOutDate) ? "not-allowed" : "pointer", 
+                        height: "100%", 
+                        display: "flex", 
+                        alignItems: "center",
+                        opacity: (!form.checkInDate || !form.checkOutDate) ? 0.5 : 1,
+                      }}
+                    >
+                      <ChevronDown
+                        className="w-4 h-4"
+                        style={{
+                          color: GOLD,
+                          transform: roomDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 0.2s",
+                        }}
+                      />
+                    </button>
+                  </div>
+                  {roomSelectionMode !== "type" && form.roomId && !typedRoomConflict && (
+                    <div style={{ marginTop: 4, fontSize: "11px", color: "#16a34a", paddingLeft: 2 }}>
+                      ✓ Room matched &amp; linked
+                    </div>
+                  )}
+                  {roomSelectionMode !== "type" && typedRoomConflict && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: "12px",
+                        color: "#dc2626",
+                        paddingLeft: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontWeight: 600,
+                      }}
+                    >
+                      <span style={{ fontSize: 14 }}>🚫</span>
+                      Room {form.roomNumber} is already {typedRoomConflict.status === "checked_in" ? "occupied (checked-in)" : "reserved (pending)"}.
+                      {typedRoomConflict.guestName
+                        ? ` Guest: ${typedRoomConflict.guestName}.`
+                        : ""}
+                      {" "}Please choose a different room.
+                    </div>
+                  )}
+                  {roomSelectionMode !== "type" && !form.roomId && form.roomNumber && !typedRoomConflict && !typedRoom && (
+                    <div style={{ marginTop: 4, fontSize: "11px", color: "#F59E0B", paddingLeft: 2 }}>
+                      ⚠ Manual entry — room number not found in system
+                    </div>
+                  )}
+
+                  {roomDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 6px)",
+                        left: 0,
+                        right: 0,
+                        zIndex: 100,
+                        background: "white",
+                        border: `2px solid ${GOLD}`,
+                        borderRadius: "12px",
+                        boxShadow: "0 8px 24px rgba(198,167,94,0.18)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ maxHeight: "240px", overflowY: "auto" }}>
+                        {roomSelectionMode === "type" ? (
+                          // ── Room Type Mode ─────────────────────────────────
+                          availableTypes
+                            .filter(t => 
+                              !roomSearch || 
+                              t.name.toLowerCase().includes(roomSearch.toLowerCase())
+                            )
+                            .map((t, idx, arr) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleRoomSelect(t.name);
+                                  setRoomSearch("");
+                                  setRoomDropdownOpen(false);
+                                }}
+                                className="w-full text-left flex items-center gap-3"
+                                style={{
+                                  padding: "10px 14px",
+                                  borderBottom: idx < arr.length - 1 ? "1px solid #F3EFE6" : "none",
+                                  background: "white",
+                                  cursor: "pointer",
+                                  transition: "background 0.1s",
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "#FDF8EF")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                              >
+                                <div
+                                  style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: "8px",
+                                    background: t.count > 0 
+                                      ? "linear-gradient(135deg, #C6A75E22, #C6A75E44)"
+                                      : "#F3F4F6",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <BedDouble className="w-4 h-4" style={{ color: t.count > 0 ? DARKGOLD : "#9CA3AF" }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span style={{ 
+                                      fontWeight: 700, 
+                                      fontSize: "14px", 
+                                      color: t.count > 0 ? DARKGOLD : "#6B7280" 
+                                    }}>
+                                      {t.name}
+                                    </span>
+                                    <span style={{ 
+                                      fontSize: "11px", 
+                                      color: t.count > 0 ? GOLD : "#EF4444", 
+                                      fontWeight: 600 
+                                    }}>
+                                      {t.count > 0 ? `${t.count} available` : "Fully Booked"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                        ) : (
+                          // ── Room Number Mode (Existing) ──────────────────────
+                          availableRooms
+                            .filter((r) =>
+                              !roomSearch ||
+                              r.roomNumber.toLowerCase().includes(roomSearch.toLowerCase()) ||
+                              (r.roomType?.name || "").toLowerCase().includes(roomSearch.toLowerCase())
+                            )
+                            .map((r, idx, arr) => {
+                              const currentBooking = bookings.find(b => 
+                                b.roomId === r.id && 
+                                ["checked_in", "pending"].includes(b.status) &&
+                                d2t(b.checkOutDate) > todayUtcMs
+                              );
+
+                              return (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleRoomSelect(r.id);
+                                    setRoomSearch("");
+                                    setRoomDropdownOpen(false);
+                                  }}
+                                  className="w-full text-left flex items-center gap-3"
+                                  style={{
+                                    padding: "10px 14px",
+                                    borderBottom: idx < arr.length - 1 ? "1px solid #F3EFE6" : "none",
+                                    background: form.roomNumber === r.roomNumber ? "#FDF8EF" : "white",
+                                    cursor: "pointer",
+                                    transition: "background 0.1s",
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = "#FDF8EF")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background = form.roomNumber === r.roomNumber ? "#FDF8EF" : "white")}
+                                >
+                                  <div
+                                    style={{
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: "8px",
+                                      background: "linear-gradient(135deg, #C6A75E22, #C6A75E44)",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <BedDouble className="w-4 h-4" style={{ color: DARKGOLD }} />
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                      <span style={{ fontWeight: 700, fontSize: "14px", color: DARKGOLD }}>
+                                        Room {r.roomNumber}
+                                      </span>
+                                      {currentBooking && (
+                                        <span style={{ 
+                                          fontSize: "10px", 
+                                          background: currentBooking.status === "checked_in" ? "#dcfce7" : "#fef08a",
+                                          color: currentBooking.status === "checked_in" ? "#166534" : "#a16207",
+                                          padding: "1px 6px",
+                                          borderRadius: "4px",
+                                          fontWeight: 600
+                                        }}>
+                                          Busy until {formatDate(currentBooking.checkOutDate)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ color: "#6B7280", fontSize: "12px" }}>
+                                      {r.roomType?.name || "Standard Room"}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })
+                        )}
+                        {(roomSelectionMode === "type" ? availableTypes : availableRooms).filter((item: any) =>
+                          !roomSearch ||
+                          (item.name || item.roomNumber).toLowerCase().includes(roomSearch.toLowerCase())
+                        ).length === 0 && (
+                          <div style={{ padding: "20px 16px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>
+                            <BedDouble className="w-6 h-6 mx-auto mb-2" style={{ color: "#E5E1DA" }} />
+                            {availableRooms.length === 0
+                              ? "No vacant rooms for selected dates"
+                              : "No rooms match your search"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label

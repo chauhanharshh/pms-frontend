@@ -1046,11 +1046,17 @@ export function PMSProvider({ children }: { children: ReactNode }) {
 
   // ── BOOKINGS ─────────────────────────────────────────────────────
   const addBooking = async (b: any) => {
-    const res = await api.post("/bookings/reservation", b);
+    // Fixed: reservation payload corrected for API
+    // Pass the booking's hotelId as X-Hotel-ID header so the backend
+    // availability check uses the correct hotel (not the admin's own hotel context)
+    const targetHotelId = b.hotelId || currentHotelId || user?.hotelId;
+    const config = targetHotelId ? { headers: { 'X-Hotel-ID': targetHotelId } } : {};
+    const res = await api.post("/bookings/reservation", b, config);
     const newBooking = res.data.data;
     setBookings((prev) => [...prev, newBooking]);
     return newBooking;
   };
+
 
   const walkInCheckIn = async (data: any): Promise<{ booking: Booking; bill: Bill }> => {
     const res = await api.post("/bookings/walk-in", data);

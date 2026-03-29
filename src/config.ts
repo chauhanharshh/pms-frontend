@@ -9,6 +9,9 @@ const runtimeProcess = (globalThis as { process?: { env?: Record<string, string 
 // 2) Legacy Vite API base URL
 // 3) CRA-style runtime env
 // 4) Safe production placeholder
+// Old Render URL: https://pms-backend-1j4y.onrender.com
+// New VPS URL: http://148.230.97.88
+// Updated: API URL changed from Render to VPS
 const apiBaseUrl = import.meta.env?.VITE_API_URL
     || import.meta.env?.VITE_API_BASE_URL
     || runtimeProcess?.env?.REACT_APP_API_URL

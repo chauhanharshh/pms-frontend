@@ -44,6 +44,9 @@ export function Settings() {
       return false;
     }
   });
+  const [roomSelectionMode, setRoomSelectionMode] = useState<"number" | "type">(() => {
+    return (localStorage.getItem("roomSelectionMode") as "number" | "type") || "type";
+  });
 
   // Added: electron-updater for automatic updates
   const [appVersion, setAppVersion] = useState('');
@@ -102,6 +105,7 @@ export function Settings() {
       
       localStorage.setItem("showFinancialSummary", JSON.stringify(showFinancialSummary));
       localStorage.setItem("restaurantEnabled", JSON.stringify(restaurantEnabled));
+      localStorage.setItem("roomSelectionMode", roomSelectionMode);
       
       await refreshAll(true);
       toast.success("Settings saved successfully!");
@@ -414,6 +418,31 @@ export function Settings() {
                       className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${restaurantEnabled ? "translate-x-7" : "translate-x-1"}`}
                     />
                   </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#E8DCC8]">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">Room Selection Mode</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Choose between selecting by <strong>Room Number</strong> or <strong>Room Type</strong>
+                    </p>
+                  </div>
+                  <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setRoomSelectionMode("number")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${roomSelectionMode === "number" ? "bg-white shadow-sm text-[#B8860B]" : "text-gray-500 hover:text-gray-700"}`}
+                    >
+                      Room Number
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoomSelectionMode("type")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${roomSelectionMode === "type" ? "bg-white shadow-sm text-[#B8860B]" : "text-gray-500 hover:text-gray-700"}`}
+                    >
+                      Room Type
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

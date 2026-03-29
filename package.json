@@ -105,8 +105,8 @@
     "productName": "UTTARAKHAND HOTELS4U",
     "publish": [{
       "provider": "github",
-      "owner": "YOUR_GITHUB_USERNAME",
-      "repo": "YOUR_GITHUB_REPO_NAME",
+      "owner": "chauhanharshh",
+      "repo": "hotels4u-pms",
       "private": true
     }],
     "files": [

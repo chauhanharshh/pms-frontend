@@ -19,6 +19,9 @@ export function printHtml(html: string) {
           }
 
           // 2. Try production fallback
+          // Old Render URL: https://pms-backend-1j4y.onrender.com
+          // New VPS URL: http://148.230.97.88
+          // Updated: API URL changed from Render to VPS
           if (!currentSrc.includes('148.230.97.88')) {
             img.setAttribute('data-stage', 'prod-fallback');
             try {
@@ -29,6 +32,9 @@ export function printHtml(html: string) {
           }
         }
 
+        // Old Render URL: https://pms-backend-1j4y.onrender.com
+        // New VPS URL: http://148.230.97.88
+        // Updated: API URL changed from Render to VPS
         if (stage === 'dev-local' && !currentSrc.includes('148.230.97.88')) {
             img.setAttribute('data-stage', 'prod-fallback');
             try {

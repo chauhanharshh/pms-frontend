@@ -1,6 +1,9 @@
 import https from 'https';
 
-const url = 'https://pms-backend-1j4y.onrender.com/api/v1/health';
+// Old Render URL: https://pms-backend-1j4y.onrender.com
+// New VPS URL: http://148.230.97.88
+// Updated: API URL changed from Render to VPS
+const url = 'http://148.230.97.88/api/v1/health';
 
 https.get(url, (res) => {
     console.log(`Status Code: ${res.statusCode}`);

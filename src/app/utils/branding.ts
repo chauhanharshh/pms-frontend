@@ -94,6 +94,9 @@ export function handleLogoImageError(event: { currentTarget: HTMLImageElement })
     }
 
     // 2. If not on localhost or local fallback failed, try production fallback
+    // Old Render URL: https://pms-backend-1j4y.onrender.com
+    // New VPS URL: http://148.230.97.88
+    // Updated: API URL changed from Render to VPS
     if (!currentSrc.includes('148.230.97.88')) {
       try {
         const url = new URL(currentSrc);
@@ -112,6 +115,9 @@ export function handleLogoImageError(event: { currentTarget: HTMLImageElement })
 
   if (stage === 'dev-local' || stage === 'prod-fallback') {
     // If local/prod fallback failed, try production if not tried, else default
+    // Old Render URL: https://pms-backend-1j4y.onrender.com
+    // New VPS URL: http://148.230.97.88
+    // Updated: API URL changed from Render to VPS
     if (stage === 'dev-local' && !currentSrc.includes('148.230.97.88')) {
       try {
         const url = new URL(currentSrc);

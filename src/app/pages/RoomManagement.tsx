@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Room } from "../contexts/PMSContext";
+import { HARDCODED_ROOM_TYPES } from "../utils/roomTypes";
 import { calculateRoomDays, formatActualCheckInDateTime, formatCurrency } from "../utils/format";
 import { useRoomStatusColors } from "../utils/roomStatusColors";
 import {
@@ -455,15 +456,15 @@ function AddRoomModal({
               onChange={(e) => {
                 const t = e.target.value as string;
                 f("type", t);
-                f("maxOccupancy", TYPE_OCC_MAP[t]);
-                f("basePrice", TYPE_PRICE_MAP[t]);
+                f("maxOccupancy", TYPE_OCC_MAP[t] || 3);
+                f("basePrice", TYPE_PRICE_MAP[t] || 2500);
               }}
             >
-              <option value="Single">Single</option>
-              <option value="Double">Double</option>
-              <option value="Deluxe">Deluxe</option>
-              <option value="Suite">Suite</option>
-              <option value="Premium">Premium</option>
+              {HARDCODED_ROOM_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </div>
 

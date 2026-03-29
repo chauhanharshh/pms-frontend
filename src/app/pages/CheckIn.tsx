@@ -192,9 +192,12 @@ export function CheckIn() {
   const [previewBooking, setPreviewBooking] = useState<Booking | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [reservationId, setReservationId] = useState("");
+  // Tracks the source reservation booking ID when doing room-assign flow
+  const [sourceReservationId, setSourceReservationId] = useState("");
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const paramRoomId = searchParams.get("roomId");
+  const paramBookingId = searchParams.get("bookingId");
 
   useEffect(() => {
     if (paramRoomId) {
@@ -207,8 +210,26 @@ export function CheckIn() {
         setCustomRoomRate(baseRate);
         setRoomRateInput(String(baseRate));
       }
+      // Clear the param after use to avoid re-triggering on re-render
+      // setSearchParams({}, { replace: true });
     }
   }, [paramRoomId, rooms]);
+
+  useEffect(() => {
+    if (paramBookingId && bookings.length > 0) {
+      const booking = bookings.find((b) => b.id === paramBookingId);
+      if (booking) {
+        // Clear param to avoid infinite loops or re-triggering logic
+        setSearchParams((prev) => {
+          prev.delete("bookingId");
+          return prev;
+        }, { replace: true });
+
+        // Trigger the check-in logic (handles both direct check-in and wizard redirect)
+        handleCheckInReservation(booking.id);
+      }
+    }
+  }, [paramBookingId, bookings, setSearchParams]);
 
   const hotelRooms = rooms.filter((r) => r.hotelId === hotelId);
   const confirmedBookings = bookings.filter((b) => {
@@ -259,9 +280,62 @@ export function CheckIn() {
   };
 
   // Check-in from reservation — calls real backend endpoint
+  // If the booking has NO roomId (manual string or no room assigned), redirect to
+  // the walk-in wizard at the "room" step with all details pre-filled.
   const handleCheckInReservation = async (bookingId: string) => {
     const booking = bookings.find((b) => b.id === bookingId);
     if (!booking) return;
+
+    // ── Case: no room assigned — redirect to room-picker wizard ─────────────
+    if (!booking.roomId) {
+      // Pre-fill form from reservation data
+      setForm({
+        guestName: booking.guestName || "",
+        guestPhone: booking.guestPhone || "",
+        guestEmail: booking.guestEmail || "",
+        plan: (booking as any).plan || "EP",
+        addressLine: (booking as any).addressLine || "",
+        idProof: (booking as any).idProof || "",
+        adults: booking.adults ?? 1,
+        children: booking.children ?? 0,
+        checkInDate: booking.checkInDate
+          ? new Date(booking.checkInDate).toISOString().split("T")[0]
+          : today(),
+        checkOutDate: booking.checkOutDate
+          ? new Date(booking.checkOutDate).toISOString().split("T")[0]
+          : tomorrow(),
+        checkInTime: (booking as any).checkInTime || "12:00",
+        checkOutTime: (booking as any).checkOutTime || hotel?.checkOutTime || "11:00",
+        specialRequests: (booking as any).specialRequests || "",
+        advanceAmount: Number(booking.advanceAmount) || 0,
+        paymentMode: (booking as any).paymentMode || "Cash",
+        companyId: (booking as any).companyId || "",
+        companyName: (booking as any).companyName || "",
+        companyGst: (booking as any).companyGst || "",
+        comingFrom: (booking as any).comingFrom || "",
+        goingTo: (booking as any).goingTo || "",
+        purposeOfVisit: (booking as any).purposeOfVisit || "Tourism",
+        marketSegment: (booking as any).marketSegment || "",
+        businessSource: (booking as any).businessSource || "",
+        vehicleDetails: (booking as any).vehicleDetails || "",
+        remarks: (booking as any).remarks || "",
+      });
+      // Pre-fill room rate from the reservation's roomPrice
+      const reservedRate = Number((booking as any).roomPrice || 0);
+      if (reservedRate > 0) {
+        setCustomRoomRate(reservedRate);
+        setRoomRateInput(String(reservedRate));
+      }
+      // Remember the source reservation so we can cancel it after check-in
+      setSourceReservationId(bookingId);
+      setSelectedRoomId("");
+      setCheckInType("walkin");
+      setMode("walkin");
+      setStep("room"); // jump straight to room selection
+      return;
+    }
+
+    // ── Case: room is assigned — standard direct check-in ───────────────────
     const now = new Date();
     const actualCheckInTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     try {
@@ -321,6 +395,17 @@ export function CheckIn() {
         vehicleDetails: form.vehicleDetails || undefined,
         remarks: form.remarks || undefined,
       });
+
+      // If this walk-in was triggered from a reservation-without-room, cancel that reservation
+      if (sourceReservationId) {
+        try {
+          await updateBooking(sourceReservationId, { status: "cancelled" } as any);
+        } catch (_) {
+          // Non-critical: walk-in succeeded, reservation cancel failure is a warning only
+        }
+        setSourceReservationId("");
+      }
+
       showSuccess(
         `✓ ${form.guestName} checked in to Room ${selectedRoom.roomNumber} — Booking #${result.booking.id.slice(-6).toUpperCase()}`,
       );
@@ -328,6 +413,8 @@ export function CheckIn() {
       setStep("type");
       setForm({ ...EMPTY_GUEST, checkInDate: today(), checkOutDate: tomorrow() });
       setSelectedRoomId("");
+      setCustomRoomRate(0);
+      setRoomRateInput("");
     } catch (e: any) {
       setErrorMsg(e?.response?.data?.message || "Walk-in check-in failed. Please try again.");
     }
@@ -981,6 +1068,26 @@ export function CheckIn() {
               {/* Step 3: Room selection */}
               {step === "room" && (
                 <div className="space-y-3">
+                  {/* Info banner when arriving from a reservation-without-room */}
+                  {sourceReservationId && (
+                    <div
+                      className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm"
+                      style={{
+                        background: "linear-gradient(135deg, #FFF8E7, #FFF3D0)",
+                        border: `1.5px solid ${GOLD}`,
+                        color: DARKGOLD,
+                      }}
+                    >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: GOLD }} />
+                      <div>
+                        <div className="font-semibold">Assign a Room for {form.guestName}</div>
+                        <div className="text-xs mt-0.5" style={{ color: "#92763A" }}>
+                          This reservation had no room assigned. Select a vacant room below to complete check-in.
+                          Rate ₹{customRoomRate > 0 ? customRoomRate : "—"}/night from reservation.
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div
                     className="px-3 py-2 rounded-lg text-sm"
                     style={{
@@ -1445,7 +1552,7 @@ export function CheckIn() {
                         style={{ color: "#6B7280" }}
                       >
                         <span>📞 {b.guestPhone}</span>
-                        <span>🏨 Room {b.room?.roomNumber || b.roomId.slice(-4)}</span>
+                        <span>🏨 Room {b.room?.roomNumber || (b.roomId ? b.roomId.slice(-4) : '–')}</span>
                         <span>
                           📅 {formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)} → {b.checkOutDate} ({nights}N)
                         </span>
@@ -1557,7 +1664,7 @@ export function CheckIn() {
                       className="px-4 py-3 font-bold text-sm"
                       style={{ color: DARKGOLD }}
                     >
-                      Room {b.room?.roomNumber || b.roomId.slice(-4)}
+                      Room {b.room?.roomNumber || (b.roomId ? b.roomId.slice(-4) : '–')}
                     </td>
                     <td className="px-4 py-3 text-sm">{formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate)}</td>
                     <td className="px-4 py-3 text-sm">{b.checkOutDate}</td>

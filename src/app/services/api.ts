@@ -4,12 +4,16 @@ import axios from 'axios';
 // Dynamic API Base URL — reads from Electron config injection
 // Falls back to VITE_API_BASE_URL env var or localhost for dev
 // ──────────────────────────────────────────────────────────
-import { API_BASE_URL as CONFIG_API_BASE_URL } from '../../config';
+// Old Render URL: https://pms-backend-1j4y.onrender.com
+// New VPS URL: http://148.230.97.88
+// Updated: API URL changed from Render to VPS
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://148.230.97.88'; // VPS fallback
 
-export const API_BASE_URL = CONFIG_API_BASE_URL;
+export const API_BASE_URL = BASE_URL;
 
 const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: BASE_URL,
+    timeout: 30000,  // 30 second timeout
     headers: {
         'Content-Type': 'application/json',
     },
