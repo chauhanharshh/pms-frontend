@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS, Invoice } from "../contexts/PMSContext";
-import { exportToCSV, printTable, formatDateForCSV } from '../utils/tableExport';
+import { exportToCSV, formatDateForCSV } from '../utils/tableExport';
+import { printReport, PrintConfig } from "../utils/printReport";
 import {
   formatCurrency,
   formatDate,
@@ -389,6 +390,49 @@ export function Invoices() {
     }
   };
 
+  const handlePrint = () => {
+    if (filteredInvoices.length === 0) return;
+
+    const activeHotel = hotels.find(h => h.id === currentHotelId) || hotels[0];
+
+    const config: PrintConfig = {
+      title: "Sales Report (Invoices)",
+      hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+      dateFrom: "N/A", // Invoices don't have a global date filter in the current UI state, though they could
+      dateTo: "N/A",
+      columns: [
+        "Invoice No", "Guest", "Room", "Hotel", "Check-in", "Check-out", "Subtotal", "Tax", "Total", "Status"
+      ],
+      rows: filteredInvoices.map(inv => {
+        const displayFields = getInvoiceDisplayFields(inv);
+        const hotelName = hotels.find((h) => String(h.id) === String(inv.hotelId) || String((h as any)._id) === String(inv.hotelId))?.name || '—';
+        const tax = Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number((inv as any).igst || 0);
+        
+        return [
+          inv.invoiceNumber || '-',
+          displayFields.guestName,
+          displayFields.roomNumber,
+          hotelName,
+          displayFields.checkIn,
+          displayFields.checkOut,
+          formatCurrency(Number(inv.subtotal || 0)),
+          formatCurrency(tax),
+          formatCurrency(Number(inv.totalAmount || 0)),
+          inv.status.toUpperCase()
+        ];
+      }),
+      totalsRow: [
+        'TOTAL', '', '', '', '', '',
+        formatCurrency(filteredInvoices.reduce((s, inv) => s + Number(inv.subtotal || 0), 0)),
+        formatCurrency(filteredInvoices.reduce((s, inv) => s + (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number((inv as any).igst || 0)), 0)),
+        formatCurrency(filteredInvoices.reduce((s, inv) => s + Number(inv.totalAmount || 0), 0)),
+        ''
+      ]
+    };
+
+    printReport(config);
+  };
+
   return (
     <AppLayout title="Invoices">
       <div className="space-y-5 max-w-6xl">
@@ -454,11 +498,11 @@ export function Invoices() {
                         <Download className="w-4 h-4" /> Export CSV
                       </button>
                       <button
-                        onClick={() => printTable('invoices-table', 'Invoices Report')}
+                        onClick={handlePrint}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors text-white"
                         style={{ background: `linear-gradient(135deg, ${GOLD}, ${DARKGOLD})` }}
                       >
-                        <Printer className="w-4 h-4" /> Print
+                        <Printer className="w-4 h-4" /> Print {/* Updated: uses printReport utility for proper landscape print */}
                       </button>
                     </div>                  )}
 

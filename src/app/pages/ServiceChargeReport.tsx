@@ -4,7 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
 import api from "../services/api";
 import { formatCurrency, formatDate } from "../utils/format";
-import { Calendar, Search, Users, FileText, RefreshCw } from "lucide-react";
+import { Calendar, Search, Users, FileText, RefreshCw, Printer } from "lucide-react";
+import { printReport, PrintConfig } from "../utils/printReport";
 
 type ServiceChargeDetailedRow = {
   stewardId?: string | null;
@@ -81,6 +82,40 @@ export function ServiceChargeReport() {
   const detailedRows = report?.detailed || [];
   const summaryRows = report?.summary || [];
 
+  const handlePrint = () => {
+    if (!report) return;
+
+    const activeHotel = hotels.find(h => h.id === user?.hotelId) || hotels[0];
+    
+    const config: PrintConfig = {
+      title: `Service Charge Report (${viewMode === 'detailed' ? 'Detailed' : 'Summary'})`,
+      hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+      dateFrom: startDate || "N/A",
+      dateTo: endDate || "N/A",
+      columns: viewMode === "detailed" 
+        ? ["Steward Name", "Order ID", "Date", "Table / Room", "Service Charge"]
+        : ["Steward Name", "Orders", "Total Service Charge"],
+      rows: viewMode === "detailed"
+        ? detailedRows.map(r => [
+            r.stewardName,
+            r.orderNumber,
+            formatDate(r.date),
+            r.tableOrRoom,
+            formatCurrency(r.serviceChargeAmount)
+          ])
+        : summaryRows.map(r => [
+            r.stewardName,
+            r.orderCount.toString(),
+            formatCurrency(r.totalServiceCharge)
+          ]),
+      totalsRow: viewMode === "detailed"
+        ? ["TOTAL", "", "", "", formatCurrency(report.totals.grandTotal)]
+        : ["TOTAL", report.totals.totalOrders.toString(), formatCurrency(report.totals.grandTotal)]
+    };
+
+    printReport(config);
+  };
+
   return (
     <AppLayout title="Service Charge Report">
       <div className="space-y-6">
@@ -102,6 +137,13 @@ export function ServiceChargeReport() {
                 className={`px-4 py-2 text-sm font-semibold ${viewMode === "summary" ? "bg-[#C6A75E] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
               >
                 Summary View
+              </button>
+              <button
+                onClick={handlePrint}
+                className="px-4 py-2 text-sm font-semibold bg-white text-gray-600 hover:bg-gray-50 border-l border-gray-200 flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4 text-[#C6A75E]" />
+                Print {/* Updated: uses printReport utility for proper landscape print */}
               </button>
             </div>
           </div>

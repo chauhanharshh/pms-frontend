@@ -14,7 +14,9 @@ import {
   CheckCircle,
   List,
   Calendar,
+  Printer,
 } from "lucide-react";
+import { printReport, PrintConfig } from "../utils/printReport";
 
 const GOLD = "#C6A75E";
 const DARKGOLD = "#A8832D";
@@ -91,6 +93,48 @@ export function CheckInRecordsPage() {
     }));
 
     exportToCSV(dataToExport, `${segment}-records`);
+  };
+
+  const handlePrint = () => {
+    if (filtered.length === 0) return;
+
+    const activeHotelId = filterHotel === "all" ? (hotels.length > 0 ? hotels[0]?.id : "") : filterHotel;
+    const activeHotel = hotels.find(h => h.id === activeHotelId);
+
+    const config: PrintConfig = {
+      title: pageTitle,
+      hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+      dateFrom: dateFrom || "N/A",
+      dateTo: dateTo || "N/A",
+      columns: [
+        "Guest", "Phone", "Room", "Check-In", "Check-Out", "Nights", "Amount", "Advance", "Status"
+      ],
+      rows: filtered.map(b => {
+        const nights = calculateRoomDays(
+          `${b.checkInDate}T${(b as any)?.checkInTime || "12:00"}`,
+          `${b.checkOutDate}T${(b as any)?.checkOutTime || "12:00"}`
+        );
+        return [
+          b.guestName,
+          b.guestPhone,
+          `Room ${b.roomNumber}`,
+          formatActualCheckInDateTime(b as any, (b as any)?.reservation, b.checkInDate),
+          b.checkOutDate || "—",
+          `${nights}N`,
+          formatCurrency(b.totalAmount),
+          formatCurrency(b.advanceAmount),
+          b.status
+        ];
+      }),
+      totalsRow: [
+        'TOTAL', '', '', '', '', '',
+        formatCurrency(filtered.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0)),
+        formatCurrency(filtered.reduce((sum, b) => sum + Number(b.advanceAmount || 0), 0)),
+        ''
+      ]
+    };
+
+    printReport(config);
   };
 
   return (
@@ -212,6 +256,13 @@ export function CheckInRecordsPage() {
             </select>
           )}
           <div className="flex-1" />
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+          >
+            <Printer className="w-4 h-4 text-[#C6A75E]" />
+            Print {/* Updated: uses printReport utility for proper landscape print */}
+          </button>
           <button
             onClick={exportCSV}
             className="px-4 py-2 rounded-xl text-sm font-medium text-white"

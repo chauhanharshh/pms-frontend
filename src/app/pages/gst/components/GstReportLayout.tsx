@@ -12,6 +12,7 @@ interface GstReportLayoutProps {
         hotelId?: string;
     }) => void;
     onExport: () => void;
+    onPrint?: () => void;
     printId?: string;
     children: React.ReactNode;
 }
@@ -20,6 +21,7 @@ export function GstReportLayout({
     title,
     onFilterChange,
     onExport,
+    onPrint,
     printId = "gst-report-print",
     children,
 }: GstReportLayoutProps) {
@@ -50,7 +52,12 @@ export function GstReportLayout({
     };
 
     const handlePrint = () => {
-        window.print();
+        // Updated: uses printReport utility if provided
+        if (onPrint) {
+            onPrint();
+        } else {
+            window.print();
+        }
     };
 
     return (

@@ -4,12 +4,20 @@ import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
 import { formatCurrency } from "../../data/mockData";
 import { exportToCSV, formatDateForCSV } from "../../utils/tableExport";
+import { printReport, PrintConfig } from "../../utils/printReport";
+import { usePMS } from "../../contexts/PMSContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { useMemo } from "react";
 
 export function MiscGstReport() {
+    const { hotels } = usePMS();
+    const { user, isAdmin } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
+    const [period, setPeriod] = useState({ start: "", end: "" });
 
     const fetchReport = async (filters: any) => {
+        setPeriod({ start: filters.startDate, end: filters.endDate });
         try {
             setLoading(true);
             const res = await api.get("/gst-reports/misc", { params: filters });
@@ -19,6 +27,54 @@ export function MiscGstReport() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const totals = useMemo(() => {
+        return data.reduce((acc, row) => ({
+            taxable: acc.taxable + Number(row.taxableAmount || 0),
+            cgst: acc.cgst + Number(row.cgst || 0),
+            sgst: acc.sgst + Number(row.sgst || 0),
+            igst: acc.igst + Number(row.igst || 0),
+            total: acc.total + Number(row.total || 0),
+        }), { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+    }, [data]);
+
+    const handlePrint = () => {
+        if (data.length === 0) return;
+
+        const activeHotelId = isAdmin && hotels.length > 0 ? hotels[0]?.id : user?.hotelId;
+        const activeHotel = hotels.find(h => h.id === activeHotelId);
+
+        const config: PrintConfig = {
+            title: "Misc GST Report",
+            hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+            dateFrom: period.start || "N/A",
+            dateTo: period.end || "N/A",
+            columns: ['Inv No', 'Date', 'Description', 'SAC', 'Taxable', 'Rate', 'CGST', 'SGST', 'IGST', 'Total'],
+            rows: data.map(r => [
+                r.invoiceNo,
+                new Date(r.date).toLocaleDateString(),
+                r.chargeDescription || 'Misc',
+                r.sacCode,
+                formatCurrency(r.taxableAmount),
+                `${r.gstRate}%`,
+                formatCurrency(r.cgst),
+                formatCurrency(r.sgst),
+                formatCurrency(r.igst),
+                formatCurrency(r.total)
+            ]),
+            totalsRow: [
+                'TOTAL', '', '', '',
+                formatCurrency(totals.taxable),
+                '',
+                formatCurrency(totals.cgst),
+                formatCurrency(totals.sgst),
+                formatCurrency(totals.igst),
+                formatCurrency(totals.total)
+            ]
+        };
+
+        printReport(config);
     };
 
     const exportToCsv = () => {
@@ -45,6 +101,7 @@ export function MiscGstReport() {
                 title="Misc GST Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                onPrint={handlePrint} // Updated: uses printReport utility for proper landscape print
                 printId="misc-gst-report-print"
             >
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">

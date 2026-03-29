@@ -24,6 +24,7 @@ export function RestaurantRoomSelector() {
     const navigate = useNavigate();
     const [checkedInRooms, setCheckedInRooms] = useState<any[]>([]);
     const [allHotelsRooms, setAllHotelsRooms] = useState<any[]>([]);
+    const [allKOTs, setAllKOTs] = useState<any[]>([]);
     const [roomsWithOpenKOT, setRoomsWithOpenKOT] = useState<Set<string>>(new Set());
     const [tablesWithOpenKOT, setTablesWithOpenKOT] = useState<Set<string>>(new Set());
     const [kotRooms, setKotRooms] = useState<string[]>(() => readStoredList("kotRooms"));
@@ -243,6 +244,8 @@ export function RestaurantRoomSelector() {
                 const relevantKots = (openKots || []).filter((kot: any) => {
                     return !activeSelectorHotelId || kot.hotelId === activeSelectorHotelId;
                 });
+                
+                setAllKOTs(relevantKots);
 
                 const roomIdsWithOpenKOT = new Set<string>(
                     relevantKots
@@ -401,17 +404,24 @@ export function RestaurantRoomSelector() {
     const isCardBilled = (item: any) => {
         const itemId = String(item?.id || "");
         const itemNumber = String(item?.tableId || item?.roomNumber || "").trim();
-        const roomToken = `room:${itemNumber}`;
+        const hotelId = String(item?.hotelId || activeSelectorHotelId || "").trim();
         const tableToken = `table:${itemNumber}`;
+        const roomToken = `room:${itemNumber}`;
+
+        // Fixed match by exact unique roomId instead of generic roomNumber '102' which bleeds to other hotels.
+        if (item?.isTable) {
+            return (
+                billedRooms.includes(itemId) ||
+                billedRooms.includes(tableToken) ||
+                Boolean(billedItems[itemId]) ||
+                Boolean(billedItems[tableToken]) ||
+                Boolean(billedItems[itemNumber])
+            );
+        }
 
         return (
             billedRooms.includes(itemId) ||
-            billedRooms.includes(roomToken) ||
-            billedRooms.includes(tableToken) ||
-            Boolean(billedItems[itemId]) ||
-            Boolean(billedItems[itemNumber]) ||
-            Boolean(billedItems[roomToken]) ||
-            Boolean(billedItems[tableToken])
+            Boolean(billedItems[itemId])
         );
     };
 
@@ -707,7 +717,14 @@ export function RestaurantRoomSelector() {
                                                                             isTable: true,
                                                                             hotelId: hotelGroup.hotelId,
                                                                         };
-                                                                        const hasOpenKOT = isCardKotCut(table) || tablesWithOpenKOT.has(`${hotelGroup.hotelId}:${tableId}`);
+                                                                        
+                                                                        // Fixed: match KOT by tableId+hotelId, not roomNumber alone
+                                                                        const hasOpenKOT = allKOTs.some(
+                                                                          kot => String(kot.order?.tableNumber || "").trim() === tableId &&
+                                                                                 String(kot.hotelId) === String(table.hotelId) &&
+                                                                                 String(kot.status).toUpperCase() === 'OPEN'
+                                                                        );
+                                                                        
                                                                         const isBilled = isCardBilled(table);
 
                                                                         // Custom Colors from Hotel
@@ -777,7 +794,14 @@ export function RestaurantRoomSelector() {
                                                     )}
                                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                                         {group.rooms.map((room: any) => {
-                                                            const hasOpenKOT = roomsWithOpenKOT.has(room.id);
+                                                            // Fixed: match KOT by roomId+hotelId, not roomNumber alone
+                                                            const roomHotelId = String(room.hotelId);
+                                                            const hasOpenKOT = allKOTs.some(kot => 
+                                                              (String(kot.order?.roomId) === String(room.id) || String(kot.order?.roomNumber) === String(room.roomNumber)) &&
+                                                              String(kot.hotelId) === roomHotelId &&
+                                                              String(kot.status).toUpperCase() === 'OPEN'
+                                                            );
+                                                            
                                                             const isBilled = isCardBilled(room);
 
                                                             // Custom Colors from Hotel

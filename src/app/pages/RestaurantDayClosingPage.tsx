@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { printReport, PrintConfig } from "../utils/printReport";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -300,8 +301,50 @@ export function RestaurantDayClosingPage() {
     setAppliedTo("");
   };
 
-  const handlePrintTable = () => {
-    window.print();
+  const handlePrint = () => {
+    if (filteredRows.length === 0) return;
+
+    const activeHotel = hotels.find(h => h.id === selectedHotelId) || hotels[0];
+
+    const config: PrintConfig = {
+      title: "Restaurant Day Closing Report",
+      hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+      dateFrom: appliedFrom || "N/A",
+      dateTo: appliedTo || "N/A",
+      columns: [
+        "Date", "Hotel", "KOTs", "Open", "Conv", "Cancl", "Amount", "Srv Chg", "Revenue", "Invs", "By", "Status"
+      ],
+      rows: filteredRows.map(row => [
+        row.date,
+        row.hotelName,
+        toInt(row.totalKotsToday),
+        toInt(row.openKots),
+        toInt(row.convertedKots),
+        toInt(row.cancelledKots),
+        toCurrency(row.totalOrdersAmount),
+        toCurrency(row.serviceChargeAmount),
+        toCurrency(row.totalRevenueToday),
+        toInt(row.totalInvoicesToday),
+        row.closedBy || "-",
+        row.dayClosed ? "CLOSED" : "OPEN"
+      ]),
+      totalsRow: [
+        'TOTAL',
+        '',
+        toInt(filteredRows.reduce((s, r) => s + Number(r.totalKotsToday || 0), 0)),
+        toInt(filteredRows.reduce((s, r) => s + Number(r.openKots || 0), 0)),
+        toInt(filteredRows.reduce((s, r) => s + Number(r.convertedKots || 0), 0)),
+        toInt(filteredRows.reduce((s, r) => s + Number(r.cancelledKots || 0), 0)),
+        toCurrency(filteredRows.reduce((s, r) => s + Number(r.totalOrdersAmount || 0), 0)),
+        toCurrency(filteredRows.reduce((s, r) => s + Number(r.serviceChargeAmount || 0), 0)),
+        toCurrency(filteredRows.reduce((s, r) => s + Number(r.totalRevenueToday || 0), 0)),
+        toInt(filteredRows.reduce((s, r) => s + Number(r.totalInvoicesToday || 0), 0)),
+        '',
+        ''
+      ]
+    };
+
+    printReport(config);
   };
 
   const handleDownloadCsv = () => {
@@ -327,55 +370,6 @@ export function RestaurantDayClosingPage() {
 
   return (
     <AppLayout title="Restaurant Day Closing">
-      <style>{`
-        #restaurant-day-closing-print {
-          display: none;
-        }
-
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-
-          #restaurant-day-closing-print,
-          #restaurant-day-closing-print * {
-            visibility: visible;
-          }
-
-          #restaurant-day-closing-print {
-            display: block;
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            margin: 0;
-            padding: 20px;
-            background: #fff;
-            color: #000;
-          }
-
-          .no-print {
-            display: none !important;
-          }
-
-          table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          th,
-          td {
-            border: 1px solid #000;
-            padding: 6px;
-            font-size: 11px;
-          }
-
-          .print-divider {
-            border-top: 1px solid #000;
-            margin: 12px 0;
-          }
-        }
-      `}</style>
-
       <div className="max-w-[1400px] mx-auto space-y-4 no-print">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -429,12 +423,12 @@ export function RestaurantDayClosingPage() {
 
             <div className="flex flex-wrap gap-3 justify-start xl:justify-end">
               <button
-                onClick={handlePrintTable}
+                onClick={handlePrint}
                 disabled={loading}
                 className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2 hover:bg-slate-50 transition-colors"
               >
                 <Printer className="w-4 h-4" />
-                Print
+                Print {/* Updated: uses printReport utility for proper landscape print */}
               </button>
               <button
                 onClick={handleDownloadCsv}
@@ -533,55 +527,6 @@ export function RestaurantDayClosingPage() {
         </div>
       </div>
 
-      <div id="restaurant-day-closing-print">
-        <h1 className="text-xl font-bold">Restaurant Day Closing Report</h1>
-        <p className="mt-2">Hotel: Hotel Suvidha Deluxe</p>
-        <p>Period: {periodText}</p>
-        <div className="print-divider" />
-
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Hotel</th>
-              <th>Total KOTs</th>
-              <th>Open</th>
-              <th>Converted</th>
-              <th>Cancelled</th>
-              <th>Total Amount</th>
-              <th>Service Charge</th>
-              <th>Total Revenue</th>
-              <th>Total Invoices</th>
-              <th>Closed By</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => {
-              const isTodayOpen = row.date === todayDisplay && !row.dayClosed;
-              return (
-                <tr key={`print-${row.date}-${row.hotelId}-${row.closedAt || "open"}`}>
-                  <td>{row.date}</td>
-                  <td>{row.hotelName}</td>
-                  <td>{toInt(row.totalKotsToday)}</td>
-                  <td>{toInt(row.openKots)}</td>
-                  <td>{toInt(row.convertedKots)}</td>
-                  <td>{toInt(row.cancelledKots)}</td>
-                  <td>{toCurrency(row.totalOrdersAmount)}</td>
-                  <td>{toCurrency(row.serviceChargeAmount)}</td>
-                  <td>{toCurrency(row.totalRevenueToday)}</td>
-                  <td>{toInt(row.totalInvoicesToday)}</td>
-                  <td>{row.closedBy || "-"}</td>
-                  <td>{isTodayOpen ? "Open" : "Closed"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-
-        <div className="print-divider" />
-        <p>Generated on: {generatedOn}</p>
-      </div>
 
       {showConfirm && (
         <div className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 no-print">

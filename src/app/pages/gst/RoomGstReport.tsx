@@ -5,6 +5,7 @@ import api from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePMS } from "../../contexts/PMSContext";
 import { exportToCSV, formatDateForCSV } from "../../utils/tableExport";
+import { printReport, PrintConfig } from "../../utils/printReport";
 
 const formatCurrency = (val: any) => Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatRawCurrency = (val: any) => Number(val || 0).toFixed(2);
@@ -129,6 +130,123 @@ export function RoomGstReport() {
         exportToCSV(exportData, `invoice_revenue_report_${new Date().getTime()}`);
     };
 
+    const handlePrint = () => {
+        if (data.length === 0) return;
+
+        const totalGST = totals.cgst + totals.sgst + totals.igst;
+        const titleStyle = "background: #e8e8e8 !important; color: #000000 !important; padding: 6px; text-align: center; font-size: 10px; font-weight: bold; border: 1px solid #000; letter-spacing: 1px;";
+        const thStyle = "background: #e8e8e8 !important; color: #000000 !important; padding: 4px 3px; text-align: center; font-size: 7px; font-weight: bold; border: 1px solid #000; white-space: nowrap;";
+        const secHeaderStyle = "background: #e8e8e8 !important; color: #000000 !important; font-weight: bold; padding: 4px; border: 1px solid #000; text-align: left;";
+        const dataStyleLeft = "background: #ffffff !important; color: #000000 !important; padding: 4px; border: 1px solid #000; text-align: left;";
+        const dataStyleCenter = "background: #ffffff !important; color: #000000 !important; padding: 4px; border: 1px solid #000; text-align: center;";
+        const dataStyleRight = "background: #ffffff !important; color: #000000 !important; padding: 4px; border: 1px solid #000; text-align: right;";
+        const gtStyleLeft = "background: #e8e8e8 !important; color: #000000 !important; font-weight: bold; padding: 4px; border: 1px solid #000; text-align: left;";
+        const gtStyleRight = "background: #e8e8e8 !important; color: #000000 !important; font-weight: bold; padding: 4px; border: 1px solid #000; text-align: right;";
+
+        // Fixed: all grey replaced with black in print output
+        const summaryHtml = `
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th colspan="9" style="${titleStyle}">CHARGES SUMMARY</th>
+                    </tr>
+                    <tr>
+                        <th style="${thStyle}">Charge Type</th>
+                        <th style="${thStyle}">Charges</th>
+                        <th style="${thStyle}">Discount</th>
+                        <th style="${thStyle}">GST %</th>
+                        <th style="${thStyle}">CGST</th>
+                        <th style="${thStyle}">SGST</th>
+                        <th style="${thStyle}">IGST</th>
+                        <th style="${thStyle}">GST</th>
+                        <th style="${thStyle}">Net Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="9" style="${secHeaderStyle}">Room Charges</td>
+                    </tr>
+                    <tr>
+                        <td style="${dataStyleLeft}">Room Charges</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totals.roomRent)}</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totals.roomRentDisc)}</td>
+                        <td style="${dataStyleCenter}">5.00%</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totals.cgst)}</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totals.sgst)}</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totals.igst)}</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totalGST)}</td>
+                        <td style="${dataStyleRight}">${formatRawCurrency(totals.netPayable)}</td>
+                    </tr>
+                    <tr>
+                        <td style="${gtStyleLeft}">GRAND TOTAL</td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totals.roomRent)}</td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totals.roomRentDisc)}</td>
+                        <td style="${gtStyleRight}"></td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totals.cgst)}</td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totals.sgst)}</td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totals.igst)}</td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totalGST)}</td>
+                        <td style="${gtStyleRight}">${formatRawCurrency(totals.netPayable)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+
+        const config: PrintConfig = {
+            title: "Invoice Revenue Report",
+            hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+            dateFrom: period.start || "N/A",
+            dateTo: period.end || "N/A",
+            columns: [
+                'Date', 'Bill No', 'Guest', 'Room', 
+                'Rm.Rent Disc', 'Room Rent', 'CGST', 'SGST', 'IGST', 
+                'Other', 'Other GST', 'Inv.Disc', 'Advance', 'Net Payable', 
+                'Cash', 'Bank', 'Co.Cr'
+            ],
+            rows: data.map(r => {
+                const p = getPaymentColumns(r);
+                return [
+                    formatDate(r.date),
+                    r.invoiceNo,
+                    r.guestName,
+                    r.roomNumber || "",
+                    formatRawCurrency(r.roomRentDisc),
+                    formatRawCurrency(r.roomRent),
+                    formatRawCurrency(r.cgst),
+                    formatRawCurrency(r.sgst),
+                    formatRawCurrency(r.igst),
+                    formatRawCurrency(r.otherCharges),
+                    formatRawCurrency(r.otherChargesGst),
+                    formatRawCurrency(r.invDiscount),
+                    formatRawCurrency(r.advance),
+                    formatRawCurrency(r.netPayable),
+                    formatRawCurrency(p.cash),
+                    formatRawCurrency(p.bank),
+                    formatRawCurrency(p.coCr)
+                ];
+            }),
+            totalsRow: [
+                'TOTAL', '', '', '',
+                formatRawCurrency(totals.roomRentDisc),
+                formatRawCurrency(totals.roomRent),
+                formatRawCurrency(totals.cgst),
+                formatRawCurrency(totals.sgst),
+                formatRawCurrency(totals.igst),
+                formatRawCurrency(totals.otherCharges),
+                formatRawCurrency(totals.otherChargesGst),
+                formatRawCurrency(totals.invDiscount),
+                formatRawCurrency(totals.advance),
+                formatRawCurrency(totals.netPayable),
+                formatRawCurrency(totals.cash),
+                formatRawCurrency(totals.bank),
+                formatRawCurrency(totals.coCr)
+            ],
+            summaryHtml
+        };
+
+        printReport(config);
+    };
+
     const formatDate = (dateStr: string) => {
         if (!dateStr) return "";
         const d = new Date(dateStr);
@@ -141,6 +259,7 @@ export function RoomGstReport() {
                 title="Invoice Revenue Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                onPrint={handlePrint} // Updated: uses printReport utility for proper landscape print
                 printId="invoice-revenue-report-print"
             >
 

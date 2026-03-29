@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { exportToCSV, printTable, formatDateForCSV } from '../utils/tableExport';
+import { exportToCSV, formatDateForCSV } from '../utils/tableExport';
+import { printReport, PrintConfig } from "../utils/printReport";
 import { AppLayout } from "../layouts/AppLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
@@ -94,6 +95,36 @@ export function Expenses() {
       addExpense(form);
     }
     setShowForm(false);
+  };
+
+  const handlePrint = () => {
+    if (filtered.length === 0) return;
+
+    const activeHotelId = hotelFilter === "all" ? (hotels.length > 0 ? hotels[0]?.id : "") : hotelFilter;
+    const activeHotel = hotels.find(h => h.id === activeHotelId);
+
+    const config: PrintConfig = {
+      title: "Expense Report",
+      hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+      dateFrom: filterDateFrom || "N/A",
+      dateTo: filterDateTo || "N/A",
+      columns: ["Date", "Description", "Category", "Hotel", "Payee", "Method", "Amount"],
+      rows: filtered.map(exp => [
+        formatDate(exp.expenseDate),
+        exp.description,
+        exp.category,
+        hotels.find(h => h.id === exp.hotelId)?.name || '-',
+        exp.payee || '-',
+        exp.paymentMethod.toUpperCase(),
+        formatCurrency(exp.amount)
+      ]),
+      totalsRow: [
+        'TOTAL', '', '', '', '', '',
+        formatCurrency(totalAmount)
+      ]
+    };
+
+    printReport(config);
   };
 
   return (
@@ -290,7 +321,7 @@ export function Expenses() {
               📥 Export Excel
             </button>
             <button
-              onClick={() => printTable('expenses-table', 'Expenses Report')}
+              onClick={handlePrint}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -305,7 +336,7 @@ export function Expenses() {
                 cursor: 'pointer',
               }}
             >
-              🖨️ Print
+              🖨️ Print {/* Updated: uses printReport utility for proper landscape print */}
             </button>
           </div>
           <div className="overflow-x-auto">

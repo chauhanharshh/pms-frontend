@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMemo } from "react";
+import { printReport, PrintConfig } from "../utils/printReport";
 
 const GOLD = "#C6A75E";
 const DARKGOLD = "#A8832D";
@@ -218,8 +219,42 @@ export function DayClosingPage() {
         setAppliedTo("");
     };
 
-    const handlePrintTable = () => {
-        window.print();
+    const handlePrint = () => {
+        if (filteredRows.length === 0) return;
+
+        const activeHotel = hotels.find(h => h.id === user?.hotelId) || hotels[0];
+
+        const config: PrintConfig = {
+            title: "Day Closing Report",
+            hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+            dateFrom: appliedFrom || "N/A",
+            dateTo: appliedTo || "N/A",
+            columns: [
+                "Working Date", "Cash Rcvd", "Bank Rcvd", "Cash Paid", "Bank Paid", "Credit Sale", "Closed By", "Status"
+            ],
+            rows: filteredRows.map(rec => [
+                formatDate(rec.workingDate),
+                formatCurrency(rec.cashReceived),
+                formatCurrency(rec.bankReceived),
+                formatCurrency(rec.cashPaid),
+                formatCurrency(rec.bankPaid),
+                formatCurrency(rec.creditSale),
+                rec.user?.fullName || "-",
+                rec.status.toUpperCase()
+            ]),
+            totalsRow: [
+                'TOTAL',
+                formatCurrency(filteredRows.reduce((s, r) => s + Number(r.cashReceived || 0), 0)),
+                formatCurrency(filteredRows.reduce((s, r) => s + Number(r.bankReceived || 0), 0)),
+                formatCurrency(filteredRows.reduce((s, r) => s + Number(r.cashPaid || 0), 0)),
+                formatCurrency(filteredRows.reduce((s, r) => s + Number(r.bankPaid || 0), 0)),
+                formatCurrency(filteredRows.reduce((s, r) => s + Number(r.creditSale || 0), 0)),
+                '',
+                ''
+            ]
+        };
+
+        printReport(config);
     };
 
     const handleDownloadCsv = () => {
@@ -246,56 +281,6 @@ export function DayClosingPage() {
 
     return (
         <AppLayout title="Day Closing">
-            <style>{`
-                #hotel-day-closing-print {
-                    display: none;
-                }
-
-                @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-
-                    #hotel-day-closing-print,
-                    #hotel-day-closing-print * {
-                        visibility: visible;
-                    }
-
-                    #hotel-day-closing-print {
-                        display: block;
-                        position: absolute;
-                        inset: 0;
-                        width: 100%;
-                        margin: 0;
-                        padding: 20px;
-                        background: #fff;
-                        color: #000;
-                    }
-
-                    .no-print {
-                        display: none !important;
-                    }
-
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 20px;
-                    }
-
-                    th, td {
-                        border: 1px solid #000;
-                        padding: 8px;
-                        text-align: left;
-                        font-size: 11px;
-                    }
-
-                    .print-divider {
-                        border-top: 1px solid #000;
-                        margin: 15px 0;
-                    }
-                }
-            `}</style>
-
             <div className="space-y-4 max-w-[1400px] mx-auto no-print">
                 {/* Main Action/Filter Bar */}
                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -336,12 +321,12 @@ export function DayClosingPage() {
 
                         <div className="flex flex-wrap gap-3 justify-start xl:justify-end">
                             <button
-                                onClick={handlePrintTable}
+                                onClick={handlePrint}
                                 disabled={loading}
                                 className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-2 hover:bg-slate-50 transition-colors"
                             >
                                 <Printer className="w-4 h-4" />
-                                Print
+                                Print {/* Updated: uses printReport utility for proper landscape print */}
                             </button>
                             <button
                                 onClick={handleDownloadCsv}
@@ -479,52 +464,6 @@ export function DayClosingPage() {
                 </div>
             </div>
 
-            {/* Print Area */}
-            <div id="hotel-day-closing-print">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold">Hotel Day Closing Report</h1>
-                        <p className="text-sm mt-1">Period: {periodText}</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="font-bold">Date: {formatDate(new Date().toISOString())}</p>
-                    </div>
-                </div>
-                <div className="print-divider" />
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Working Date</th>
-                            <th>Cash Received</th>
-                            <th>Bank Received</th>
-                            <th>Cash Paid</th>
-                            <th>Bank Paid</th>
-                            <th>Credit Sale</th>
-                            <th>Closed By</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredRows.map((rec) => (
-                            <tr key={rec.id}>
-                                <td>{formatDate(rec.workingDate)}</td>
-                                <td>{formatCurrency(rec.cashReceived)}</td>
-                                <td>{formatCurrency(rec.bankReceived)}</td>
-                                <td>{formatCurrency(rec.cashPaid)}</td>
-                                <td>{formatCurrency(rec.bankPaid)}</td>
-                                <td>{formatCurrency(rec.creditSale)}</td>
-                                <td>{rec.user?.fullName}</td>
-                                <td>{rec.status}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <div className="print-divider" />
-                <div className="mt-8 flex justify-between text-sm">
-                    <p>Manager Signature</p>
-                    <p>Accountant Signature</p>
-                </div>
-            </div>
 
                 {/* Close Day Modal */}
                 {showCloseModal && (

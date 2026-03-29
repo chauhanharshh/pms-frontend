@@ -4,12 +4,19 @@ import { GstReportLayout } from "./components/GstReportLayout";
 import api from "../../services/api";
 import { formatCurrency } from "../../data/mockData";
 import { exportToCSV } from "../../utils/tableExport";
+import { printReport, PrintConfig } from "../../utils/printReport";
+import { usePMS } from "../../contexts/PMSContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function GstSummaryReport() {
+    const { hotels } = usePMS();
+    const { user, isAdmin } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any>(null);
+    const [period, setPeriod] = useState({ start: "", end: "" });
 
     const fetchReport = async (filters: any) => {
+        setPeriod({ start: filters.startDate, end: filters.endDate });
         try {
             setLoading(true);
             const res = await api.get("/gst-reports/summary", { params: filters });
@@ -19,6 +26,34 @@ export function GstSummaryReport() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePrint = () => {
+        if (!data?.summary) return;
+
+        const activeHotelId = isAdmin && hotels.length > 0 ? hotels[0]?.id : user?.hotelId;
+        const activeHotel = hotels.find(h => h.id === activeHotelId);
+        const { summary } = data;
+
+        const config: PrintConfig = {
+            title: "GST Summary Report",
+            hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+            dateFrom: period.start || "N/A",
+            dateTo: period.end || "N/A",
+            columns: ['Metric', 'Value'],
+            rows: [
+                ['Total Room Taxable', formatCurrency(summary.totalRoomTaxable)],
+                ['Total Restaurant Taxable', formatCurrency(summary.totalRestaurantTaxable)],
+                ['Total Misc Taxable', formatCurrency(summary.totalMiscTaxable)],
+                ['Total CGST', formatCurrency(summary.totalCgst)],
+                ['Total SGST', formatCurrency(summary.totalSgst)],
+                ['Total IGST', formatCurrency(summary.totalIgst)],
+                ['Grand Total Tax Liability', formatCurrency(summary.grandTotalTax)],
+                ['Total Invoice Count', summary.totalInvoiceCount.toString()]
+            ]
+        };
+
+        printReport(config);
     };
 
     const exportToCsv = () => {
@@ -45,6 +80,7 @@ export function GstSummaryReport() {
                 title="GST Summary Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                onPrint={handlePrint} // Updated: uses printReport utility for proper landscape print
                 printId="gst-summary-print"
             >
                 {loading ? (

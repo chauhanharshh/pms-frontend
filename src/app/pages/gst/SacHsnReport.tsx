@@ -5,14 +5,21 @@ import api from "../../services/api";
 import { formatCurrency as mockFormatCurrency } from "../../data/mockData";
 import { exportToCSV } from "../../utils/tableExport";
 import { useMemo } from "react";
+import { printReport, PrintConfig } from "../../utils/printReport";
+import { usePMS } from "../../contexts/PMSContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 const formatCurrency = (val: any) => Number(val || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function SacHsnReport() {
+    const { hotels } = usePMS();
+    const { user, isAdmin } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
+    const [period, setPeriod] = useState({ start: "", end: "" });
 
     const fetchReport = async (filters: any) => {
+        setPeriod({ start: filters.startDate, end: filters.endDate });
         try {
             setLoading(true);
             const restaurantEnabled = localStorage.getItem("restaurantEnabled") === "true";
@@ -36,6 +43,43 @@ export function SacHsnReport() {
             gst: acc.gst + (Number(row.totalCgst || 0) + Number(row.totalSgst || 0) + Number(row.totalIgst || 0)),
         }), { taxable: 0, cgst: 0, sgst: 0, igst: 0, gst: 0 });
     }, [data]);
+
+    const handlePrint = () => {
+        if (data.length === 0) return;
+
+        const activeHotelId = isAdmin && hotels.length > 0 ? hotels[0]?.id : user?.hotelId;
+        const activeHotel = hotels.find(h => h.id === activeHotelId);
+
+        const config: PrintConfig = {
+            title: "SAC/HSN Summary Report",
+            hotelName: activeHotel?.name || "Hotel Suvidha Deluxe",
+            dateFrom: period.start || "N/A",
+            dateTo: period.end || "N/A",
+            columns: ['SAC Code', 'Description', 'Taxable Value', 'Rate', 'CGST', 'SGST', 'IGST', 'Total GST'],
+            rows: data.map(r => [
+                r.sacCode,
+                r.description || "",
+                formatCurrency(r.totalTaxableValue),
+                `${r.gstRate}%`,
+                formatCurrency(r.totalCgst),
+                formatCurrency(r.totalSgst),
+                formatCurrency(r.totalIgst),
+                formatCurrency(Number(r.totalCgst || 0) + Number(r.totalSgst || 0) + Number(r.totalIgst || 0))
+            ]),
+            totalsRow: [
+                'TOTAL',
+                '',
+                formatCurrency(totals.taxable),
+                '-',
+                formatCurrency(totals.cgst),
+                formatCurrency(totals.sgst),
+                formatCurrency(totals.igst),
+                formatCurrency(totals.gst)
+            ]
+        };
+
+        printReport(config);
+    };
 
     const exportToCsv = () => {
         if (data.length === 0) return;
@@ -71,6 +115,7 @@ export function SacHsnReport() {
                 title="SAC/HSN Summary Report"
                 onFilterChange={fetchReport}
                 onExport={exportToCsv}
+                onPrint={handlePrint} // Updated: uses printReport utility for proper landscape print
             >
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">

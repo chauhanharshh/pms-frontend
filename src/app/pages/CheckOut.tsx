@@ -31,7 +31,7 @@ export function CheckOut() {
   // Modal state
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
   const [checkoutPreview, setCheckoutPreview] = useState<any | null>(null);
-  const [paymentMode, setPaymentMode] = useState<"cash" | "upi" | "">("");
+  const [paymentMode, setPaymentMode] = useState<"cash" | "upi" | "">("cash");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export function CheckOut() {
     try {
       setSelectedBooking(booking);
       setCheckoutPreview(null);
-      setPaymentMode("");
+      setPaymentMode("cash");
       setError(null);
       setIsProcessing(true); // Treat as loading for preview
 
