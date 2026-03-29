@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { usePMS } from "../contexts/PMSContext";
-import { ArrowLeft, Save, Building2, Clock3, SlidersHorizontal, FileText } from "lucide-react";
+import { ArrowLeft, Save, Building2, Clock3, SlidersHorizontal, FileText, DownloadCloud } from "lucide-react";
 import api from "../services/api";
 import { toast } from "sonner";
 
@@ -44,6 +44,37 @@ export function Settings() {
       return false;
     }
   });
+
+  // Added: electron-updater for automatic updates
+  const [appVersion, setAppVersion] = useState('');
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  useEffect(() => {
+    // @ts-ignore
+    if (window.electronAPI) {
+      // @ts-ignore
+      window.electronAPI.getAppVersion().then(v => setAppVersion(v)).catch(() => {});
+    }
+  }, []);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      // @ts-ignore
+      const res = await window.electronAPI?.checkForUpdates();
+      if (res?.status === 'error') {
+        toast.error('Update check failed: ' + res.message);
+      } else if (res?.status === 'dev-mode') {
+        toast.info(res.message);
+      } else {
+        toast.success("Checking for updates...");
+      }
+    } catch (err: any) {
+      toast.error('Failed to check for updates: ' + err?.message);
+    } finally {
+      setTimeout(() => setCheckingUpdate(false), 2000);
+    }
+  };
 
   const handleSave = async () => {
     if (!currentHotelId) return;
@@ -530,6 +561,40 @@ export function Settings() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Added: electron-updater for automatic updates */}
+            <div
+              className="rounded-xl p-6"
+              style={{
+                background: "#ffffff",
+                border: "1px solid #E8DCC8",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              <h2
+                className="text-[15px] font-semibold mb-4 pb-2.5 flex items-center gap-2"
+                style={{ color: "#B8860B", borderBottom: "1px solid #F0E6D3" }}
+              >
+                <DownloadCloud className="w-4 h-4" /> Application Updates
+              </h2>
+              
+              <div className="flex items-center justify-between p-4 bg-[white] rounded-xl border border-[#E8DCC8]">
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">System Version</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Currently installed version: <strong className="text-gray-700">{appVersion || "Unknown"}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCheckUpdate}
+                  disabled={checkingUpdate || !appVersion}
+                  className="px-4 py-2 bg-[#F7F4EE] border border-[#D4B896] rounded text-sm font-medium text-[#B8860B] hover:bg-[#F0EAE1] transition disabled:opacity-50"
+                >
+                  {checkingUpdate ? "Checking..." : "Check for Updates"}
+                </button>
               </div>
             </div>
 

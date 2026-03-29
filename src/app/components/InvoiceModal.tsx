@@ -704,11 +704,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
             }
 
             // 2. Try production fallback
-            if (!currentSrc.includes('onrender.com')) {
+            if (!currentSrc.includes('148.230.97.88')) {
               img.setAttribute('data-stage', 'prod-fallback');
               try {
                 var url = new URL(currentSrc);
-                img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+                img.src = 'http://148.230.97.88' + url.pathname + url.search;
                 return;
               } catch (e) {
                 console.error('Production fallback failed:', e);
@@ -716,11 +716,11 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
             }
           }
 
-          if (stage === 'dev-local' && !currentSrc.includes('onrender.com')) {
+          if (stage === 'dev-local' && !currentSrc.includes('148.230.97.88')) {
             img.setAttribute('data-stage', 'prod-fallback');
             try {
               var url = new URL(currentSrc);
-              img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+              img.src = 'http://148.230.97.88' + url.pathname + url.search;
               return;
             } catch (e) {}
           }

@@ -94,10 +94,10 @@ export function handleLogoImageError(event: { currentTarget: HTMLImageElement })
     }
 
     // 2. If not on localhost or local fallback failed, try production fallback
-    if (!currentSrc.includes('onrender.com')) {
+    if (!currentSrc.includes('148.230.97.88')) {
       try {
         const url = new URL(currentSrc);
-        const prodSrc = `https://pms-backend-1j4y.onrender.com${url.pathname}${url.search}`;
+        const prodSrc = `http://148.230.97.88${url.pathname}${url.search}`;
         img.dataset.logoFallbackStage = 'prod-fallback';
         img.src = prodSrc;
         return;
@@ -112,10 +112,10 @@ export function handleLogoImageError(event: { currentTarget: HTMLImageElement })
 
   if (stage === 'dev-local' || stage === 'prod-fallback') {
     // If local/prod fallback failed, try production if not tried, else default
-    if (stage === 'dev-local' && !currentSrc.includes('onrender.com')) {
+    if (stage === 'dev-local' && !currentSrc.includes('148.230.97.88')) {
       try {
         const url = new URL(currentSrc);
-        const prodSrc = `https://pms-backend-1j4y.onrender.com${url.pathname}${url.search}`;
+        const prodSrc = `http://148.230.97.88${url.pathname}${url.search}`;
         img.dataset.logoFallbackStage = 'prod-fallback';
         img.src = prodSrc;
         return;

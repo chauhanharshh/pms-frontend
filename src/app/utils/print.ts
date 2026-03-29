@@ -19,21 +19,21 @@ export function printHtml(html: string) {
           }
 
           // 2. Try production fallback
-          if (!currentSrc.includes('onrender.com')) {
+          if (!currentSrc.includes('148.230.97.88')) {
             img.setAttribute('data-stage', 'prod-fallback');
             try {
               var url = new URL(currentSrc);
-              img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+              img.src = 'http://148.230.97.88' + url.pathname + url.search;
               return;
             } catch (e) {}
           }
         }
 
-        if (stage === 'dev-local' && !currentSrc.includes('onrender.com')) {
+        if (stage === 'dev-local' && !currentSrc.includes('148.230.97.88')) {
             img.setAttribute('data-stage', 'prod-fallback');
             try {
                 var url = new URL(currentSrc);
-                img.src = 'https://pms-backend-1j4y.onrender.com' + url.pathname + url.search;
+                img.src = 'http://148.230.97.88' + url.pathname + url.search;
                 return;
             } catch (e) {}
         }

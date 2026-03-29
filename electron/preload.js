@@ -9,4 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
   getAppInfo: () => ipcRenderer.invoke('app:get-info'),
   printHtml: (html) => ipcRenderer.send('print-html', html),
+  
+  // Added: electron-updater for automatic updates
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates-manual'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 });

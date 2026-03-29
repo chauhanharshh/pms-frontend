@@ -1,5 +1,74 @@
-const { app, BrowserWindow, ipcMain, shell, session, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session, Menu, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 const path = require('path');
+
+// Added: electron-updater for automatic updates
+log.transports.file.level = 'info';
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+autoUpdater.on('checking-for-update', () => {
+  log.info('[Updater] Checking for updates...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  log.info('[Updater] Update available:', info.version);
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: '🔄 Update Available — Hotels4U PMS',
+    message: `New Version ${info.version} Available!`,
+    detail: `A new version of Hotels4U PMS is ready.\n\nCurrent: ${app.getVersion()}\nNew: ${info.version}\n\nWould you like to download and install it now?`,
+    buttons: ['Download Now', 'Later'],
+    defaultId: 0,
+    cancelId: 1
+  }).then(result => {
+    if (result.response === 0) {
+      autoUpdater.downloadUpdate();
+    }
+  });
+});
+
+autoUpdater.on('update-not-available', () => {
+  log.info('[Updater] App is up to date.');
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  const percent = Math.round(progress.percent);
+  log.info(`[Updater] Downloading: ${percent}%`);
+  if (mainWindow) {
+    mainWindow.setProgressBar(progress.percent / 100);
+    mainWindow.setTitle(`Downloading Update... ${percent}%`);
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  log.info('[Updater] Update downloaded:', info.version);
+  if (mainWindow) {
+    mainWindow.setProgressBar(-1);
+    mainWindow.setTitle('Hotels4U PMS');
+  }
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: '✅ Update Ready — Hotels4U PMS',
+    message: `Version ${info.version} Downloaded!`,
+    detail: 'The update has been downloaded successfully.\n\nRestart now to install the update?',
+    buttons: ['Restart & Install Now', 'Install on Next Restart'],
+    defaultId: 0,
+    cancelId: 1
+  }).then(result => {
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall(false, true);
+    }
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  log.error('[Updater] Error:', err?.message || err);
+});
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged; // Fixed: app.isPackaged to prevent build error
 const DEV_URL = 'http://localhost:3000';
@@ -148,6 +217,22 @@ function createMainWindow() {
   } else {
     mainWindow.loadFile(BUILD_INDEX_PATH);
   }
+
+  // Added: electron-updater for automatic updates
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    if (!isDev) {
+      setTimeout(() => {
+        autoUpdater.checkForUpdates().catch(err => {
+          log.error('[Updater] Check failed:', err?.message);
+        });
+      }, 5000);
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // Provide only safe app metadata to the renderer.
@@ -180,6 +265,24 @@ ipcMain.on('print-html', (event, html) => {
       }, 500);
     });
   });
+});
+
+// Added: electron-updater for automatic updates - manual check IPC
+ipcMain.handle('check-for-updates-manual', async () => {
+  if (isDev) {
+    return { status: 'dev-mode', message: 'Updates disabled in dev mode' };
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+    return { status: 'checking' };
+  } catch (err) {
+    log.error('[Updater] Manual check failed:', err?.message);
+    return { status: 'error', message: err?.message };
+  }
+});
+
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
 });
 
 // Register IPC handlers before any renderer tries to use them.
